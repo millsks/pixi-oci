@@ -1,0 +1,34 @@
+name: Feature request
+description: Something pixi oci should do that it does not.
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Check the [roadmap](https://millsks.github.io/pixi-oci/dev/roadmap/) and the [`roadmap` issues](https://github.com/millsks/pixi-oci/issues?q=label%3Aroadmap) first: if your idea is there, comment on that issue instead.
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What you are trying to do, and what gets in the way today.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you would like
+      description: The command, option or behavior you have in mind.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives
+      description: Workarounds you use now, or other tools that do this.
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Done when
+      description: How we would know it works, as a checklist.
+      placeholder: |
+        - [ ] ...

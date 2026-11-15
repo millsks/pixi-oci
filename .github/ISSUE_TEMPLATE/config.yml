@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Documentation
+    url: https://millsks.github.io/pixi-oci/
+    about: Installation, your first image, the CLI reference, and troubleshooting.
+  - name: Report a security problem
+    url: https://github.com/millsks/pixi-oci/security/advisories/new
+    about: Privately, as SECURITY.md describes. Please do not open a public issue.
