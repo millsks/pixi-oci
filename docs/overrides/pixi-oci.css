@@ -1,0 +1,41 @@
+@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&display=swap");
+/* pixi-oci on Material for MkDocs: slate and teal, the colours of the project's infographic. Links are Teal 700
+   (#0f766e), 5.47:1 on white (AA); on the dark slate ground they are Teal 300 (#5eead4), 11.6:1. */
+:root,
+[data-md-color-scheme="default"] {
+  --md-primary-fg-color: #0f172a;
+  --md-primary-fg-color--light: #1e293b;
+  --md-primary-fg-color--dark: #020617;
+  --md-primary-bg-color: #f8fafc;
+  --md-primary-bg-color--light: #cbd5e1;
+  --md-accent-fg-color: #0d9488;
+  --md-accent-fg-color--transparent: rgba(13, 148, 136, 0.1);
+  --md-typeset-a-color: #0f766e;
+  --md-code-bg-color: #f1f5f9;
+  --md-footer-bg-color: #0f172a;
+  --md-footer-bg-color--dark: #020617;
+}
+
+[data-md-color-scheme="slate"] {
+  --md-hue: 222;
+  --md-default-bg-color: #0f172a;
+  --md-primary-fg-color: #020617;
+  --md-primary-bg-color: #f8fafc;
+  --md-accent-fg-color: #2dd4bf;
+  --md-accent-fg-color--transparent: rgba(45, 212, 191, 0.1);
+  --md-typeset-a-color: #5eead4;
+  --md-code-bg-color: #1e293b;
+  --md-footer-bg-color: #020617;
+}
+
+/* Headings in Space Grotesk, as on the infographic; Inter and JetBrains Mono come from the theme's font setting. */
+.md-typeset h1,
+.md-typeset h2,
+.md-typeset h3 {
+  font-family: "Space Grotesk", var(--md-text-font-family), sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.md-typeset h1 {
+  color: var(--md-default-fg-color);
+}

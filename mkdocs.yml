@@ -1,0 +1,101 @@
+site_name: pixi-oci
+site_description: OCI container images straight from pixi.lock, with no Dockerfile, no Docker daemon and no admin rights
+site_url: https://millsks.github.io/pixi-oci/
+repo_url: https://github.com/millsks/pixi-oci
+repo_name: millsks/pixi-oci
+edit_uri: edit/main/docs/
+copyright: Apache-2.0 licensed
+
+docs_dir: docs
+# Lives under docs/ for the theme's sake; not a page.
+exclude_docs: |
+  overrides/
+strict: true
+validation:
+  omitted_files: warn
+  absolute_links: warn
+  unrecognized_links: warn
+  anchors: warn
+
+nav:
+  - Overview: index.md
+  - Installation: installation.md
+  - Your first image: first-image.md
+  - Building on Windows: windows.md
+  - Command-line reference: cli.md
+  - How it works: how-it-works.md
+  - Troubleshooting: troubleshooting.md
+  - Roadmap: roadmap.md
+  - Contributing:
+      - Architecture: architecture.md
+      - Development: development.md
+  - Security policy: security.md
+
+hooks:
+  - mkdocs_hooks.py
+
+theme:
+  name: material
+  custom_dir: docs/overrides
+  favicon: assets/favicon.svg
+  logo: assets/favicon.svg
+  features:
+    - navigation.sections
+    - navigation.top
+    - navigation.footer
+    - search.highlight
+    - search.suggest
+    - content.code.copy
+    - content.action.edit
+  font:
+    text: Inter
+    code: JetBrains Mono
+  # Light by default regardless of the OS preference; the toggle switches to dark. Colours: docs/overrides/pixi-oci.css.
+  palette:
+    - scheme: default
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+
+plugins:
+  - search
+  # Aliases (`latest`) are real copies so GitHub Pages serves them without symlinks or redirects,
+  # and every version's pages declare the `latest` URL as canonical for search engines.
+  - mike:
+      alias_type: copy
+      canonical_version: latest
+
+extra:
+  # Repository files published as pages of the site (mkdocs_hooks.py).
+  repo_pages:
+    SECURITY.md: security.md
+  # Version selector fed by mike's versions.json; the site root opens `latest`, or `dev` before the first release.
+  version:
+    provider: mike
+    default: latest
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/millsks/pixi-oci

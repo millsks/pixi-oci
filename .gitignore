@@ -18,3 +18,9 @@ CLAUDE.local.md
 # Environment files
 .env
 .env.*
+
+# The documentation site, built by `pixi run -e docs docs-build`
+/site/
+
+# Python bytecode from mkdocs_hooks.py
+__pycache__/

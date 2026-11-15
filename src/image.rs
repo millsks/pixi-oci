@@ -204,9 +204,19 @@ pub fn finish_layout(
 }
 
 /// Tar the layout directory `layout` into the archive `output`, uncompressed: its layers are compressed already.
+/// The archive is written beside `output` and renamed into place when it is complete, so a failure never leaves a
+/// partial archive where the image should be.
 pub fn write_archive(layout: &Path, output: &Path, mtime: u64) -> io::Result<()> {
     let entries: Vec<Entry> = layer::entries(layout, &|_| false)?;
-    let file = io::BufWriter::new(fs::File::create(output)?);
+    let dir = output
+        .parent()
+        .filter(|p| !p.as_os_str().is_empty())
+        .unwrap_or(Path::new("."));
+    let temp = tempfile::Builder::new()
+        .prefix(".pixi-oci-")
+        .suffix(".tar")
+        .tempfile_in(dir)?;
+    let file = io::BufWriter::new(temp.reopen()?);
     let mut tar = tar::Builder::new(file);
     tar.follow_symlinks(false);
     for entry in &entries {
@@ -228,7 +238,10 @@ pub fn write_archive(layout: &Path, output: &Path, mtime: u64) -> io::Result<()>
         }
     }
     let mut file = tar.into_inner()?;
-    io::Write::flush(&mut file)
+    io::Write::flush(&mut file)?;
+    drop(file);
+    temp.persist(output).map_err(|err| err.error)?;
+    Ok(())
 }
 
 /// RFC 3339 in UTC for seconds since the Unix epoch, as the image spec's `created` wants it.

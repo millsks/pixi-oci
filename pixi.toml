@@ -50,6 +50,23 @@ cargo-llvm-cov = "*"
 [feature.cov.tasks]
 cov = "cargo llvm-cov --all-targets --fail-under-lines 90"
 
+# The site toolchain comes from PyPI rather than conda-forge, as in aesir-oss/pixi-sbom: conda-forge's mkdocs build
+# caps click below the release that fixes PYSEC-2026-2132. click is taken from conda-forge at the fixed release, so the
+# PyPI solve sees it as satisfied and cannot pull a capped one.
+[feature.docs.dependencies]
+python = "3.14.*"
+click = ">=8.3.3"
+
+[feature.docs.pypi-dependencies]
+mkdocs = ">=1.6,<2"
+mkdocs-material = ">=9.6"
+pymdown-extensions = ">=10"
+mike = ">=2.1"
+
+[feature.docs.tasks]
+docs-serve = "mkdocs serve"
+docs-build = "mkdocs build --strict"
+
 [feature.dev.tasks]
 ci = { depends-on = ["pre-commit-run", "build", "check", "lint", "cov"] }
 
@@ -57,3 +74,4 @@ ci = { depends-on = ["pre-commit-run", "build", "check", "lint", "cov"] }
 default = ["lint", "cov", "dev"]
 lint = { features = ["lint"], no-default-feature = true }
 msrv = { features = ["msrv"], no-default-feature = true }
+docs = { features = ["docs"], no-default-feature = true }

@@ -99,8 +99,8 @@ pub struct BuildArgs {
     #[arg(long, default_value = "512M", value_name = "SIZE", value_parser = crate::build::parse_size)]
     pub max_memory: u64,
 
-    /// Where downloaded and extracted packages are kept. Defaults to `PIXI_OCI_CACHE_DIR`, else the platform's cache
-    /// directory.
+    /// Where downloaded package archives are kept, named by their sha256. Defaults to `PIXI_OCI_CACHE_DIR`, else the
+    /// platform's cache directory.
     #[arg(long, value_name = "PATH")]
     pub cache_dir: Option<PathBuf>,
 }
