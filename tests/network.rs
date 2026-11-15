@@ -81,6 +81,43 @@ fn a_built_image_runs_its_python() {
     assert!(validated.status.success(), "{report}");
     assert!(report.contains("is a valid OCI image"), "{report}");
 
+    // inspect reads back the layers plan predicted, package for package.
+    let json = |args: &[&str]| -> serde_json::Value {
+        let output = Command::cargo_bin("pixi-oci").unwrap().args(args).output().unwrap();
+        assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
+        serde_json::from_slice(&output.stdout).unwrap()
+    };
+    let names = |layers: &serde_json::Value| -> Vec<Vec<String>> {
+        layers
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|layer| {
+                layer["packages"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .map(|package| package["name"].as_str().unwrap().to_string())
+                    .collect()
+            })
+            .collect()
+    };
+    let lockfile = "tests/fixtures/workspace/pixi.lock";
+    let plan = json(&[
+        "plan",
+        "--lockfile",
+        lockfile,
+        "-e",
+        "app",
+        "--platform",
+        platform,
+        "--format",
+        "json",
+    ]);
+    let inspection = json(&["inspect", archive.to_str().unwrap(), "--format", "json"]);
+    assert_eq!(names(&inspection["layers"]), names(&plan["layers"]));
+    assert_eq!(inspection["reference"], "app:test");
+
     unpack_image(&archive, dir.path());
     let output = Command::new(prefix.join("bin/python"))
         .args([

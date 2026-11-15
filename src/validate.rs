@@ -11,7 +11,7 @@ use serde_json::Value;
 use sha2::{Digest, Sha256};
 
 use crate::image::{CONFIG_MEDIA_TYPE, INDEX_MEDIA_TYPE, MANIFEST_MEDIA_TYPE};
-use crate::read::{Image, ReadError, blob_path};
+use crate::read::{Image, ReadError, blob_path, platform_text};
 use crate::report::{plural, size_text};
 
 const DOCKER_MANIFEST_MEDIA_TYPE: &str = "application/vnd.docker.distribution.manifest.v2+json";
@@ -532,15 +532,6 @@ impl Checker<'_> {
     }
 }
 
-fn platform_text(platform: &Value) -> Option<String> {
-    let os = platform["os"].as_str()?;
-    let architecture = platform["architecture"].as_str()?;
-    Some(match platform["variant"].as_str() {
-        Some(variant) => format!("{os}/{architecture}/{variant}"),
-        None => format!("{os}/{architecture}"),
-    })
-}
-
 /// The image spec's grammar for `org.opencontainers.image.ref.name`: components of letters and digits joined by
 /// separators (`-._:@+` or `--`), the components joined by `/`.
 fn valid_ref_name(name: &str) -> bool {
@@ -579,9 +570,6 @@ mod tests {
     use serde_json::json;
 
     use super::*;
-    use crate::build::{BuildOptions, build};
-    use crate::fetch::Fetcher;
-    use crate::image::Reference;
 
     /// An image of two small packages, built to `name` under `dir`: a `.tar` name gives an archive.
     fn built(dir: &Path, name: &str) -> PathBuf {
@@ -593,19 +581,7 @@ mod tests {
             100,
         );
         let output = dir.join(name);
-        let options = BuildOptions {
-            prefix: "/opt/env".to_string(),
-            output: output.clone(),
-            force: true,
-            reference: Reference::parse("test:1").unwrap(),
-            env: Vec::new(),
-            entrypoint: None,
-            cmd: None,
-            workdir: None,
-            source_date_epoch: 0,
-            max_memory: 16 << 20,
-        };
-        build(&plan, &options, &Fetcher::new(dir.join("cache")), &mut io::sink()).unwrap();
+        crate::testing::build_image(dir, &plan, &output);
         output
     }
 

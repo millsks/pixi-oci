@@ -9,6 +9,7 @@ pub mod build;
 pub mod cli;
 pub mod fetch;
 pub mod image;
+pub mod inspect;
 #[cfg(test)]
 pub mod install;
 pub mod layer;
@@ -25,7 +26,7 @@ pub mod target;
 mod testing;
 pub mod validate;
 
-use cli::{BuildArgs, Cli, Command, Format, PlanArgs, ValidateArgs};
+use cli::{BuildArgs, Cli, Command, Format, InspectArgs, PlanArgs, ValidateArgs};
 
 /// What a command prints, and whether it succeeded: a command can print a full report and still fail, as
 /// `validate` does for an invalid image.
@@ -47,7 +48,20 @@ pub fn run(cli: Cli) -> miette::Result<Output> {
         Command::Plan(args) => run_plan(args).map(Output::from),
         Command::Build(args) => run_build(args).map(Output::from),
         Command::Validate(args) => run_validate(args),
+        Command::Inspect(args) => run_inspect(args).map(Output::from),
     }
+}
+
+fn run_inspect(args: InspectArgs) -> miette::Result<String> {
+    let platform = args.platform.as_deref();
+    if let Some(which) = args.raw {
+        return Ok(inspect::raw(&args.image, platform, which)?);
+    }
+    let inspection = inspect::inspect(&args.image, platform)?;
+    Ok(match args.format {
+        Format::Text => inspection.text(args.packages),
+        Format::Json => inspection.json() + "\n",
+    })
 }
 
 fn run_validate(args: ValidateArgs) -> miette::Result<Output> {

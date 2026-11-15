@@ -352,3 +352,19 @@ fn validate_refuses_what_is_not_an_image() {
         "{message}"
     );
 }
+
+#[test]
+fn inspect_refuses_what_is_not_an_image() {
+    let dir = tempfile::tempdir().unwrap();
+    pixi_oci()
+        .arg("inspect")
+        .arg(dir.path())
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("pixi oci validate"));
+    pixi_oci()
+        .args(["inspect", "image.tar", "--raw", "manifest", "--format", "json"])
+        .assert()
+        .code(2)
+        .stderr(predicate::str::contains("cannot be used with"));
+}

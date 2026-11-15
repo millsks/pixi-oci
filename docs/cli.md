@@ -77,6 +77,52 @@ It checks:
 It reports every problem it finds, not just the first, and exits `1` if there is any. zstd layers are hashed but
 their `diff_id` is not checked.
 
+The image is a standard OCI image, so other tools check it the same way: `crane validate --tarball app.tar`, or
+`skopeo copy oci-archive:app.tar ...` as a smoke test.
+
+## `pixi oci inspect`
+
+Shows what an image holds, read from its index, manifest and config, without opening a layer or needing skopeo or
+crane.
+
+```console
+$ pixi oci inspect app.tar
+Image app:1.0 (app.tar)
+  platform    linux/amd64
+  manifest    sha256:9ec8407e4f1860919cd8dd7af6027a9bdcb91a5a008b2c5ea657ed3f300044ef
+  config      sha256:6ca92a53b6bf0bf0fc05e09b3e22b662af269f9136ff892344073894a1ad1312
+  created     1970-01-01T00:00:00Z
+  env         PATH=/opt/env/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+              CONDA_PREFIX=/opt/env
+  labels      dev.pixi.environment=app
+              dev.pixi.platform=linux-64
+
+7 layers, 62.6 MiB
+
+  #  Layer              Size      Digest
+  1  4 packages         2.1 MiB   sha256:960cbb64893f
+  2  libpython 3.13.18  13.9 MiB  sha256:12f0c952f0ec
+  3  12 packages        8.3 MiB   sha256:cbef1ccd8e85
+  4  tk 8.6.13          4.0 MiB   sha256:74ddf65a7bef
+  5  3 packages         1.7 MiB   sha256:a8fb83f0c699
+  6  python 3.13.18     32.6 MiB  sha256:a6cd4f82fa1e
+  7  six 1.17.0         11.5 KiB  sha256:f0d9c9d4dea1
+```
+
+| Argument or option | Default | |
+|---|---|---|
+| `IMAGE` | | an OCI image layout directory, or a `.tar` archive of one, read in place |
+| `-p, --platform NAME` | the only one | for an image of several platforms, which one: `linux/arm64/v8`, or the conda name `linux-aarch64` |
+| `--packages` | | list the packages of every layer that holds several |
+| `--format text\|json` | `text` | `json` gives every field, and each layer's digest, size, media type, `diff_id`, history line and packages |
+| `--raw index\|manifest\|config` | | print that stored document exactly, instead of the summary; its sha256 is its digest |
+
+Layer sizes are the compressed sizes the registry stores. The packages of each layer come from the history line
+pixi-oci writes for it; a layer another tool built shows its own history line instead.
+
+Other OCI tools read the same image: `skopeo inspect oci-archive:app.tar`, `skopeo inspect --config
+oci-archive:app.tar`, or `crane config` and `crane manifest` on a pushed image.
+
 ## Environment variables
 
 | Variable | |
