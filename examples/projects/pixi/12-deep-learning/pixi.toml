@@ -6,5 +6,7 @@ platforms = ["linux-64", "linux-aarch64"]
 
 [dependencies]
 python = "3.13.*"
+# tk, which conda-forge's python depends on, links to X11: without it `check` reports libX11.so.6.
+xorg-libx11 = "*"
 pytorch = { version = "*", build = "cpu*" }
 torchvision = "*"
