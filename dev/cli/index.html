@@ -553,6 +553,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#pixi-oci-inspect" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        pixi oci inspect
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#environment-variables" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -865,6 +876,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#pixi-oci-inspect" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        pixi oci inspect
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#environment-variables" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1074,6 +1096,73 @@ everywhere else.</p>
 </ul>
 <p>It reports every problem it finds, not just the first, and exits <code>1</code> if there is any. zstd layers are hashed but
 their <code>diff_id</code> is not checked.</p>
+<p>The image is a standard OCI image, so other tools check it the same way: <code>crane validate --tarball app.tar</code>, or
+<code>skopeo copy oci-archive:app.tar ...</code> as a smoke test.</p>
+<h2 id="pixi-oci-inspect"><code>pixi oci inspect</code><a class="headerlink" href="#pixi-oci-inspect" title="Permanent link">&para;</a></h2>
+<p>Shows what an image holds, read from its index, manifest and config, without opening a layer or needing skopeo or
+crane.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="gp">$ </span>pixi<span class="w"> </span>oci<span class="w"> </span>inspect<span class="w"> </span>app.tar
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="go">Image app:1.0 (app.tar)</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="go">  platform    linux/amd64</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="go">  manifest    sha256:9ec8407e4f1860919cd8dd7af6027a9bdcb91a5a008b2c5ea657ed3f300044ef</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="go">  config      sha256:6ca92a53b6bf0bf0fc05e09b3e22b662af269f9136ff892344073894a1ad1312</span>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="go">  created     1970-01-01T00:00:00Z</span>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="go">  env         PATH=/opt/env/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin</span>
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="go">              CONDA_PREFIX=/opt/env</span>
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="go">  labels      dev.pixi.environment=app</span>
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="go">              dev.pixi.platform=linux-64</span>
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a><span class="go">7 layers, 62.6 MiB</span>
+<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>
+<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a><span class="gp">  #  </span>Layer<span class="w">              </span>Size<span class="w">      </span>Digest
+<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a><span class="go">  1  4 packages         2.1 MiB   sha256:960cbb64893f</span>
+<a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a><span class="go">  2  libpython 3.13.18  13.9 MiB  sha256:12f0c952f0ec</span>
+<a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a><span class="go">  3  12 packages        8.3 MiB   sha256:cbef1ccd8e85</span>
+<a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a><span class="go">  4  tk 8.6.13          4.0 MiB   sha256:74ddf65a7bef</span>
+<a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a><span class="go">  5  3 packages         1.7 MiB   sha256:a8fb83f0c699</span>
+<a id="__codelineno-2-20" name="__codelineno-2-20" href="#__codelineno-2-20"></a><span class="go">  6  python 3.13.18     32.6 MiB  sha256:a6cd4f82fa1e</span>
+<a id="__codelineno-2-21" name="__codelineno-2-21" href="#__codelineno-2-21"></a><span class="go">  7  six 1.17.0         11.5 KiB  sha256:f0d9c9d4dea1</span>
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Argument or option</th>
+<th>Default</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>IMAGE</code></td>
+<td></td>
+<td>an OCI image layout directory, or a <code>.tar</code> archive of one, read in place</td>
+</tr>
+<tr>
+<td><code>-p, --platform NAME</code></td>
+<td>the only one</td>
+<td>for an image of several platforms, which one: <code>linux/arm64/v8</code>, or the conda name <code>linux-aarch64</code></td>
+</tr>
+<tr>
+<td><code>--packages</code></td>
+<td></td>
+<td>list the packages of every layer that holds several</td>
+</tr>
+<tr>
+<td><code>--format text\|json</code></td>
+<td><code>text</code></td>
+<td><code>json</code> gives every field, and each layer's digest, size, media type, <code>diff_id</code>, history line and packages</td>
+</tr>
+<tr>
+<td><code>--raw index\|manifest\|config</code></td>
+<td></td>
+<td>print that stored document exactly, instead of the summary; its sha256 is its digest</td>
+</tr>
+</tbody>
+</table>
+<p>Layer sizes are the compressed sizes the registry stores. The packages of each layer come from the history line
+pixi-oci writes for it; a layer another tool built shows its own history line instead.</p>
+<p>Other OCI tools read the same image: <code>skopeo inspect oci-archive:app.tar</code>, <code>skopeo inspect --config
+oci-archive:app.tar</code>, or <code>crane config</code> and <code>crane manifest</code> on a pushed image.</p>
 <h2 id="environment-variables">Environment variables<a class="headerlink" href="#environment-variables" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
