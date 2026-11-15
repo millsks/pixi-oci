@@ -86,8 +86,7 @@ fn every_lockfile_matches_its_manifest() {
     }
 }
 
-/// Small examples of each kind, built on Debian for this machine's platform: `check` may report only tk's X11
-/// library, which conda-forge's python links to.
+/// Small examples of each kind, built on Debian for this machine's platform: `check` reports nothing.
 #[test]
 fn small_examples_build_and_check() {
     let platform = match (std::env::consts::OS, std::env::consts::ARCH) {
@@ -130,9 +129,7 @@ fn small_examples_build_and_check() {
         );
         let checked = pixi_oci(&["check", image.to_str().unwrap(), "--format", "json"]);
         let report: serde_json::Value = serde_json::from_slice(&checked.stdout).unwrap();
-        for problem in report["problems"].as_array().unwrap() {
-            let message = problem["message"].as_str().unwrap();
-            assert!(message.starts_with("libX11.so.6 "), "{name}: {report:#}");
-        }
+        assert!(checked.status.success(), "{name}: {report:#}");
+        assert_eq!(report["problems"], serde_json::json!([]), "{name}");
     }
 }

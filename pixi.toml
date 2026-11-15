@@ -34,7 +34,7 @@ args = [
   { arg = "name" },
   { arg = "entrypoint", default = "python" },
   { arg = "platform", default = "linux-64" },
-  { arg = "base", default = "registry.access.redhat.com/ubi9/ubi-minimal@sha256:baafce2d34783a28b4a472779f304e97e00f9d35c99553bc53b068b14344d9a9" },
+  { arg = "base", default = "debian:bookworm-slim@sha256:734a72b3d6142a71993b4bc580ca01d8ca687f77a2c422d96a961d3376b179bc" },
 ]
 cmd = "cargo run --release -- build --lockfile examples/projects/pixi/{{ name }}/pixi.lock -p {{ platform }} --base {{ base }} --entrypoint {{ entrypoint }} -t {{ name }}:latest -o target/examples/{{ name }}.tar --force && cargo run --release -- check target/examples/{{ name }}.tar"
 
