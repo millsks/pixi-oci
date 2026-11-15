@@ -859,25 +859,35 @@
 <h1 id="roadmap">Roadmap<a class="headerlink" href="#roadmap" title="Permanent link">&para;</a></h1>
 <p>The aim: build anywhere, check anywhere, run in CI. A developer on a Windows laptop with no admin rights builds and
 checks an image; CI proves the very same image runs, because the digest matches across hosts.</p>
+<p>Each item has an issue labelled <a href="https://github.com/millsks/pixi-oci/issues?q=label%3Aroadmap"><code>roadmap</code></a>, where its
+scope and acceptance criteria live and its pull requests are linked. Comment there before starting on one.</p>
 <h2 id="done">Done<a class="headerlink" href="#done" title="Permanent link">&para;</a></h2>
 <ul>
-<li>[x] <strong><code>plan</code></strong>: read <code>pixi.lock</code>, map conda platforms to OCI platforms, order layers dependencies first, cap them</li>
+<li>[x] <strong><code>plan</code></strong>: read <code>pixi.lock</code>, map conda platforms to OCI platforms, order layers dependencies first, cap them
+      (<a href="https://github.com/millsks/pixi-oci/issues/6">#6</a>)</li>
 <li>[x] <strong><code>build</code></strong>: download and verify packages against the lockfile's sha256, rewrite paths for the image's prefix,
-      and write a reproducible OCI image layout or archive</li>
+      and write a reproducible OCI image layout or archive (<a href="https://github.com/millsks/pixi-oci/issues/7">#7</a>)</li>
 <li>[x] <strong>Streamed layers</strong>: written straight from the archives, so builds run on Windows and macOS file systems, with
-      memory bounded by <code>--max-memory</code>; checked against rattler's own installer file for file</li>
+      memory bounded by <code>--max-memory</code>; checked against rattler's own installer file for file
+      (<a href="https://github.com/millsks/pixi-oci/issues/8">#8</a>)</li>
+<li>[x] <strong>Documentation</strong>: this site, versioned and published from <code>main</code>
+      (<a href="https://github.com/millsks/pixi-oci/issues/9">#9</a>)</li>
 <li>[x] <strong>Grouped layers</strong>: packages of 4 MiB or more alone and small ones grouped at cut points their names fix, so a
-      large environment keeps its layers for the packages worth re-uploading; <code>--layers per-package</code> and <code>single</code> too</li>
+      large environment keeps its layers for the packages worth re-uploading; <code>--layers per-package</code> and <code>single</code> too
+      (<a href="https://github.com/millsks/pixi-oci/issues/10">#10</a>)</li>
 </ul>
 <h2 id="next">Next<a class="headerlink" href="#next" title="Permanent link">&para;</a></h2>
 <ul>
-<li>[ ] <strong>Base images and push.</strong> <code>--base</code> pulls a glibc base image (a distroless or UBI image) by digest, so python
-      and the rest of conda-forge run; <code>pixi oci push</code> sends the image to any registry, with docker-style credentials.</li>
 <li>[ ] <strong><code>pixi oci check</code>.</strong> Static tests on any OS, nothing executed: every binary is a Linux ELF for the image's
       architecture, its loader and libraries are in the image, shebangs name interpreters that exist, no placeholder
-      is left, and the entrypoint and <code>PATH</code> are right. It would flag today's missing-glibc failure.</li>
+      is left, and the entrypoint and <code>PATH</code> are right. It would flag today's missing-glibc failure.
+      (<a href="https://github.com/millsks/pixi-oci/issues/11">#11</a>)</li>
+<li>[ ] <strong>Base images.</strong> <code>--base</code> pulls a glibc base image (a distroless or UBI image) by digest, so python and the
+      rest of conda-forge run. (<a href="https://github.com/millsks/pixi-oci/issues/12">#12</a>)</li>
+<li>[ ] <strong>Push.</strong> <code>pixi oci push</code> sends the image to any registry, with docker-style credentials.
+      (<a href="https://github.com/millsks/pixi-oci/issues/13">#13</a>)</li>
 <li>[ ] <strong><code>pixi oci run</code>.</strong> Rootless containers on Linux through unprivileged user namespaces, with no Docker, Podman
-      or root, so CI runs the built image as a normal user.</li>
+      or root, so CI runs the built image as a normal user. (<a href="https://github.com/millsks/pixi-oci/issues/14">#14</a>)</li>
 </ul>
 <table>
 <thead>
@@ -915,13 +925,17 @@ checks an image; CI proves the very same image runs, because the digest matches 
 </table>
 <h2 id="after-that">After that<a class="headerlink" href="#after-that" title="Permanent link">&para;</a></h2>
 <ul>
-<li>[ ] PyPI wheels, installed into the top layer</li>
-<li>[ ] Private channels, with pixi's own credentials</li>
-<li>[ ] pixi's activation variables, and an entrypoint from a pixi task</li>
+<li>[ ] Multi-platform image indexes: <code>linux-64</code> and <code>linux-aarch64</code> under one tag
+      (<a href="https://github.com/millsks/pixi-oci/issues/15">#15</a>)</li>
+<li>[ ] pixi's activation variables, and an entrypoint from a pixi task
+      (<a href="https://github.com/millsks/pixi-oci/issues/16">#16</a>)</li>
+<li>[ ] PyPI wheels, installed into the top layer (<a href="https://github.com/millsks/pixi-oci/issues/17">#17</a>)</li>
+<li>[ ] Private channels, with pixi's own credentials (<a href="https://github.com/millsks/pixi-oci/issues/18">#18</a>)</li>
 <li>[ ] A <a href="https://github.com/aesir-oss/pixi-sbom">pixi-sbom</a> SBOM attached to the image, and
-      <a href="https://github.com/aesir-oss/pixi-policy">pixi-policy</a> as a gate before pushing</li>
-<li>[ ] Multi-platform image indexes: <code>linux-64</code> and <code>linux-aarch64</code> under one tag</li>
-<li>[ ] A release, and a package on conda-forge: <code>pixi global install pixi-oci</code></li>
+      <a href="https://github.com/aesir-oss/pixi-policy">pixi-policy</a> as a gate before pushing
+      (<a href="https://github.com/millsks/pixi-oci/issues/19">#19</a>)</li>
+<li>[ ] A release, and a package on conda-forge: <code>pixi global install pixi-oci</code>
+      (<a href="https://github.com/millsks/pixi-oci/issues/20">#20</a>)</li>
 </ul>
 <h2 id="related-projects">Related projects<a class="headerlink" href="#related-projects" title="Permanent link">&para;</a></h2>
 <ul>
