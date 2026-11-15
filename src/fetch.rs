@@ -34,6 +34,7 @@ pub enum FetchError {
         actual: String,
     },
 
+    #[cfg(test)]
     #[error("could not extract {name}")]
     Extract {
         name: String,
@@ -96,6 +97,8 @@ impl Fetcher {
     }
 
     /// The extracted package directory for `package`, downloading and extracting it if the cache does not have it.
+    /// Only the reference install in the parity tests unpacks packages; builds stream them from the archive.
+    #[cfg(test)]
     pub fn extracted(&self, package: &Package) -> Result<PathBuf, FetchError> {
         let sha256 = package.sha256.clone().ok_or_else(|| FetchError::NoSha256 {
             name: package.name.clone(),
@@ -130,6 +133,15 @@ impl Fetcher {
             Err(source) => return Err(cache_err(source)),
         }
         Ok(extracted)
+    }
+
+    /// The archive for `package` on disk, downloaded if the cache does not have it, and checked against the
+    /// lockfile's sha256.
+    pub fn archive_for(&self, package: &Package) -> Result<PathBuf, FetchError> {
+        let sha256 = package.sha256.clone().ok_or_else(|| FetchError::NoSha256 {
+            name: package.name.clone(),
+        })?;
+        self.archive(package, &sha256)
     }
 
     /// The archive for `package` on disk, checked against `sha256`.
@@ -203,10 +215,11 @@ fn archive_extension(location: &str) -> Option<&'static str> {
     }
 }
 
-/// The path a `file://` URL or a plain path names; `None` for a remote URL.
+/// The path a `file://` URL or a plain path names; `None` for a remote URL. A `file://` URL is converted by the
+/// `url` crate, so `file:///C:/pkgs/a.conda` is `C:\pkgs\a.conda` on Windows.
 fn local_path(location: &str) -> Option<PathBuf> {
-    if let Some(rest) = location.strip_prefix("file://") {
-        return Some(PathBuf::from(rest));
+    if location.starts_with("file://") {
+        return url::Url::parse(location).ok()?.to_file_path().ok();
     }
     if location.contains("://") {
         None
@@ -271,7 +284,14 @@ mod tests {
 
     #[test]
     fn local_locations_are_recognized() {
-        assert_eq!(local_path("file:///srv/a.conda"), Some(PathBuf::from("/srv/a.conda")));
+        if cfg!(unix) {
+            assert_eq!(local_path("file:///srv/a.conda"), Some(PathBuf::from("/srv/a.conda")));
+        } else {
+            assert_eq!(
+                local_path("file:///C:/srv/a.conda"),
+                Some(PathBuf::from("C:\\srv\\a.conda"))
+            );
+        }
         assert_eq!(local_path("pkgs/a.conda"), Some(PathBuf::from("pkgs/a.conda")));
         assert_eq!(local_path("https://conda.anaconda.org/a.conda"), None);
     }

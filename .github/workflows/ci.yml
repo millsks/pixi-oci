@@ -104,11 +104,67 @@ jobs:
       - name: cargo check on the oldest supported toolchain
         run: pixi run -e msrv msrv-check
 
+  # The same lockfile must give the same image on every host: a developer on Windows builds what CI tests on Linux.
+  digest:
+    name: Image digest (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: prefix-dev/setup-pixi@v0.8.1
+        with:
+          environments: default
+          cache: true
+          activate-environment: true
+      - uses: Swatinem/rust-cache@v2
+        with:
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+      - name: Build the fixture image for linux-64 and linux-aarch64
+        run: |
+          pixi run cargo build --release
+          for platform in linux-64 linux-aarch64; do
+            ./target/release/pixi-oci build --lockfile tests/fixtures/workspace/pixi.lock \
+              -e app -p "$platform" -o "app-$platform.tar" | tee "build-$platform.txt"
+            grep -o 'sha256:[0-9a-f]*' "build-$platform.txt" | head -1 > "digest-$platform.txt"
+          done
+          cat digest-*.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: digest-${{ matrix.os }}
+          path: digest-*.txt
+
+  same-digest:
+    name: Same image on every host
+    needs: [digest]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: digest-*
+      - name: Compare
+        run: |
+          status=0
+          for platform in linux-64 linux-aarch64; do
+            echo "$platform:"
+            for file in digest-*/digest-"$platform".txt; do echo "  ${file%%/*}: $(cat "$file")"; done
+            if [ "$(cat digest-*/digest-"$platform".txt | sort -u | wc -l)" -ne 1 ]; then
+              echo "::error::the $platform image differs between hosts"
+              status=1
+            fi
+          done
+          exit $status
+
   # The one check a branch protection rule needs to require.
   result:
     name: CI result
     if: ${{ always() }}
-    needs: [lint, test, coverage, deny, msrv]
+    needs: [lint, test, coverage, deny, msrv, digest, same-digest]
     runs-on: ubuntu-latest
     steps:
       - name: Every job passed

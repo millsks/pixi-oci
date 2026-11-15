@@ -94,6 +94,11 @@ pub struct BuildArgs {
     #[arg(long, default_value_t = DEFAULT_MAX_LAYERS, value_name = "N")]
     pub max_layers: usize,
 
+    /// Roughly how much memory the build's buffers may use, such as 512M or 2G. Less means fewer layers written at
+    /// once and large rewritten files waiting on disk; the image comes out the same.
+    #[arg(long, default_value = "512M", value_name = "SIZE", value_parser = crate::build::parse_size)]
+    pub max_memory: u64,
+
     /// Where downloaded and extracted packages are kept. Defaults to `PIXI_OCI_CACHE_DIR`, else the platform's cache
     /// directory.
     #[arg(long, value_name = "PATH")]

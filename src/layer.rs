@@ -105,74 +105,142 @@ fn walk(dir: &Path, prefix: &str, skip: &dyn Fn(&str) -> bool, out: &mut Vec<Ent
     Ok(())
 }
 
+#[cfg(test)]
 /// Write `entries` as a gzip-compressed tar blob into `blobs_dir`, named by its digest, with every entry's
 /// modification time set to `mtime` (seconds since the Unix epoch).
 pub fn write(entries: &[Entry], blobs_dir: &Path, mtime: u64) -> io::Result<Blob> {
-    fs::create_dir_all(blobs_dir)?;
-    let temp = tempfile::Builder::new().prefix(".layer-").tempfile_in(blobs_dir)?;
-    let file = Hashing::new(io::BufWriter::new(temp.reopen()?));
-    // No file name and a zero time in the gzip header, so the compressed bytes depend on the content only.
-    let gzip = flate2::GzBuilder::new().mtime(0).write(file, Compression::default());
-    let mut tar = tar::Builder::new(Hashing::new(gzip));
-    tar.follow_symlinks(false);
+    let mut writer = Writer::new(blobs_dir, mtime)?;
     for entry in entries {
-        append(&mut tar, entry, mtime)?;
+        let metadata = fs::symlink_metadata(&entry.source)?;
+        let file_type = metadata.file_type();
+        if file_type.is_symlink() {
+            writer.symlink(&entry.path, &fs::read_link(&entry.source)?)?;
+        } else if file_type.is_dir() {
+            writer.dir(&entry.path)?;
+        } else {
+            writer.file(
+                &entry.path,
+                executable(&metadata),
+                metadata.len(),
+                File::open(&entry.source)?,
+            )?;
+        }
     }
-    let tarred = tar.into_inner()?;
-    let (gzip, diff_id, _) = tarred.finish();
-    let file = gzip.finish()?;
-    let (mut buffered, digest, size) = file.finish();
-    buffered.flush()?;
-    drop(buffered);
-    temp.persist(blobs_dir.join(&digest)).map_err(|err| err.error)?;
-    Ok(Blob {
-        digest: format!("sha256:{digest}"),
-        diff_id: format!("sha256:{diff_id}"),
-        size,
-    })
+    writer.finish()
 }
 
-fn append<W: Write>(tar: &mut tar::Builder<W>, entry: &Entry, mtime: u64) -> io::Result<()> {
-    let metadata = fs::symlink_metadata(&entry.source)?;
-    let mut header = Header::new_gnu();
-    header.set_mtime(mtime);
-    header.set_uid(0);
-    header.set_gid(0);
-    header.set_mode(mode(&metadata));
-    let file_type = metadata.file_type();
-    if file_type.is_symlink() {
-        header.set_entry_type(EntryType::Symlink);
-        header.set_size(0);
-        let target = fs::read_link(&entry.source)?;
-        tar.append_link(&mut header, &entry.path, target)
-    } else if file_type.is_dir() {
-        header.set_entry_type(EntryType::Directory);
-        header.set_size(0);
-        tar.append_data(&mut header, format!("{}/", entry.path), io::empty())
-    } else {
-        header.set_entry_type(EntryType::Regular);
-        header.set_size(metadata.len());
-        tar.append_data(&mut header, &entry.path, File::open(&entry.source)?)
+type Stack = tar::Builder<Hashing<flate2::write::GzEncoder<Hashing<io::BufWriter<File>>>>>;
+
+/// A layer written one entry at a time, straight into its compressed blob.
+///
+/// Every entry is owned by root, stamped with one time, and given one of three modes. A directory is written once,
+/// the first time it is named or needed as a parent, so entries can arrive in any order a caller fixes.
+pub struct Writer {
+    tar: Stack,
+    temp: tempfile::NamedTempFile,
+    blobs_dir: PathBuf,
+    mtime: u64,
+    dirs: std::collections::HashSet<String>,
+}
+
+impl Writer {
+    /// A layer that will be written into `blobs_dir`, every entry stamped with `mtime`.
+    pub fn new(blobs_dir: &Path, mtime: u64) -> io::Result<Self> {
+        fs::create_dir_all(blobs_dir)?;
+        let temp = tempfile::Builder::new().prefix(".layer-").tempfile_in(blobs_dir)?;
+        let file = Hashing::new(io::BufWriter::new(temp.reopen()?));
+        // No file name and a zero time in the gzip header, so the compressed bytes depend on the content only.
+        let gzip = flate2::GzBuilder::new().mtime(0).write(file, Compression::default());
+        let mut tar = tar::Builder::new(Hashing::new(gzip));
+        tar.follow_symlinks(false);
+        Ok(Self {
+            tar,
+            temp,
+            blobs_dir: blobs_dir.to_path_buf(),
+            mtime,
+            dirs: std::collections::HashSet::new(),
+        })
+    }
+
+    fn header(&self, kind: EntryType, mode: u32, size: u64) -> Header {
+        let mut header = Header::new_gnu();
+        header.set_mtime(self.mtime);
+        header.set_uid(0);
+        header.set_gid(0);
+        header.set_mode(mode);
+        header.set_entry_type(kind);
+        header.set_size(size);
+        header
+    }
+
+    /// Write the directories above `path` that are not written yet, outermost first.
+    pub fn parents(&mut self, path: &str) -> io::Result<()> {
+        let mut end = 0;
+        while let Some(slash) = path[end..].find('/') {
+            end += slash;
+            let parent = path[..end].to_string();
+            self.dir(&parent)?;
+            end += 1;
+        }
+        Ok(())
+    }
+
+    /// A directory, once.
+    pub fn dir(&mut self, path: &str) -> io::Result<()> {
+        let path = path.trim_end_matches('/');
+        if self.dirs.contains(path) {
+            return Ok(());
+        }
+        self.parents(path)?;
+        let mut header = self.header(EntryType::Directory, 0o755, 0);
+        self.tar.append_data(&mut header, format!("{path}/"), io::empty())?;
+        self.dirs.insert(path.to_string());
+        Ok(())
+    }
+
+    /// A regular file of `size` bytes read from `content`.
+    pub fn file(&mut self, path: &str, executable: bool, size: u64, content: impl io::Read) -> io::Result<()> {
+        self.parents(path)?;
+        let mode = if executable { 0o755 } else { 0o644 };
+        let mut header = self.header(EntryType::Regular, mode, size);
+        self.tar.append_data(&mut header, path, content)
+    }
+
+    /// A symbolic link to `target`, which is written as given.
+    pub fn symlink(&mut self, path: &str, target: &Path) -> io::Result<()> {
+        self.parents(path)?;
+        let mut header = self.header(EntryType::Symlink, 0o755, 0);
+        self.tar.append_link(&mut header, path, target)
+    }
+
+    /// Finish the tar and the gzip stream and move the blob to its digest's name.
+    pub fn finish(self) -> io::Result<Blob> {
+        let tarred = self.tar.into_inner()?;
+        let (gzip, diff_id, _) = tarred.finish();
+        let file = gzip.finish()?;
+        let (mut buffered, digest, size) = file.finish();
+        buffered.flush()?;
+        drop(buffered);
+        self.temp
+            .persist(self.blobs_dir.join(&digest))
+            .map_err(|err| err.error)?;
+        Ok(Blob {
+            digest: format!("sha256:{digest}"),
+            diff_id: format!("sha256:{diff_id}"),
+            size,
+        })
     }
 }
 
-/// The mode an entry gets in the layer. Only whether a file is executable is kept: the rest of a mode on disk
-/// depends on the umask it was created under, which must not reach the image or its digest.
-fn mode(metadata: &fs::Metadata) -> u32 {
-    if metadata.is_dir() || metadata.file_type().is_symlink() || executable(metadata) {
-        0o755
-    } else {
-        0o644
-    }
-}
-
-#[cfg(unix)]
+/// Whether a file on disk is executable. Only this is kept of its mode: the rest depends on the umask it was
+/// created under, which must not reach the image or its digest.
+#[cfg(all(test, unix))]
 fn executable(metadata: &fs::Metadata) -> bool {
     use std::os::unix::fs::PermissionsExt;
     metadata.permissions().mode() & 0o111 != 0
 }
 
-#[cfg(not(unix))]
+#[cfg(all(test, not(unix)))]
 fn executable(_: &fs::Metadata) -> bool {
     false
 }

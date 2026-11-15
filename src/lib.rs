@@ -3,16 +3,25 @@
 //! This library is the binary's insides, exposed so the tests can reach them. It is not a designed API and makes no
 //! stability promise.
 
+#![forbid(unsafe_code)]
+
 pub mod build;
 pub mod cli;
 pub mod fetch;
 pub mod image;
+#[cfg(test)]
 pub mod install;
 pub mod layer;
 pub mod lock;
+#[cfg(all(test, unix))]
+mod parity;
 pub mod plan;
 pub mod platform;
 pub mod report;
+pub mod stream;
+pub mod target;
+#[cfg(test)]
+mod testing;
 
 use cli::{BuildArgs, Cli, Command, Format, PlanArgs};
 
@@ -52,6 +61,7 @@ fn run_build(args: BuildArgs) -> miette::Result<String> {
         cmd: args.cmd.map(|command| command.0),
         workdir: args.workdir,
         source_date_epoch: build::source_date_epoch(),
+        max_memory: args.max_memory,
     };
     let fetcher = fetch::Fetcher::new(args.cache_dir.unwrap_or_else(fetch::Fetcher::default_root));
     let written = build::build(&plan, &options, &fetcher, &mut std::io::stderr())?;
