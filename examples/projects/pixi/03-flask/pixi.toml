@@ -1,0 +1,10 @@
+# A Flask web application served by gunicorn.
+[workspace]
+name = "flask"
+channels = ["conda-forge"]
+platforms = ["linux-64", "linux-aarch64"]
+
+[dependencies]
+python = "3.13.*"
+flask = "*"
+gunicorn = "*"

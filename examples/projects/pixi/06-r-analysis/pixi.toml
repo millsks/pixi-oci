@@ -1,0 +1,11 @@
+# R with tidyverse packages from conda-forge.
+[workspace]
+name = "r-analysis"
+channels = ["conda-forge"]
+platforms = ["linux-64", "linux-aarch64"]
+
+[dependencies]
+r-base = "4.5.*"
+r-dplyr = "*"
+r-ggplot2 = "*"
+r-readr = "*"

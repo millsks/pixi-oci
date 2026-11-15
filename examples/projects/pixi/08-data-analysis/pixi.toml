@@ -1,0 +1,13 @@
+# The everyday data analysis stack.
+[workspace]
+name = "data-analysis"
+channels = ["conda-forge"]
+platforms = ["linux-64", "linux-aarch64"]
+
+[dependencies]
+python = "3.13.*"
+pandas = "*"
+polars = "*"
+scipy = "*"
+scikit-learn = "*"
+matplotlib = "*"

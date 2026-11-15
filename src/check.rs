@@ -648,8 +648,9 @@ impl Fs {
             problems.push(Finding {
                 kind: "glibc",
                 message: format!(
-                    "{lacking}: {} need {}",
+                    "{lacking}: {} {} {}",
                     plural(affected.len(), "ELF file"),
+                    verb(affected.len(), "needs", "need"),
                     wanted.join(", ")
                 ),
                 paths: affected.into_iter().collect(),
@@ -679,14 +680,20 @@ impl Fs {
             problems.push(Finding {
                 kind: "shebang",
                 message: format!(
-                    "{} start with #!{interpreter}, which is not in the image",
-                    plural(paths.len(), "script")
+                    "{} {} with #!{interpreter}, which is not in the image",
+                    plural(paths.len(), "script"),
+                    verb(paths.len(), "starts", "start")
                 ),
                 paths: paths.iter().cloned().collect(),
-                help: if interpreter.starts_with("/bin/") || interpreter.starts_with("/usr/bin/") {
-                    Some("a base image provides /bin/sh and /usr/bin/env (`--base`, #12)".to_string())
-                } else {
-                    None
+                help: match interpreter.split_once(' ') {
+                    // `env` is there; the program it runs is not on the image's PATH.
+                    Some((_, program)) => Some(format!(
+                        "{program} is not on the image's PATH: add it to the environment, or build on a base that has it"
+                    )),
+                    None if interpreter.starts_with("/bin/") || interpreter.starts_with("/usr/bin/") => {
+                        Some("a base image provides /bin/sh and /usr/bin/env (`--base`)".to_string())
+                    }
+                    None => None,
                 },
             });
         }
@@ -694,8 +701,9 @@ impl Fs {
             problems.push(Finding {
                 kind: "placeholder",
                 message: format!(
-                    "{} still hold a conda build placeholder",
-                    plural(placeholders.len(), "file")
+                    "{} still {} a conda build placeholder",
+                    plural(placeholders.len(), "file"),
+                    verb(placeholders.len(), "holds", "hold")
                 ),
                 paths: placeholders,
                 help: Some(
@@ -740,6 +748,11 @@ impl Fs {
         }
         (problems, notes)
     }
+}
+
+/// A verb that agrees with a count.
+fn verb(count: usize, one: &'static str, many: &'static str) -> &'static str {
+    if count == 1 { one } else { many }
 }
 
 fn is_glibc(name: &str) -> bool {
@@ -1317,7 +1330,7 @@ pub(crate) mod tests {
         assert_eq!(kinds(&problems), ["elf", "shebang", "shebang"]);
         assert_eq!(
             problems[1].message,
-            "1 script start with #!/bin/sh, which is not in the image"
+            "1 script starts with #!/bin/sh, which is not in the image"
         );
         assert_eq!(problems[2].paths, ["/opt/env/bin/py"]);
         assert_eq!(fs.counts().scripts, 3);
@@ -1330,9 +1343,13 @@ pub(crate) mod tests {
         ]);
         let (problems, _) = fs.findings(&context(None));
         assert_eq!(kinds(&problems), ["shebang", "shebang"]);
-        assert!(
-            problems.iter().any(|p| p.message.contains("#!/usr/bin/env python3")),
-            "{problems:#?}"
+        let env = problems
+            .iter()
+            .find(|p| p.message.contains("#!/usr/bin/env python3"))
+            .expect("a finding for env python3");
+        assert_eq!(
+            env.help.as_deref(),
+            Some("python3 is not on the image's PATH: add it to the environment, or build on a base that has it")
         );
     }
 

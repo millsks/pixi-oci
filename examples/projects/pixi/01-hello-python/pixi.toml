@@ -1,0 +1,8 @@
+# Python and nothing else: the smallest useful image.
+[workspace]
+name = "hello-python"
+channels = ["conda-forge"]
+platforms = ["linux-64", "linux-aarch64"]
+
+[dependencies]
+python = "3.13.*"
