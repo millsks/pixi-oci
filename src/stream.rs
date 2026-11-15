@@ -56,6 +56,10 @@ pub enum StreamError {
     #[error("{name}'s paths.json lists {path}, but its archive has no such file")]
     Missing { name: String, path: String },
 
+    #[error("{name} would install {path}, which is outside the environment's prefix")]
+    #[diagnostic(help("a conda package's paths stay inside its environment; this archive is damaged or crafted"))]
+    OutsidePrefix { name: String, path: String },
+
     #[error("{name}'s archive holds {path} as a hard link, which pixi-oci cannot place yet")]
     HardLink { name: String, path: String },
 
@@ -97,6 +101,26 @@ pub fn write_layer(inputs: &[Input<'_>], options: &Options<'_>, blobs_dir: &Path
 
     // Where a later package of the layer installs the same path, it wins, as it would if they were installed one
     // after the other into one prefix. Every package still records the path in its own conda-meta record.
+    // Every path a package installs stays inside the prefix: an archive whose paths.json says otherwise is refused
+    // before any of the layer is written.
+    for (input, meta) in inputs.iter().zip(&metas) {
+        let commands = entry_point_commands(meta);
+        let paths = meta
+            .paths
+            .paths
+            .iter()
+            .map(|entry| install_path(meta, entry, options.target))
+            .chain(commands.iter().map(|command| entry_point_path(options.target, command)));
+        for path in paths {
+            if !inside_prefix(&path) {
+                return Err(StreamError::OutsidePrefix {
+                    name: input.package.name.clone(),
+                    path: path.to_string_lossy().into_owned(),
+                });
+            }
+        }
+    }
+
     let mut owner: HashMap<String, usize> = HashMap::new();
     for (i, meta) in metas.iter().enumerate() {
         for entry in &meta.paths.paths {
@@ -165,6 +189,15 @@ fn install_path(meta: &Meta, entry: &PathsEntry, target: &Target) -> PathBuf {
         _ => entry.relative_path.clone(),
     };
     forward_slashes(&path)
+}
+
+/// Whether a path relative to the prefix stays inside it: only plain names, no `..`, no root, no drive.
+fn inside_prefix(path: &Path) -> bool {
+    !path.as_os_str().is_empty()
+        && path
+            .to_string_lossy()
+            .split('/')
+            .all(|part| !part.is_empty() && part != ".." && part != "." && !part.contains(':') && !part.contains('\\'))
 }
 
 fn forward_slashes(path: &Path) -> PathBuf {
@@ -697,6 +730,25 @@ mod tests {
         assert_eq!(read, b"123456789");
         assert_eq!(big.len, 9);
         assert_eq!(big.sha256, rattler_digest::compute_bytes_digest::<Sha256>(b"123456789"));
+    }
+
+    #[test]
+    fn only_plain_relative_paths_stay_inside_the_prefix() {
+        for inside in ["bin/python", "lib/python3.13/site-packages/six.py", "a"] {
+            assert!(inside_prefix(Path::new(inside)), "{inside}");
+        }
+        for outside in [
+            "",
+            "../etc/passwd",
+            "bin/../../etc",
+            "/etc/passwd",
+            "./bin",
+            "bin//x",
+            "C:/x",
+            "a\\..\\b",
+        ] {
+            assert!(!inside_prefix(Path::new(outside)), "{outside}");
+        }
     }
 
     #[test]

@@ -1,3 +1,5 @@
+#![forbid(unsafe_code)]
+
 use std::io::Write;
 
 use clap::Parser;

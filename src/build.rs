@@ -584,6 +584,45 @@ mod tests {
     }
 
     #[test]
+    fn a_package_cannot_place_files_outside_the_prefix() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut spec = crate::testing::Spec::new("sneaky").file("bin/ok", "ok", true, None);
+        spec.listed_only.push("../../etc/passwd".to_string());
+        let plan = plan_of(vec![crate::testing::package(dir.path(), spec)], 100);
+        let layout = dir.path().join("layout");
+        let err = build(
+            &plan,
+            &options(layout),
+            &Fetcher::new(dir.path().join("cache")),
+            &mut std::io::sink(),
+        )
+        .unwrap_err();
+        assert_eq!(
+            err.to_string(),
+            "sneaky would install ../../etc/passwd, which is outside the environment's prefix"
+        );
+    }
+
+    #[test]
+    fn a_listed_file_missing_from_its_archive_is_reported() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut spec = crate::testing::Spec::new("partial").file("bin/ok", "ok", true, None);
+        spec.listed_only.push("lib/gone.so".to_string());
+        let plan = plan_of(vec![crate::testing::package(dir.path(), spec)], 100);
+        let err = build(
+            &plan,
+            &options(dir.path().join("layout")),
+            &Fetcher::new(dir.path().join("cache")),
+            &mut std::io::sink(),
+        )
+        .unwrap_err();
+        assert_eq!(
+            err.to_string(),
+            "partial's paths.json lists lib/gone.so, but its archive has no such file"
+        );
+    }
+
+    #[test]
     fn pypi_packages_and_relative_prefixes_are_refused_before_any_work() {
         let dir = tempfile::tempdir().unwrap();
         let fetcher = Fetcher::new(dir.path().join("cache"));

@@ -3,6 +3,8 @@
 //! This library is the binary's insides, exposed so the tests can reach them. It is not a designed API and makes no
 //! stability promise.
 
+#![forbid(unsafe_code)]
+
 pub mod build;
 pub mod cli;
 pub mod fetch;

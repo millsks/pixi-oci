@@ -38,6 +38,8 @@ pub struct Spec {
     pub noarch_python: Option<Vec<String>>,
     /// A `.conda` archive, else a `.tar.bz2`.
     pub conda_format: bool,
+    /// Paths listed in paths.json with no file in the archive, as a damaged or crafted package might.
+    pub listed_only: Vec<String>,
 }
 
 impl Spec {
@@ -51,6 +53,7 @@ impl Spec {
             empty_dirs: Vec::new(),
             noarch_python: None,
             conda_format: false,
+            listed_only: Vec::new(),
         }
     }
 
@@ -116,6 +119,9 @@ pub fn package(dir: &Path, spec: Spec) -> Package {
         std::os::unix::fs::symlink(target, &full).unwrap();
         paths.push(serde_json::json!({"_path": path, "path_type": "softlink"}));
         files.push(full);
+    }
+    for path in &spec.listed_only {
+        paths.push(serde_json::json!({"_path": path, "path_type": "hardlink", "size_in_bytes": 1}));
     }
     for dir in &spec.empty_dirs {
         fs::create_dir_all(root.join(dir)).unwrap();
