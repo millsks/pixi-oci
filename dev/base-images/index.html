@@ -1036,9 +1036,12 @@ as a Dockerfile's <code>FROM</code> does:</p>
 <code>org.opencontainers.image.base.digest</code>. The base's layers count toward <code>--max-layers</code>.</p>
 <h2 id="registries-and-credentials">Registries and credentials<a class="headerlink" href="#registries-and-credentials" title="Permanent link">&para;</a></h2>
 <p>Bases are pulled over the registry API with no Docker or Podman, anonymously when the registry allows it. For a
-private registry, pixi-oci uses the credentials <code>docker login</code> and <code>podman login</code> keep, in this order:
-<code>REGISTRY_AUTH_FILE</code>, podman's <code>auth.json</code>, then docker's <code>config.json</code>, including its credential helpers
-(<code>credHelpers</code>, <code>credsStore</code>). Proxies come from <code>HTTPS_PROXY</code>, <code>HTTP_PROXY</code> and <code>NO_PROXY</code>.</p>
+private registry, pixi-oci uses pixi's own credentials, the ones <code>pixi auth login</code> stores, read as pixi reads them:
+the file <code>RATTLER_AUTH_FILE</code> names, the operating system's keychain (macOS Keychain, Windows Credential Manager, the
+Linux secret service), <code>~/.rattler/credentials.json</code>, then <code>.netrc</code>. Nothing of Docker's or Podman's is read or run.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>pixi<span class="w"> </span>auth<span class="w"> </span>login<span class="w"> </span>registry.example.com<span class="w"> </span>--username<span class="w"> </span>&lt;your-user&gt;<span class="w"> </span>--password<span class="w"> </span>&lt;token&gt;
+</code></pre></div>
+<p>Proxies come from <code>HTTPS_PROXY</code>, <code>HTTP_PROXY</code> and <code>NO_PROXY</code>.</p>
 <p>Every manifest, config and layer is checked against its digest and kept in the cache (<code>--cache-dir</code>) under
 <code>blobs/sha256</code>, so a base is downloaded once.</p>
 
