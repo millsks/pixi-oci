@@ -22,11 +22,11 @@ scope and acceptance criteria live and its pull requests are linked. Comment the
       ([#10](https://github.com/millsks/pixi-oci/issues/10))
 - [x] **`validate`**: an image checked against the OCI image spec on any OS, every blob, digest, size and `diff_id`
       ([#25](https://github.com/millsks/pixi-oci/issues/25))
+- [x] **`inspect`**: an image's settings and layers, with the packages each layer holds, as text, JSON or the exact
+      stored documents ([#24](https://github.com/millsks/pixi-oci/issues/24))
 
 ## Next
 
-- [ ] **`pixi oci inspect`.** An image's platform, config and layers, with the packages each layer holds, as text or
-      JSON, with no skopeo or crane. ([#24](https://github.com/millsks/pixi-oci/issues/24))
 - [ ] **`pixi oci check`.** Static tests on any OS, nothing executed: every binary is a Linux ELF for the image's
       architecture, its loader and libraries are in the image, shebangs name interpreters that exist, no placeholder
       is left, and the entrypoint and `PATH` are right. It runs `validate` first, and would flag today's missing-glibc

@@ -82,12 +82,15 @@ hello.tar is a valid OCI image
   manifest sha256:9ec8407e4f18 for linux/amd64: 7 layers, 62.6 MiB
 ```
 
-Any OCI tool reads it too, with no daemon:
+See what is in it, and which packages each layer holds:
 
 ```sh
-skopeo inspect oci-archive:hello.tar            # platform, layers, environment variables
-skopeo inspect --config oci-archive:hello.tar   # the full image config
+pixi oci inspect hello.tar              # platform, settings, and a row per layer
+pixi oci inspect hello.tar --packages   # every package of every shared layer
+pixi oci inspect hello.tar --raw config # the full image config, exactly as stored
 ```
+
+Any OCI tool reads it too, with no daemon: `skopeo inspect oci-archive:hello.tar` shows the same image.
 
 The image sets `PATH` to `/opt/env/bin:...` and `CONDA_PREFIX` to `/opt/env`. Add your own settings with `--env`,
 `--entrypoint`, `--cmd` and `--workdir` ([reference](cli.md#pixi-oci-build)).

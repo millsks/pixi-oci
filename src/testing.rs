@@ -348,3 +348,22 @@ fn first_difference(reference: &[u8], streamed: &[u8]) -> String {
         b[from..(at + 1).min(b.len())].join("\n             ")
     )
 }
+
+/// Build `plan` to `output` (a `.tar` name gives an archive) as the image `test:1`, with an env var, an entrypoint
+/// and pixi's labels, from packages made under `dir`.
+pub fn build_image(dir: &Path, plan: &Plan, output: &Path) -> crate::image::Written {
+    let options = crate::build::BuildOptions {
+        prefix: "/opt/env".to_string(),
+        output: output.to_path_buf(),
+        force: true,
+        reference: crate::image::Reference::parse("test:1").unwrap(),
+        env: vec!["GREETING=hi".to_string()],
+        entrypoint: Some(vec!["tool".to_string(), "--serve".to_string()]),
+        cmd: None,
+        workdir: Some("/work".to_string()),
+        source_date_epoch: 0,
+        max_memory: 16 << 20,
+    };
+    let fetcher = crate::fetch::Fetcher::new(dir.join("cache"));
+    crate::build::build(plan, &options, &fetcher, &mut std::io::sink()).unwrap()
+}

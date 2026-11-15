@@ -22,6 +22,8 @@ pub enum Command {
     Build(BuildArgs),
     /// Check an image against the OCI image spec: every blob, digest, size and diff_id. Nothing is run.
     Validate(ValidateArgs),
+    /// Show an image's platform, settings and layers, with the packages each layer holds.
+    Inspect(InspectArgs),
 }
 
 /// Which environment of which lockfile, and for which platform.
@@ -66,6 +68,30 @@ pub struct PlanArgs {
     pub packages: bool,
 
     /// How to print the plan.
+    #[arg(long, value_enum, default_value_t = Format::Text)]
+    pub format: Format,
+}
+
+#[derive(Debug, Args)]
+pub struct InspectArgs {
+    /// The image: an OCI image layout directory or a `.tar` archive of one.
+    #[arg(value_name = "IMAGE")]
+    pub image: PathBuf,
+
+    /// The platform to show when the image holds several: an OCI platform (linux/arm64/v8) or a conda one
+    /// (linux-aarch64).
+    #[arg(short, long)]
+    pub platform: Option<String>,
+
+    /// List the packages of every layer that holds several.
+    #[arg(long)]
+    pub packages: bool,
+
+    /// Print a stored document exactly as it is, instead of the summary.
+    #[arg(long, value_enum, conflicts_with_all = ["format", "packages"])]
+    pub raw: Option<crate::inspect::Raw>,
+
+    /// How to print the summary.
     #[arg(long, value_enum, default_value_t = Format::Text)]
     pub format: Format,
 }

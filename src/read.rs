@@ -137,6 +137,16 @@ pub fn blob_path(digest: &str) -> Option<String> {
         .then(|| format!("blobs/sha256/{hex}"))
 }
 
+/// `os/architecture[/variant]` of an index entry's platform or a config.
+pub fn platform_text(platform: &serde_json::Value) -> Option<String> {
+    let os = platform["os"].as_str()?;
+    let architecture = platform["architecture"].as_str()?;
+    Some(match platform["variant"].as_str() {
+        Some(variant) => format!("{os}/{architecture}/{variant}"),
+        None => format!("{os}/{architecture}"),
+    })
+}
+
 /// A relative path with no `..`, `.` or empty parts, so it cannot leave the layout.
 fn plain(name: &str) -> bool {
     !name.is_empty()
