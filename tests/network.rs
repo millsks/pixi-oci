@@ -469,3 +469,100 @@ fn a_wheel_entrypoint_runs_in_a_container() {
     assert!(String::from_utf8_lossy(&output.stdout).starts_with("black, 25.11.0"));
     let _ = Command::new("docker").args(["rmi", tag]).status();
 }
+
+/// The fixture's small `slim` environment, built with no base for this machine's Linux platform.
+fn slim_image(dir: &Path, platform: &str) -> std::path::PathBuf {
+    let archive = dir.join("slim.tar");
+    let built = Command::cargo_bin("pixi-oci")
+        .unwrap()
+        .args([
+            "build",
+            "--lockfile",
+            "tests/fixtures/workspace/pixi.lock",
+            "-e",
+            "slim",
+            "--platform",
+            platform,
+            "--output",
+        ])
+        .arg(&archive)
+        .status()
+        .unwrap();
+    assert!(built.success());
+    archive
+}
+
+fn push_json(archive: &Path, destination: &str) -> serde_json::Value {
+    let output = Command::cargo_bin("pixi-oci")
+        .unwrap()
+        .arg("push")
+        .arg(archive)
+        .args([destination, "--format", "json"])
+        .output()
+        .unwrap();
+    assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
+    serde_json::from_slice(&output.stdout).unwrap()
+}
+
+/// A plain `registry:2`, started in docker where docker is installed: the image goes up once, a second push sends
+/// nothing, and docker pulls it back.
+#[test]
+fn an_image_pushes_to_a_registry() {
+    let Some(platform) = enabled() else {
+        return;
+    };
+    let docker = |args: &[&str]| Command::new("docker").args(args).output();
+    if !docker(&["info"]).is_ok_and(|output| output.status.success()) {
+        return;
+    }
+    let started = docker(&["run", "-d", "--rm", "-p", "127.0.0.1::5000", "registry:2"]).unwrap();
+    assert!(started.status.success(), "{}", String::from_utf8_lossy(&started.stderr));
+    let container = String::from_utf8_lossy(&started.stdout).trim().to_string();
+    let port = String::from_utf8_lossy(&docker(&["port", &container, "5000"]).unwrap().stdout)
+        .lines()
+        .next()
+        .unwrap_or_default()
+        .trim()
+        .to_string();
+    // The registry takes a moment to listen.
+    let ready = (0..50).any(|_| {
+        std::thread::sleep(std::time::Duration::from_millis(200));
+        std::net::TcpStream::connect(&port).is_ok()
+    });
+    assert!(ready, "registry:2 on {port} did not start");
+
+    let dir = tempfile::tempdir().unwrap();
+    let archive = slim_image(dir.path(), platform);
+    let destination = format!("{port}/pixi-oci/slim:test");
+    let first = push_json(&archive, &destination);
+    assert!(first["uploaded"].as_u64().unwrap() >= 2, "{first:#}");
+    let second = push_json(&archive, &destination);
+    assert_eq!(second["uploaded"], 0, "{second:#}");
+    assert_eq!(second["digest"], first["digest"]);
+    let pulled = docker(&["pull", &destination]).unwrap();
+    assert!(pulled.status.success(), "{}", String::from_utf8_lossy(&pulled.stderr));
+    let _ = docker(&["rmi", &destination]);
+    let _ = docker(&["rm", "-f", &container]);
+}
+
+/// GitHub's registry, with the workflow's token: only where CI sets PIXI_OCI_GHCR_TEST to the repository to push
+/// to, which it does for this repository's own runs (a fork's token cannot push).
+#[test]
+fn an_image_pushes_to_ghcr() {
+    let Some(platform) = enabled() else {
+        return;
+    };
+    let Some(repository) = std::env::var("PIXI_OCI_GHCR_TEST")
+        .ok()
+        .filter(|value| !value.is_empty())
+    else {
+        return;
+    };
+    let dir = tempfile::tempdir().unwrap();
+    let archive = slim_image(dir.path(), platform);
+    let destination = format!("{repository}:ci-{platform}");
+    let first = push_json(&archive, &destination);
+    let second = push_json(&archive, &destination);
+    assert_eq!(second["uploaded"], 0, "{second:#}");
+    assert_eq!(second["digest"], first["digest"]);
+}

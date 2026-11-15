@@ -160,11 +160,26 @@ impl ImageRef {
     }
 
     /// `https`, except for a registry on this machine, which docker also speaks plain HTTP to.
-    fn base_url(&self) -> String {
+    fn origin(&self) -> String {
         let host = self.api_host();
         let local = host.starts_with("localhost") || host.starts_with("127.0.0.1") || host.starts_with("[::1]");
         let scheme = if local { "http" } else { "https" };
-        format!("{scheme}://{host}/v2/{}", self.repository)
+        format!("{scheme}://{host}")
+    }
+
+    fn base_url(&self) -> String {
+        format!("{}/v2/{}", self.origin(), self.repository)
+    }
+
+    /// A `Location` a registry answered with, absolute or relative to its origin.
+    fn resolve(&self, location: &str) -> String {
+        if location.starts_with("http://") || location.starts_with("https://") {
+            location.to_string()
+        } else if location.starts_with('/') {
+            format!("{}{location}", self.origin())
+        } else {
+            format!("{}/{location}", self.origin())
+        }
     }
 }
 
@@ -237,6 +252,51 @@ impl CredentialSource for DockerConfig {
                 continue;
             };
             if let Some(found) = from_config(&config, registry, run_helper)? {
+                return Ok(Some(found));
+            }
+        }
+        Ok(None)
+    }
+}
+
+/// Credentials from `PIXI_OCI_REGISTRY_USERNAME` and `PIXI_OCI_REGISTRY_PASSWORD`, for CI, given only to the one
+/// registry they are for: `PIXI_OCI_REGISTRY` when it is set, else the registry `default` names (a push's
+/// destination), else none. A token for one registry is never sent to another, such as a base image's.
+pub struct EnvCredentials {
+    registry: Option<String>,
+    credentials: Option<Credentials>,
+}
+
+impl EnvCredentials {
+    pub fn from_env(default: Option<&str>) -> Self {
+        let var = |key: &str| std::env::var(key).ok().filter(|value| !value.is_empty());
+        let credentials = match (var("PIXI_OCI_REGISTRY_USERNAME"), var("PIXI_OCI_REGISTRY_PASSWORD")) {
+            (Some(username), Some(password)) => Some(Credentials { username, password }),
+            _ => None,
+        };
+        let registry = var("PIXI_OCI_REGISTRY").or_else(|| default.map(str::to_string));
+        EnvCredentials { registry, credentials }
+    }
+}
+
+impl CredentialSource for EnvCredentials {
+    fn credentials(&self, registry: &str) -> Result<Option<Credentials>, RegistryError> {
+        let ours = self.registry.as_deref().is_some_and(|wanted| {
+            config_keys(registry)
+                .iter()
+                .any(|key| key_host(key) == key_host(wanted))
+        });
+        Ok(self.credentials.clone().filter(|_| ours))
+    }
+}
+
+/// The first source that has credentials for a registry.
+pub struct Chain(pub Vec<Box<dyn CredentialSource>>);
+
+impl CredentialSource for Chain {
+    fn credentials(&self, registry: &str) -> Result<Option<Credentials>, RegistryError> {
+        for source in &self.0 {
+            if let Some(found) = source.credentials(registry)? {
                 return Ok(Some(found));
             }
         }
@@ -424,7 +484,17 @@ impl Registry {
     /// A client with its cache under `root` (the package cache's root), docker's and podman's credentials, and
     /// proxies from the usual environment variables.
     pub fn new(root: PathBuf) -> Self {
-        Self::with(root, Box::new(DockerConfig::from_env()), ureq::Proxy::try_from_env())
+        Self::for_registry(root, None)
+    }
+
+    /// A client whose `PIXI_OCI_REGISTRY_*` credentials, if any, go to `registry` when `PIXI_OCI_REGISTRY` does not
+    /// name one: the destination of a push.
+    pub fn for_registry(root: PathBuf, registry: Option<&str>) -> Self {
+        let credentials = Chain(vec![
+            Box::new(EnvCredentials::from_env(registry)),
+            Box::new(DockerConfig::from_env()),
+        ]);
+        Self::with(root, Box::new(credentials), ureq::Proxy::try_from_env())
     }
 
     pub fn with(root: PathBuf, credentials: Box<dyn CredentialSource>, proxy: Option<ureq::Proxy>) -> Self {
@@ -639,47 +709,54 @@ impl Registry {
         Ok(())
     }
 
-    /// GET `url`, answering an authentication challenge once: a bearer token from the registry's token service, or
-    /// basic auth, with credentials when there are any.
+    /// GET `url` for a pull, answering an authentication challenge once.
     fn send(&self, reference: &ImageRef, url: &str) -> Result<Answer, RegistryError> {
-        let token_key = format!("{}/{}", reference.registry, reference.repository);
-        let cached = self
-            .tokens
-            .lock()
-            .ok()
-            .and_then(|tokens| tokens.get(&token_key).cloned());
-        let mut answer = self.get(url, cached.as_deref())?;
-        if answer.status == 401 {
-            let challenge = answer.challenge.clone().unwrap_or_default();
-            let authorization = self.authorize(reference, &challenge)?;
-            if let Ok(mut tokens) = self.tokens.lock() {
-                tokens.insert(token_key, authorization.clone());
-            }
-            answer = self.get(url, Some(&authorization))?;
-        }
+        let answer = self.call(reference, Method::Get, url, &Payload::None, false)?;
         match answer.status {
             200..=299 => Ok(Answer {
                 content_type: answer.content_type,
                 body: answer.body,
             }),
-            401 | 403 => Err(RegistryError::Unauthorized {
-                registry: reference.registry.clone(),
-                repository: reference.repository.clone(),
-            }),
-            status => {
-                let mut message = String::new();
-                let _ = answer.body.take(512).read_to_string(&mut message);
-                Err(RegistryError::Status {
-                    url: url.to_string(),
-                    status,
-                    message: message.trim().to_string(),
-                })
-            }
+            _ => Err(failed(reference, url, answer)),
         }
     }
 
+    /// A request, answering an authentication challenge once: a bearer token from the registry's token service (for
+    /// `pull`, or `pull,push` when `push`), or basic auth, with credentials when there are any. Tokens are kept per
+    /// repository and kind for the client's life.
+    fn call(
+        &self,
+        reference: &ImageRef,
+        method: Method,
+        url: &str,
+        payload: &Payload,
+        push: bool,
+    ) -> Result<Response, RegistryError> {
+        let token_key = format!(
+            "{}/{}{}",
+            reference.registry,
+            reference.repository,
+            if push { "#push" } else { "" }
+        );
+        let cached = self
+            .tokens
+            .lock()
+            .ok()
+            .and_then(|tokens| tokens.get(&token_key).cloned());
+        let answer = self.attempt(method, url, cached.as_deref(), payload)?;
+        if answer.status != 401 {
+            return Ok(answer);
+        }
+        let challenge = answer.challenge.clone().unwrap_or_default();
+        let authorization = self.authorize(reference, &challenge, push)?;
+        if let Ok(mut tokens) = self.tokens.lock() {
+            tokens.insert(token_key, authorization.clone());
+        }
+        self.attempt(method, url, Some(&authorization), payload)
+    }
+
     /// The `Authorization` value a challenge asks for.
-    fn authorize(&self, reference: &ImageRef, challenge: &str) -> Result<String, RegistryError> {
+    fn authorize(&self, reference: &ImageRef, challenge: &str, push: bool) -> Result<String, RegistryError> {
         let credentials = self.credentials.credentials(&reference.registry)?;
         let basic = credentials.as_ref().map(|c| {
             format!(
@@ -699,10 +776,12 @@ impl Registry {
         if let Some(service) = params.get("service") {
             request = request.query("service", service);
         }
-        let scope = params
-            .get("scope")
-            .cloned()
-            .unwrap_or_else(|| format!("repository:{}:pull", reference.repository));
+        // A push needs `pull,push` on the repository, whatever the challenge to a first HEAD or GET asked for.
+        let scope = match params.get("scope") {
+            Some(scope) if !push || scope.ends_with("push") => scope.clone(),
+            _ if push => format!("repository:{}:pull,push", reference.repository),
+            _ => format!("repository:{}:pull", reference.repository),
+        };
         request = request.query("scope", &scope);
         if let Some(basic) = &basic {
             request = request.header("Authorization", basic);
@@ -734,15 +813,52 @@ impl Registry {
         Ok(format!("Bearer {token}"))
     }
 
-    fn get(&self, url: &str, authorization: Option<&str>) -> Result<Response, RegistryError> {
-        let mut request = self.agent.get(url).header(
-            "Accept",
-            [OCI_INDEX, OCI_MANIFEST, DOCKER_LIST, DOCKER_MANIFEST].join(", "),
-        );
-        if let Some(authorization) = authorization {
-            request = request.header("Authorization", authorization);
-        }
-        let response = request.call().map_err(|err| http_err(url, err))?;
+    fn attempt(
+        &self,
+        method: Method,
+        url: &str,
+        authorization: Option<&str>,
+        payload: &Payload,
+    ) -> Result<Response, RegistryError> {
+        let accept = [OCI_INDEX, OCI_MANIFEST, DOCKER_LIST, DOCKER_MANIFEST].join(", ");
+        let sent = match method {
+            Method::Get | Method::Head => {
+                let mut request = if method == Method::Get {
+                    self.agent.get(url)
+                } else {
+                    self.agent.head(url)
+                }
+                .header("Accept", &accept);
+                if let Some(authorization) = authorization {
+                    request = request.header("Authorization", authorization);
+                }
+                request.call()
+            }
+            Method::Post | Method::Put => {
+                let mut request = if method == Method::Post {
+                    self.agent.post(url)
+                } else {
+                    self.agent.put(url)
+                };
+                if let Some(authorization) = authorization {
+                    request = request.header("Authorization", authorization);
+                }
+                match payload {
+                    Payload::None => request.header("Content-Length", "0").send_empty(),
+                    Payload::Bytes { bytes, content_type } => {
+                        request.header("Content-Type", *content_type).send(*bytes)
+                    }
+                    Payload::Blob { image, name, size } => {
+                        let reader = image.reader(name).map_err(|err| http_err(url, ureq::Error::Io(err)))?;
+                        request
+                            .header("Content-Type", "application/octet-stream")
+                            .header("Content-Length", size.to_string())
+                            .send(ureq::SendBody::from_owned_reader(reader))
+                    }
+                }
+            }
+        };
+        let response = sent.map_err(|err| http_err(url, err))?;
         let header = |name: &str| {
             response
                 .headers()
@@ -755,8 +871,87 @@ impl Registry {
             challenge: header("www-authenticate"),
             content_type: header("content-type")
                 .map(|value| value.split(';').next().unwrap_or_default().trim().to_string()),
+            location: header("location"),
+            digest: header("docker-content-digest"),
             body: Box::new(response.into_body().into_reader()),
         })
+    }
+
+    /// Whether the repository `destination` names already holds the blob `digest`.
+    pub(crate) fn has_blob(&self, destination: &ImageRef, digest: &str) -> Result<bool, RegistryError> {
+        let url = format!("{}/blobs/{digest}", destination.base_url());
+        let answer = self.call(destination, Method::Head, &url, &Payload::None, true)?;
+        match answer.status {
+            200..=299 => Ok(true),
+            404 => Ok(false),
+            _ => Err(failed(destination, &url, answer)),
+        }
+    }
+
+    /// Start an upload to `destination`, or mount `digest` from the repository `from` on the same registry. A
+    /// mount the registry made is `None`; otherwise the upload URL to `PUT` the blob to.
+    pub(crate) fn start_upload(
+        &self,
+        destination: &ImageRef,
+        mount: Option<(&str, &str)>,
+    ) -> Result<Option<String>, RegistryError> {
+        let mut url = format!("{}/blobs/uploads/", destination.base_url());
+        if let Some((digest, from)) = mount {
+            url.push_str(&format!("?mount={digest}&from={from}"));
+        }
+        let answer = self.call(destination, Method::Post, &url, &Payload::None, true)?;
+        match answer.status {
+            201 if mount.is_some() => Ok(None),
+            202 => {
+                let location = answer.location.clone().ok_or_else(|| RegistryError::Status {
+                    url: url.clone(),
+                    status: 202,
+                    message: "the registry gave no upload location".to_string(),
+                })?;
+                Ok(Some(destination.resolve(&location)))
+            }
+            _ => Err(failed(destination, &url, answer)),
+        }
+    }
+
+    /// Send the blob `name` of `image` to an upload URL, as `digest`.
+    pub(crate) fn upload(
+        &self,
+        destination: &ImageRef,
+        location: &str,
+        digest: &str,
+        image: &crate::read::Image,
+        name: &str,
+        size: u64,
+    ) -> Result<(), RegistryError> {
+        let separator = if location.contains('?') { '&' } else { '?' };
+        let url = format!("{location}{separator}digest={digest}");
+        let payload = Payload::Blob { image, name, size };
+        let answer = self.call(destination, Method::Put, &url, &payload, true)?;
+        match answer.status {
+            200..=299 => Ok(()),
+            _ => Err(failed(destination, &url, answer)),
+        }
+    }
+
+    /// Put a manifest under `reference` (a tag or a digest), returning the digest the registry says it stored.
+    pub(crate) fn put_manifest(
+        &self,
+        destination: &ImageRef,
+        reference: &str,
+        bytes: &[u8],
+        media_type: &str,
+    ) -> Result<Option<String>, RegistryError> {
+        let url = format!("{}/manifests/{reference}", destination.base_url());
+        let payload = Payload::Bytes {
+            bytes,
+            content_type: media_type,
+        };
+        let answer = self.call(destination, Method::Put, &url, &payload, true)?;
+        match answer.status {
+            200..=299 => Ok(answer.digest.clone()),
+            _ => Err(failed(destination, &url, answer)),
+        }
     }
 }
 
@@ -764,7 +959,49 @@ struct Response {
     status: u16,
     challenge: Option<String>,
     content_type: Option<String>,
+    location: Option<String>,
+    digest: Option<String>,
     body: Box<dyn Read + Send + Sync>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Method {
+    Get,
+    Head,
+    Post,
+    Put,
+}
+
+/// A request body that can be sent again, after an authentication challenge.
+enum Payload<'a> {
+    None,
+    Bytes {
+        bytes: &'a [u8],
+        content_type: &'a str,
+    },
+    /// A blob of an image on disk, read afresh for each attempt.
+    Blob {
+        image: &'a crate::read::Image,
+        name: &'a str,
+        size: u64,
+    },
+}
+
+/// The error for an answer that is not the one asked for: refused access, or the status and the start of the body.
+fn failed(reference: &ImageRef, url: &str, answer: Response) -> RegistryError {
+    if answer.status == 401 || answer.status == 403 {
+        return RegistryError::Unauthorized {
+            registry: reference.registry.clone(),
+            repository: reference.repository.clone(),
+        };
+    }
+    let mut message = String::new();
+    let _ = answer.body.take(512).read_to_string(&mut message);
+    RegistryError::Status {
+        url: url.to_string(),
+        status: answer.status,
+        message: message.trim().to_string(),
+    }
 }
 
 fn http_err(url: &str, source: ureq::Error) -> RegistryError {
@@ -1272,6 +1509,39 @@ mod tests {
         assert_eq!(docker.credentials("quay.io").unwrap(), None);
         assert!(!DockerConfig::from_env().files.is_empty() || std::env::var_os("HOME").is_none());
         assert!(Anonymous.credentials("x").unwrap().is_none());
+    }
+
+    #[test]
+    fn environment_credentials_go_only_to_their_registry() {
+        let token = Credentials {
+            username: "ci".to_string(),
+            password: "token".to_string(),
+        };
+        let ghcr = EnvCredentials {
+            registry: Some("ghcr.io".to_string()),
+            credentials: Some(token.clone()),
+        };
+        assert_eq!(ghcr.credentials("ghcr.io").unwrap(), Some(token.clone()));
+        // A base image pulled from Docker Hub during the same build never sees the GHCR token.
+        assert_eq!(ghcr.credentials("docker.io").unwrap(), None);
+        let hub = EnvCredentials {
+            registry: Some("https://index.docker.io/v1/".to_string()),
+            credentials: Some(token.clone()),
+        };
+        assert_eq!(hub.credentials("docker.io").unwrap(), Some(token.clone()));
+        let nowhere = EnvCredentials {
+            registry: None,
+            credentials: Some(token.clone()),
+        };
+        assert_eq!(nowhere.credentials("ghcr.io").unwrap(), None);
+        let chain = Chain(vec![Box::new(nowhere), Box::new(Static(Some(user())))]);
+        assert_eq!(chain.credentials("ghcr.io").unwrap(), Some(user()));
+        assert_eq!(Chain(Vec::new()).credentials("ghcr.io").unwrap(), None);
+        // With none set in this process's environment, there is nothing to give.
+        assert!(
+            EnvCredentials::from_env(Some("ghcr.io")).credentials.is_none()
+                || std::env::var_os("PIXI_OCI_REGISTRY_PASSWORD").is_some()
+        );
     }
 
     #[test]

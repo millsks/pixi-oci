@@ -39,6 +39,10 @@ jobs:
   test:
     name: Test (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
+    # The network tests push a small test image to GHCR (ghcr.io/<owner>/pixi-oci-test).
+    permissions:
+      contents: read
+      packages: write
     strategy:
       fail-fast: false
       matrix:
@@ -57,6 +61,15 @@ jobs:
         # The network test builds a real image from conda-forge and runs its python; it needs a Linux host.
         env:
           PIXI_OCI_NETWORK_TESTS: ${{ matrix.os == 'ubuntu-latest' && '1' || '0' }}
+          # GHCR, with this run's token: only for this repository's own runs, since a fork's token cannot push.
+          # PIXI_OCI_REGISTRY keeps the token to ghcr.io; base images pulled from elsewhere never see it.
+          PIXI_OCI_GHCR_TEST: >-
+            ${{ matrix.os == 'ubuntu-latest'
+            && (github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository)
+            && format('ghcr.io/{0}-test', github.repository) || '' }}
+          PIXI_OCI_REGISTRY: ghcr.io
+          PIXI_OCI_REGISTRY_USERNAME: ${{ github.actor }}
+          PIXI_OCI_REGISTRY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
         run: pixi run test
 
   coverage:

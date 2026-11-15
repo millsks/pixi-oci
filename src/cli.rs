@@ -27,6 +27,8 @@ pub enum Command {
     /// Check that an image will run, without running it: architecture, loader, libraries, shebangs, placeholders
     /// and the entrypoint. Runs `validate` first.
     Check(CheckArgs),
+    /// Send an image to a registry: only the blobs it lacks, then the manifest under the tag. Runs `validate` first.
+    Push(PushArgs),
 }
 
 /// Which environment of which lockfile, and for which platform.
@@ -71,6 +73,28 @@ pub struct PlanArgs {
     pub packages: bool,
 
     /// How to print the plan.
+    #[arg(long, value_enum, default_value_t = Format::Text)]
+    pub format: Format,
+}
+
+#[derive(Debug, Args)]
+pub struct PushArgs {
+    /// The image: an OCI image layout directory or a `.tar` archive of one.
+    #[arg(value_name = "IMAGE")]
+    pub image: PathBuf,
+
+    /// Where to push it: [registry/]repository[:tag], such as ghcr.io/team/app:1.0; `latest` when no tag is given.
+    /// Credentials come from `docker login` and `podman login`, or PIXI_OCI_REGISTRY_USERNAME and
+    /// PIXI_OCI_REGISTRY_PASSWORD.
+    #[arg(value_name = "DESTINATION")]
+    pub destination: String,
+
+    /// The platform to push when the image holds several: an OCI platform (linux/arm64/v8) or a conda one
+    /// (linux-aarch64).
+    #[arg(short, long)]
+    pub platform: Option<String>,
+
+    /// How to print the result.
     #[arg(long, value_enum, default_value_t = Format::Text)]
     pub format: Format,
 }
