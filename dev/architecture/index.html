@@ -914,6 +914,14 @@
 <td><code>image.rs</code></td>
 <td>The image config, manifest, OCI layout, docker-compatible <code>manifest.json</code>, and the <code>.tar</code> archive.</td>
 </tr>
+<tr>
+<td><code>read.rs</code></td>
+<td>An image read back: a layout directory, or a <code>.tar</code> read in place by each file's offset, never unpacked.</td>
+</tr>
+<tr>
+<td><code>validate.rs</code></td>
+<td><code>validate</code>: every blob, digest, size, media type and <code>diff_id</code> of an image checked against the OCI image spec, with every problem collected.</td>
+</tr>
 </tbody>
 </table>
 <h2 id="decisions-that-shape-the-code">Decisions that shape the code<a class="headerlink" href="#decisions-that-shape-the-code" title="Permanent link">&para;</a></h2>

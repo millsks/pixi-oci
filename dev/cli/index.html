@@ -542,6 +542,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#pixi-oci-validate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        pixi oci validate
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#environment-variables" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -843,6 +854,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#pixi-oci-validate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        pixi oci validate
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#environment-variables" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1012,6 +1034,46 @@ everywhere else.</p>
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>  manifest sha256:9ec8407e4f1860919cd8dd7af6027a9bdcb91a5a008b2c5ea657ed3f300044ef
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>  7 layers, 62.6 MiB for linux/amd64
 </code></pre></div>
+<h2 id="pixi-oci-validate"><code>pixi oci validate</code><a class="headerlink" href="#pixi-oci-validate" title="Permanent link">&para;</a></h2>
+<p>Checks an image against the <a href="https://github.com/opencontainers/image-spec">OCI image spec</a>, on any OS, running nothing.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="gp">$ </span>pixi<span class="w"> </span>oci<span class="w"> </span>validate<span class="w"> </span>app.tar
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="go">app.tar is a valid OCI image</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="go">  manifest sha256:9ec8407e4f18 for linux/amd64: 7 layers, 62.6 MiB</span>
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Argument or option</th>
+<th>Default</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>IMAGE</code></td>
+<td></td>
+<td>an OCI image layout directory, or a <code>.tar</code> archive of one, read in place</td>
+</tr>
+<tr>
+<td><code>--format text\|json</code></td>
+<td><code>text</code></td>
+<td><code>json</code> gives <code>valid</code>, each manifest checked, and each problem as <code>at</code> and <code>message</code></td>
+</tr>
+</tbody>
+</table>
+<p>It checks:</p>
+<ul>
+<li><code>oci-layout</code> and <code>index.json</code>, and any index nested in it</li>
+<li>every manifest and config: schema version, media types, and that the index lists each with its own media type</li>
+<li>every blob: present, and its sha256 and size the ones its descriptor names</li>
+<li>every layer: a layer media type, and for gzip and uncompressed layers, that its uncompressed tar hashes to the
+  config's <code>diff_id</code> for it</li>
+<li>the config: as many <code>diff_ids</code> and history entries as layers, and the same platform as the index</li>
+<li><code>org.opencontainers.image.ref.name</code>, by the spec's grammar</li>
+<li>for an archive, that the <code>manifest.json</code> <code>docker load</code> reads names the same config and layers</li>
+</ul>
+<p>It reports every problem it finds, not just the first, and exits <code>1</code> if there is any. zstd layers are hashed but
+their <code>diff_id</code> is not checked.</p>
 <h2 id="environment-variables">Environment variables<a class="headerlink" href="#environment-variables" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -1054,7 +1116,7 @@ everywhere else.</p>
 </tr>
 <tr>
 <td><code>1</code></td>
-<td>the command failed; the message says why and usually what to do (<a href="../troubleshooting/">Troubleshooting</a>)</td>
+<td>the command failed, or <code>validate</code> found a problem; the message says why and usually what to do (<a href="../troubleshooting/">Troubleshooting</a>)</td>
 </tr>
 <tr>
 <td><code>2</code></td>

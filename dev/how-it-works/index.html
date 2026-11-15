@@ -1041,8 +1041,8 @@ environments. A numpy, pandas, scipy and scikit-learn environment matches too: 1
 <li>the config's <code>created</code> time is the same <code>SOURCE_DATE_EPOCH</code></li>
 </ul>
 <p>Layers are tar archives in GNU format, compressed with gzip, so every container runtime and registry reads them. CI
-builds a test image on Linux, macOS and Windows on every change and fails if the digests differ; <code>crane validate</code>,
-<code>umoci unpack</code> and <code>skopeo copy</code> all accept the result.</p>
+builds a test image on Linux, macOS and Windows on every change and fails if the digests differ; <code>pixi oci validate</code>,
+<code>crane validate</code>, <code>umoci unpack</code> and <code>skopeo copy</code> all accept the result.</p>
 <h2 id="memory-and-disk">Memory and disk<a class="headerlink" href="#memory-and-disk" title="Permanent link">&para;</a></h2>
 <p>"In memory" means one entry at a time, not the whole image. Entries flow from the archive through the tar and gzip
 writers to a blob on disk:</p>
