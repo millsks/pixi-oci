@@ -151,19 +151,28 @@ their names.
 
 ## Roadmap
 
-- [x] `plan`: read `pixi.lock`, map conda platforms to OCI platforms, order and cap layers
-- [x] `build`: download and verify packages against the lockfile's hashes, install each into a layer with prefix
-      replacement, and write a reproducible OCI image layout or archive
-- [x] Layers streamed from the archives, so builds run on Windows; bounded memory with `--max-memory`
-- [ ] Credentials for private channels (pixi's own auth store)
-- [ ] Image config from pixi's activation: activation scripts' variables, entrypoint from a pixi task
-- [ ] PyPI packages: install wheels into the top layer
-- [ ] `push`: to any OCI registry, with the usual credential helpers
-- [ ] Base images (`--base`), and `scratch` by default
-- [ ] Multi-platform image indexes
-- [ ] Attach a [pixi-sbom](https://github.com/aesir-oss/pixi-sbom) SBOM to the image, and gate on
+Every item has an issue labelled [`roadmap`](https://github.com/millsks/pixi-oci/issues?q=label%3Aroadmap); the
+[roadmap page](https://millsks.github.io/pixi-oci/dev/roadmap/) has the detail.
+
+- [x] `plan` ([#6](https://github.com/millsks/pixi-oci/issues/6)) and `build`
+      ([#7](https://github.com/millsks/pixi-oci/issues/7))
+- [x] Layers streamed from the archives, so builds run on Windows, within `--max-memory`
+      ([#8](https://github.com/millsks/pixi-oci/issues/8))
+- [x] Documentation site ([#9](https://github.com/millsks/pixi-oci/issues/9))
+- [x] Grouped layers and `--layers` ([#10](https://github.com/millsks/pixi-oci/issues/10))
+- [ ] `check`: static image checks on any OS ([#11](https://github.com/millsks/pixi-oci/issues/11))
+- [ ] Base images with `--base` ([#12](https://github.com/millsks/pixi-oci/issues/12))
+- [ ] `push` to any registry ([#13](https://github.com/millsks/pixi-oci/issues/13))
+- [ ] `run`: rootless containers on Linux and in CI ([#14](https://github.com/millsks/pixi-oci/issues/14))
+- [ ] Multi-platform image indexes ([#15](https://github.com/millsks/pixi-oci/issues/15))
+- [ ] pixi's activation variables and an entrypoint from a task
+      ([#16](https://github.com/millsks/pixi-oci/issues/16))
+- [ ] PyPI wheels in the top layer ([#17](https://github.com/millsks/pixi-oci/issues/17))
+- [ ] Private channels with pixi's credentials ([#18](https://github.com/millsks/pixi-oci/issues/18))
+- [ ] A [pixi-sbom](https://github.com/aesir-oss/pixi-sbom) SBOM attached, and
       [pixi-policy](https://github.com/aesir-oss/pixi-policy) before pushing
-- [ ] Packaging on conda-forge
+      ([#19](https://github.com/millsks/pixi-oci/issues/19))
+- [ ] A release and a conda-forge package ([#20](https://github.com/millsks/pixi-oci/issues/20))
 
 ## Related projects
 
