@@ -164,3 +164,96 @@ fn a_built_image_runs_its_python() {
     assert!(prefix.join("conda-meta/history").is_file());
     assert!(prefix.join("conda-meta").read_dir().unwrap().count() > 20);
 }
+
+/// The two base images the docs recommend, pinned as in `src/registry.rs`.
+const BASES: [(&str, &str); 2] = [
+    (
+        "ubi9",
+        "registry.access.redhat.com/ubi9/ubi-minimal@sha256:baafce2d34783a28b4a472779f304e97e00f9d35c99553bc53b068b14344d9a9",
+    ),
+    (
+        "bookworm",
+        "debian:bookworm-slim@sha256:734a72b3d6142a71993b4bc580ca01d8ca687f77a2c422d96a961d3376b179bc",
+    ),
+];
+
+/// On each base: the image validates, `check` finds nothing but what the environment really lacks, and where docker
+/// is installed (GitHub's Linux runners), the image loads and its python runs on the base's glibc.
+#[test]
+fn an_image_on_each_base_runs_its_python() {
+    let Some(platform) = enabled() else {
+        return;
+    };
+    let dir = tempfile::tempdir().unwrap();
+    let docker = Command::new("docker")
+        .arg("info")
+        .output()
+        .is_ok_and(|output| output.status.success());
+    for (name, base) in BASES {
+        let archive = dir.path().join(format!("{name}.tar"));
+        let tag = format!("pixi-oci-test-{name}:latest");
+        let status = Command::cargo_bin("pixi-oci")
+            .unwrap()
+            .args(["build", "--lockfile", "tests/fixtures/workspace/pixi.lock", "-e", "app"])
+            .args([
+                "--platform",
+                platform,
+                "--tag",
+                &tag,
+                "--base",
+                base,
+                "--entrypoint",
+                "python",
+                "--output",
+            ])
+            .arg(&archive)
+            .status()
+            .unwrap();
+        assert!(status.success(), "{name}");
+        let pixi_oci = |args: &[&str]| {
+            Command::cargo_bin("pixi-oci")
+                .unwrap()
+                .args(args)
+                .arg(&archive)
+                .output()
+                .unwrap()
+        };
+        assert!(pixi_oci(&["validate"]).status.success(), "{name}");
+        let report: serde_json::Value =
+            serde_json::from_slice(&pixi_oci(&["check", "--format", "json"]).stdout).unwrap();
+        for problem in report["problems"].as_array().unwrap() {
+            let message = problem["message"].as_str().unwrap();
+            // tk links to X11, which the environment does not lock; ubi-minimal has no perl for conda's perl scripts.
+            let expected = message.starts_with("libX11.so.6 ") || message.contains("#!/usr/bin/env perl");
+            assert!(expected, "{name}: {report:#}");
+        }
+        if docker {
+            let loaded = Command::new("docker")
+                .args(["load", "-i"])
+                .arg(&archive)
+                .status()
+                .unwrap();
+            assert!(loaded.success(), "{name}");
+            let output = Command::new("docker")
+                .args([
+                    "run",
+                    "--rm",
+                    &tag,
+                    "-c",
+                    "import ssl, sqlite3, six; print(ssl.OPENSSL_VERSION)",
+                ])
+                .output()
+                .unwrap();
+            assert!(
+                output.status.success(),
+                "{name}: {}",
+                String::from_utf8_lossy(&output.stderr)
+            );
+            assert!(
+                String::from_utf8_lossy(&output.stdout).starts_with("OpenSSL 3."),
+                "{name}"
+            );
+            let _ = Command::new("docker").args(["rmi", &tag]).status();
+        }
+    }
+}

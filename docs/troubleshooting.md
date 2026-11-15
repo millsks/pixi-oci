@@ -84,8 +84,20 @@ pixi-oci prints them, with the variable parts in angle brackets.
 ## Running the image
 
 **`exec /opt/env/bin/python: no such file or directory`** from `docker run` or `podman run`
-:   The program exists; its loader does not. Images have no base yet, so there is no glibc. Base images are the next
-    milestone on the [roadmap](roadmap.md). `pixi oci check` reports this, on any OS, before you load the image.
+:   The program exists; its loader does not: the image has no glibc. Build it on a base image with `--base`
+    ([Base images](base-images.md)). `pixi oci check` reports this, on any OS, before you load the image.
+
+**`... is not pinned to a digest`**
+:   `--base` takes an image with its digest, so the build stays reproducible. `crane digest <image>` or
+    `skopeo inspect docker://<image>` prints it ([Base images](base-images.md#pinned-by-digest)).
+
+**`... refused access to ...`** when pulling a base
+:   The registry wants credentials. Log in with `docker login` or `podman login` (or set up a credential helper):
+    pixi-oci reads what they store.
+
+**`... has no image for linux/arm64/v8`**
+:   The base's index has no image for the platform being built. Pick a base built for it, or build for a platform
+    the base has.
 
 **`pixi oci check` reports `library: libX11.so.6 ...`, or another library**
 :   A binary in the environment links to a library no package in the environment provides. conda-forge's `tk`, for

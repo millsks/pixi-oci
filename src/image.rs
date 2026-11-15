@@ -23,8 +23,32 @@ pub const INDEX_MEDIA_TYPE: &str = "application/vnd.oci.image.index.v1+json";
 #[derive(Debug, Clone)]
 pub struct ImageLayer {
     pub blob: Blob,
-    /// What put this layer there, for the config's history: `python 3.13.18 h2b5c4f5_0`.
+    /// The layer's media type: [`LAYER_MEDIA_TYPE`] for the environment's, whatever a base image used for its own.
+    pub media_type: String,
+    /// What put this layer there, for the config's history: `python 3.13.18 h2b5c4f5_0`. A base image's layers
+    /// keep the base's own history instead.
     pub created_by: String,
+}
+
+impl ImageLayer {
+    /// A layer pixi-oci wrote.
+    pub fn new(blob: Blob, created_by: String) -> Self {
+        ImageLayer {
+            blob,
+            media_type: LAYER_MEDIA_TYPE.to_string(),
+            created_by,
+        }
+    }
+}
+
+/// The image an image is built on: its config, and its name and manifest digest for the manifest's annotations.
+#[derive(Debug, Clone)]
+pub struct Base {
+    pub config: Value,
+    pub name: String,
+    pub digest: String,
+    /// How many of the image's layers, from the bottom, are the base's.
+    pub layers: usize,
 }
 
 /// The image's runtime settings.
@@ -35,6 +59,8 @@ pub struct Settings {
     pub cmd: Option<Vec<String>>,
     pub workdir: Option<String>,
     pub labels: Vec<(String, String)>,
+    /// The base image, whose config the image's config starts from.
+    pub base: Option<Base>,
 }
 
 /// A name and tag, as `registry/name:tag` or `name:tag`; `latest` when no tag is given.
@@ -74,7 +100,15 @@ impl std::fmt::Display for Reference {
 
 /// The image config JSON.
 pub fn config(platform: &OciPlatform, layers: &[ImageLayer], settings: &Settings, created: &str) -> Value {
-    let mut config = serde_json::Map::new();
+    // On a base, the config starts from the base's, as FROM does: its user, ports, stop signal and the rest stay.
+    // The settings below are decided by the build, which has already merged the base's into them.
+    let mut config = match &settings.base {
+        Some(base) => base.config["config"].as_object().cloned().unwrap_or_default(),
+        None => serde_json::Map::new(),
+    };
+    for key in ["Env", "Entrypoint", "Cmd", "WorkingDir"] {
+        config.remove(key);
+    }
     config.insert("Env".into(), json!(settings.env));
     if let Some(entrypoint) = &settings.entrypoint {
         config.insert("Entrypoint".into(), json!(entrypoint));
@@ -85,48 +119,79 @@ pub fn config(platform: &OciPlatform, layers: &[ImageLayer], settings: &Settings
     if let Some(workdir) = &settings.workdir {
         config.insert("WorkingDir".into(), json!(workdir));
     }
-    if !settings.labels.is_empty() {
-        let labels: serde_json::Map<String, Value> = settings
-            .labels
-            .iter()
-            .map(|(key, value)| (key.clone(), json!(value)))
-            .collect();
+    let mut labels = config
+        .remove("Labels")
+        .and_then(|labels| labels.as_object().cloned())
+        .unwrap_or_default();
+    for (key, value) in &settings.labels {
+        labels.insert(key.clone(), json!(value));
+    }
+    if !labels.is_empty() {
         config.insert("Labels".into(), Value::Object(labels));
     }
-    let mut image = json!({
-        "created": created,
-        "architecture": platform.architecture,
-        "os": platform.os,
-    });
-    if let Some(variant) = platform.variant {
-        image["variant"] = json!(variant);
+    let mut image = match &settings.base {
+        Some(base) => base.config.as_object().cloned().unwrap_or_default(),
+        None => serde_json::Map::new(),
+    };
+    // A docker build's record of the container it ran in describes the base, not this image.
+    for key in ["container", "container_config", "docker_version", "author", "comment"] {
+        image.remove(key);
+    }
+    let mut image = Value::Object(image);
+    image["created"] = json!(created);
+    image["architecture"] = json!(platform.architecture);
+    image["os"] = json!(platform.os);
+    match platform.variant {
+        Some(variant) => image["variant"] = json!(variant),
+        None => {
+            if let Some(object) = image.as_object_mut() {
+                object.remove("variant");
+            }
+        }
     }
     image["config"] = Value::Object(config);
     image["rootfs"] = json!({
         "type": "layers",
         "diff_ids": layers.iter().map(|layer| layer.blob.diff_id.clone()).collect::<Vec<_>>(),
     });
-    image["history"] = json!(
+    let base_layers = settings.base.as_ref().map_or(0, |base| base.layers);
+    let mut history: Vec<Value> = match &settings.base {
+        Some(base) => base.config["history"]
+            .as_array()
+            .cloned()
+            .unwrap_or_else(|| (0..base.layers).map(|_| json!({"created_by": "base image"})).collect()),
+        None => Vec::new(),
+    };
+    history.extend(
         layers
             .iter()
-            .map(|layer| json!({"created": created, "created_by": layer.created_by}))
-            .collect::<Vec<_>>()
+            .skip(base_layers)
+            .map(|layer| json!({"created": created, "created_by": layer.created_by})),
     );
+    image["history"] = json!(history);
     image
 }
 
 /// The image manifest JSON for a config blob and layers.
-pub fn manifest(config: &Blob, layers: &[ImageLayer]) -> Value {
-    json!({
+pub fn manifest(config: &Blob, layers: &[ImageLayer], base: Option<&Base>) -> Value {
+    let mut manifest = json!({
         "schemaVersion": 2,
         "mediaType": MANIFEST_MEDIA_TYPE,
         "config": {"mediaType": CONFIG_MEDIA_TYPE, "digest": config.digest, "size": config.size},
         "layers": layers.iter().map(|layer| json!({
-            "mediaType": LAYER_MEDIA_TYPE,
+            "mediaType": layer.media_type,
             "digest": layer.blob.digest,
             "size": layer.blob.size,
         })).collect::<Vec<_>>(),
-    })
+    });
+    // The image spec's own annotations for the image an image is built on.
+    if let Some(base) = base {
+        manifest["annotations"] = json!({
+            "org.opencontainers.image.base.digest": base.digest,
+            "org.opencontainers.image.base.name": base.name,
+        });
+    }
+    manifest
 }
 
 /// Write `value` as a blob into `blobs_dir`, returning its descriptor fields. The digest covers the exact bytes.
@@ -164,7 +229,7 @@ pub fn finish_layout(
 ) -> io::Result<Written> {
     let blobs = layout.join("blobs/sha256");
     let config_blob = write_json_blob(&config(platform, layers, settings, created), &blobs)?;
-    let manifest_blob = write_json_blob(&manifest(&config_blob, layers), &blobs)?;
+    let manifest_blob = write_json_blob(&manifest(&config_blob, layers, settings.base.as_ref()), &blobs)?;
     let mut platform_json = json!({"architecture": platform.architecture, "os": platform.os});
     if let Some(variant) = platform.variant {
         platform_json["variant"] = json!(variant);
@@ -320,14 +385,8 @@ mod tests {
     fn the_config_lists_every_layer_and_setting() {
         let platform = oci_platform("linux-aarch64").unwrap();
         let layers = vec![
-            ImageLayer {
-                blob: blob(1),
-                created_by: "libzlib 1.3.2 h0_0".into(),
-            },
-            ImageLayer {
-                blob: blob(3),
-                created_by: "zlib 1.3.2 h0_0".into(),
-            },
+            ImageLayer::new(blob(1), "libzlib 1.3.2 h0_0".into()),
+            ImageLayer::new(blob(3), "zlib 1.3.2 h0_0".into()),
         ];
         let settings = Settings {
             env: vec!["PATH=/opt/env/bin".into()],
@@ -335,6 +394,7 @@ mod tests {
             cmd: Some(vec!["-V".into()]),
             workdir: Some("/work".into()),
             labels: vec![("a".into(), "b".into())],
+            base: None,
         };
         let config = config(&platform, &layers, &settings, "1970-01-01T00:00:00Z");
         assert_eq!(config["architecture"], "arm64");

@@ -19,7 +19,7 @@ pub enum Command {
     /// Show the layers an image of an environment would be built from, without downloading anything.
     Plan(PlanArgs),
     /// Build an image of an environment, as an OCI image layout directory or a `.tar` archive.
-    Build(BuildArgs),
+    Build(Box<BuildArgs>),
     /// Check an image against the OCI image spec: every blob, digest, size and diff_id. Nothing is run.
     Validate(ValidateArgs),
     /// Show an image's platform, settings and layers, with the packages each layer holds.
@@ -172,10 +172,17 @@ pub struct BuildArgs {
     #[arg(long, default_value = "512M", value_name = "SIZE", value_parser = crate::build::parse_size)]
     pub max_memory: u64,
 
-    /// Where downloaded package archives are kept, named by their sha256. Defaults to `PIXI_OCI_CACHE_DIR`, else the
-    /// platform's cache directory.
+    /// Where downloaded package archives and base image blobs are kept, named by their sha256. Defaults to
+    /// `PIXI_OCI_CACHE_DIR`, else the platform's cache directory.
     #[arg(long, value_name = "PATH")]
     pub cache_dir: Option<PathBuf>,
+
+    /// An image to build on, pinned by digest, such as
+    /// registry.access.redhat.com/ubi9/ubi-minimal@sha256:... or debian:bookworm-slim@sha256:...: its layers go
+    /// under the environment's, and it provides glibc, /bin/sh and the rest of a Linux userland. Its layers count
+    /// toward --max-layers.
+    #[arg(long, value_name = "IMAGE@DIGEST")]
+    pub base: Option<String>,
 }
 
 /// A command line given as one argument. Its own type so clap does not read `Option<Vec<_>>` as a repeated option.

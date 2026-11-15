@@ -68,6 +68,9 @@ pub struct BuildOptions {
     /// once and how large a rewritten file may grow in memory before it waits in a temporary file. It never changes
     /// the image.
     pub max_memory: u64,
+    /// The image to build on, pulled for the plan's platform: its layers go under the environment's, and its config
+    /// is where the image's starts.
+    pub base: Option<crate::registry::Pulled>,
 }
 
 /// The default for `--max-memory`: 512 MiB.
@@ -195,10 +198,7 @@ pub fn build(
                         spill_dir: scratch.path(),
                     };
                     let layer = stream::write_layer(&inputs, &stream_options, &blobs)
-                        .map(|blob| ImageLayer {
-                            blob,
-                            created_by: created_by(planned),
-                        })
+                        .map(|blob| ImageLayer::new(blob, created_by(planned)))
                         .map_err(BuildError::from);
                     let failed = layer.is_err();
                     if let Ok(mut results) = results.lock() {
@@ -222,6 +222,33 @@ pub fn build(
         }
     }
 
+    // The base's layers go underneath, as they were pulled: copied from the cache, their digests already checked.
+    if let Some(base) = &options.base {
+        let diff_ids = base.config["rootfs"]["diff_ids"]
+            .as_array()
+            .cloned()
+            .unwrap_or_default();
+        let mut below = Vec::with_capacity(base.layers.len());
+        for (pulled, diff_id) in base.layers.iter().zip(diff_ids) {
+            let hex = pulled.digest.trim_start_matches("sha256:");
+            let target = blobs.join(hex);
+            if !target.exists() {
+                fs::copy(&pulled.path, &target).map_err(write_err(&target))?;
+            }
+            below.push(ImageLayer {
+                blob: crate::layer::Blob {
+                    digest: pulled.digest.clone(),
+                    diff_id: diff_id.as_str().unwrap_or_default().to_string(),
+                    size: pulled.size,
+                },
+                media_type: pulled.media_type.clone(),
+                created_by: String::new(),
+            });
+        }
+        below.extend(layers);
+        layers = below;
+    }
+
     let created = image::rfc3339(options.source_date_epoch);
     let written = image::finish_layout(
         &layout,
@@ -239,23 +266,82 @@ pub fn build(
     Ok(written)
 }
 
-/// The image's settings: the environment on `PATH` and as `CONDA_PREFIX`, then what was asked for.
+/// The image's settings: the environment on `PATH` and as `CONDA_PREFIX`, then what was asked for. On a base image,
+/// they start from the base's as a Dockerfile's `FROM` does: the environment goes in front of the base's `PATH`, a
+/// variable set here replaces the base's of the same name, the entrypoint and command follow the Dockerfile rules
+/// (a new entrypoint drops the base's command), and the working directory is the base's unless one is given.
 fn settings(plan: &Plan, options: &BuildOptions) -> Settings {
     let prefix = options.prefix.trim_end_matches('/');
-    let mut env = vec![
-        format!("PATH={prefix}/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"),
+    let base_config = options.base.as_ref().map(|base| &base.config["config"]);
+    let strings = |value: &serde_json::Value| -> Option<Vec<String>> {
+        value.as_array().map(|items| {
+            items
+                .iter()
+                .filter_map(|item| item.as_str().map(str::to_string))
+                .collect()
+        })
+    };
+    let base_env = base_config
+        .and_then(|config| strings(&config["Env"]))
+        .unwrap_or_default();
+    let base_path = base_env
+        .iter()
+        .find_map(|pair| pair.strip_prefix("PATH="))
+        .unwrap_or("/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin");
+    let mut ours = vec![
+        format!("PATH={prefix}/bin:{base_path}"),
         format!("CONDA_PREFIX={prefix}"),
     ];
-    env.extend(options.env.iter().cloned());
+    ours.extend(options.env.iter().cloned());
+    let mut env = base_env;
+    for pair in ours {
+        let key = pair.split('=').next().unwrap_or_default().to_string();
+        match env
+            .iter_mut()
+            .find(|existing| existing.split('=').next() == Some(key.as_str()))
+        {
+            Some(existing) => *existing = pair,
+            None => env.push(pair),
+        }
+    }
+    let base_entrypoint = base_config.and_then(|config| strings(&config["Entrypoint"]));
+    let base_cmd = base_config.and_then(|config| strings(&config["Cmd"]));
+    let (entrypoint, cmd) = match (&options.entrypoint, &options.cmd) {
+        (Some(entrypoint), cmd) => (Some(entrypoint.clone()), cmd.clone()),
+        (None, Some(cmd)) => (base_entrypoint, Some(cmd.clone())),
+        (None, None) => (base_entrypoint, base_cmd),
+    };
+    let workdir = options.workdir.clone().or_else(|| {
+        base_config
+            .and_then(|config| config["WorkingDir"].as_str())
+            .filter(|dir| !dir.is_empty())
+            .map(str::to_string)
+    });
+    let mut labels = vec![
+        ("dev.pixi.environment".to_string(), plan.environment.clone()),
+        ("dev.pixi.platform".to_string(), plan.platform.clone()),
+    ];
+    let base = options.base.as_ref().map(|base| {
+        let reference = &base.reference;
+        let name = match &reference.tag {
+            Some(tag) => format!("{}/{}:{tag}", reference.registry, reference.repository),
+            None => format!("{}/{}", reference.registry, reference.repository),
+        };
+        labels.push(("dev.pixi.base".to_string(), reference.to_string()));
+        image::Base {
+            config: base.config.clone(),
+            name,
+            digest: base.manifest_digest.clone(),
+            layers: base.layers.len(),
+        }
+    });
     Settings {
         env,
-        entrypoint: options.entrypoint.clone(),
-        cmd: options.cmd.clone(),
-        workdir: options.workdir.clone(),
-        labels: vec![
-            ("dev.pixi.environment".to_string(), plan.environment.clone()),
-            ("dev.pixi.platform".to_string(), plan.platform.clone()),
-        ],
+        entrypoint,
+        cmd,
+        workdir,
+        labels,
+        base,
     }
 }
 
@@ -387,6 +473,7 @@ mod tests {
             source_date_epoch: 0,
             // One layer at a time, so progress lines arrive in order.
             max_memory: 16 << 20,
+            base: None,
         }
     }
 
@@ -703,5 +790,172 @@ mod tests {
         assert!(parse_env("=x").is_err());
         assert!(parse_env("1A=x").is_err());
         assert!(parse_env("A-B=x").is_err());
+    }
+
+    fn base_options(output: PathBuf, base: crate::registry::Pulled) -> BuildOptions {
+        BuildOptions {
+            entrypoint: None,
+            base: Some(base),
+            ..options(output)
+        }
+    }
+
+    #[test]
+    fn a_base_image_goes_under_the_environment() {
+        use crate::testing::BaseEntry;
+        let dir = tempfile::tempdir().unwrap();
+        let base = crate::testing::base_image(dir.path(), &[BaseEntry::File("bin/sh", b"sh".to_vec(), 0o755)]);
+        let plan = plan_of(vec![package(dir.path(), "tool", &[])], 100);
+        for output in ["layout", "image.tar"] {
+            let path = dir.path().join(output);
+            build(
+                &plan,
+                &base_options(path.clone(), base.clone()),
+                &Fetcher::new(dir.path().join("cache")),
+                &mut std::io::sink(),
+            )
+            .unwrap();
+            let report = crate::validate::validate(&path).unwrap();
+            assert!(report.valid, "{}", report.text());
+            assert_eq!(report.manifests[0].layers, 2);
+        }
+        let layout = dir.path().join("layout");
+        let raw = |which| crate::inspect::raw(&layout, None, which).unwrap();
+        let manifest: serde_json::Value = serde_json::from_str(&raw(crate::inspect::Raw::Manifest)).unwrap();
+        assert_eq!(manifest["layers"][0]["digest"], base.layers[0].digest.as_str());
+        assert_eq!(
+            manifest["annotations"],
+            serde_json::json!({
+                "org.opencontainers.image.base.digest": base.manifest_digest,
+                "org.opencontainers.image.base.name": "example.com/os/base:9",
+            })
+        );
+        let config: serde_json::Value = serde_json::from_str(&raw(crate::inspect::Raw::Config)).unwrap();
+        let settings = &config["config"];
+        assert_eq!(
+            settings["Env"],
+            serde_json::json!([
+                "PATH=/opt/env/bin:/usr/local/bin:/usr/bin:/bin",
+                "LANG=C.UTF-8",
+                "CONDA_PREFIX=/opt/env",
+                "GREETING=hi",
+            ])
+        );
+        // Nothing asked for, so the base's command, user and working directory stay.
+        assert_eq!(settings["Cmd"], serde_json::json!(["/bin/bash"]));
+        assert!(settings.get("Entrypoint").is_none());
+        assert_eq!(settings["User"], "1001");
+        assert_eq!(settings["WorkingDir"], "/home/base");
+        assert_eq!(settings["Labels"]["vendor"], "Example");
+        assert_eq!(settings["Labels"]["dev.pixi.environment"], "test");
+        assert_eq!(settings["Labels"]["dev.pixi.base"], base.reference.to_string().as_str());
+        assert!(config.get("container_config").is_none() && config.get("docker_version").is_none());
+        let history = config["history"].as_array().unwrap();
+        assert_eq!(history.len(), 3);
+        assert_eq!(history[0]["created_by"], "ADD rootfs.tar /");
+        assert_eq!(history[1]["empty_layer"], true);
+        assert_eq!(history[2]["created_by"], "pixi-oci: tool 1.0 h0_0");
+        assert_eq!(config["rootfs"]["diff_ids"][0], base.config["rootfs"]["diff_ids"][0]);
+
+        // inspect lists the base's layer with its own history, then the environment's.
+        let inspection = crate::inspect::inspect(&layout, None).unwrap();
+        assert_eq!(inspection.layers[0].created_by.as_deref(), Some("ADD rootfs.tar /"));
+        assert_eq!(inspection.layers[1].packages[0].name, "tool");
+    }
+
+    #[test]
+    fn entrypoint_and_command_follow_the_dockerfile_rules() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut base = crate::testing::base_image(dir.path(), &[]);
+        base.config["config"]["Entrypoint"] = serde_json::json!(["/usr/bin/tini", "--"]);
+        let plan = plan_of(Vec::new(), 100);
+        let words = |w: &[&str]| Some(w.iter().map(|s| s.to_string()).collect::<Vec<_>>());
+        let settings_with = |entrypoint: Option<Vec<String>>, cmd: Option<Vec<String>>, workdir: Option<&str>| {
+            let mut options = base_options(dir.path().join("x"), base.clone());
+            options.entrypoint = entrypoint;
+            options.cmd = cmd;
+            options.workdir = workdir.map(str::to_string);
+            settings(&plan, &options)
+        };
+        // Neither given: both are the base's.
+        let both = settings_with(None, None, None);
+        assert_eq!(
+            (both.entrypoint, both.cmd),
+            (words(&["/usr/bin/tini", "--"]), words(&["/bin/bash"]))
+        );
+        // A command alone runs under the base's entrypoint.
+        let cmd = settings_with(None, words(&["python"]), None);
+        assert_eq!(
+            (cmd.entrypoint, cmd.cmd),
+            (words(&["/usr/bin/tini", "--"]), words(&["python"]))
+        );
+        // A new entrypoint drops the base's command.
+        let entry = settings_with(words(&["python"]), None, Some("/app"));
+        assert_eq!(
+            (entry.entrypoint, entry.cmd, entry.workdir.as_deref()),
+            (words(&["python"]), None, Some("/app"))
+        );
+        // Without a base, nothing is inherited, and PATH is the default behind the environment.
+        let mut plain = options(dir.path().join("y"));
+        plain.entrypoint = None;
+        let plain = settings(&plan, &plain);
+        assert_eq!((plain.entrypoint, plain.cmd, plain.workdir), (None, None, None));
+        assert_eq!(
+            plain.env[0],
+            "PATH=/opt/env/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+        );
+        assert!(plain.base.is_none());
+    }
+
+    #[test]
+    fn check_finds_glibc_in_the_base() {
+        use crate::check::tests::{Elf, X86_64, elf_file};
+        use crate::testing::BaseEntry;
+        let dir = tempfile::tempdir().unwrap();
+        let libc = elf_file(&Elf {
+            machine: X86_64,
+            ..Elf::default()
+        });
+        let base = crate::testing::base_image(
+            dir.path(),
+            &[
+                BaseEntry::File("usr/lib64/ld-linux-x86-64.so.2", libc.clone(), 0o755),
+                BaseEntry::File("usr/lib64/libc.so.6", libc.clone(), 0o755),
+                BaseEntry::Link("lib64", "usr/lib64"),
+                BaseEntry::File("usr/bin/sh", libc, 0o755),
+                BaseEntry::Link("bin", "usr/bin"),
+            ],
+        );
+        let tool = elf_file(&Elf {
+            machine: X86_64,
+            interpreter: Some("/lib64/ld-linux-x86-64.so.2"),
+            needed: &["libc.so.6"],
+            ..Elf::default()
+        });
+        let spec = crate::testing::Spec::new("tool")
+            .file("bin/tool", tool, true, None)
+            .file("bin/run", "#!/bin/sh\necho hi\n", true, None);
+        let plan = plan_of(vec![crate::testing::package(dir.path(), spec)], 100);
+        let image = dir.path().join("image.tar");
+        let mut options = base_options(image.clone(), base);
+        options.entrypoint = Some(vec!["tool".to_string()]);
+        build(
+            &plan,
+            &options,
+            &Fetcher::new(dir.path().join("cache")),
+            &mut std::io::sink(),
+        )
+        .unwrap();
+        let report = crate::check::check(&image, None).unwrap();
+        // Test packages carry executable bits only where the host's file system has them.
+        if cfg!(unix) {
+            assert!(report.ok, "{}", report.text());
+        } else {
+            assert!(
+                report.problems.iter().all(|p| p.kind == "entrypoint"),
+                "{}",
+                report.text()
+            );
+        }
     }
 }

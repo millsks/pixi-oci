@@ -21,7 +21,7 @@ pixi-oci is one Rust binary, organized as a short pipeline. Each stage has one m
 | `plan.rs` | Splits those packages into layers as `--layers` says: large packages alone and small ones grouped at cut points their names fix (the default), one per package, or one for everything; dependencies first with ties by name, capped by `--max-layers`, PyPI on top. |
 | `platform.rs` | Maps `linux-*` conda platforms to OCI platforms (`linux-aarch64` to `linux/arm64/v8`), and picks the default. |
 | `report.rs` | A plan as a table or JSON. |
-| `build.rs` | `build`: checks the request, fetches every archive, writes the planned layers in parallel within `--max-memory`, then the image. |
+| `build.rs` | `build`: checks the request, fetches every archive, writes the planned layers in parallel within `--max-memory`, puts a pulled base's layers underneath, merges its config, then writes the image. |
 | `fetch.rs` | Downloads conda archives (ureq), checks each against the lockfile's sha256, and keeps it in a cache named by that hash. |
 | `stream.rs` | Writes one layer straight from its packages' archives: placeholder replacement, `noarch: python` placement and entry points, `conda-meta` records, the prefix guard, and the piecewise rewrite of large files. |
 | `target.rs` | The install target: the prefix in the image, the platform, and python for noarch packages. |
