@@ -52,7 +52,10 @@ Wrote app:1.0 to app.tar
   manifest sha256:9ec8407e4f1860919cd8dd7af6027a9bdcb91a5a008b2c5ea657ed3f300044ef
   7 layers, 62.6 MiB for linux/amd64
 
-$ skopeo inspect oci-archive:app.tar
+$ pixi oci validate app.tar
+app.tar is a valid OCI image
+  manifest sha256:9ec8407e4f18 for linux/amd64: 7 layers, 62.6 MiB
+
 $ podman load -i app.tar
 ```
 
@@ -134,6 +137,17 @@ Environment default on linux-64 (image platform linux/amd64)
 Sizes are of the compressed archives the lockfile records, which is what gets downloaded. The lockfile does not record
 wheel sizes, so a plan with PyPI packages has no total.
 
+### `pixi oci validate`
+
+Checks an image against the OCI image spec, running nothing: every blob present with the digest and size its
+descriptor names, every layer's uncompressed tar matching its `diff_id`, media types, schema versions, the platform,
+and for an archive the `manifest.json` `docker load` reads. It works on a layout directory or a `.tar`, on any OS, and
+reports every problem it finds before exiting `1`.
+
+```console
+$ pixi oci validate app.tar --format json
+```
+
 ## How layers are planned
 
 1. A conda package of 4 MiB or more gets its own layer; smaller ones are grouped, about 1 to 8 MiB a group. A group
@@ -160,7 +174,7 @@ Every item has an issue labelled [`roadmap`](https://github.com/millsks/pixi-oci
       ([#8](https://github.com/millsks/pixi-oci/issues/8))
 - [x] Documentation site ([#9](https://github.com/millsks/pixi-oci/issues/9))
 - [x] Grouped layers and `--layers` ([#10](https://github.com/millsks/pixi-oci/issues/10))
-- [ ] `validate`: check an image against the OCI spec ([#25](https://github.com/millsks/pixi-oci/issues/25))
+- [x] `validate`: an image checked against the OCI spec ([#25](https://github.com/millsks/pixi-oci/issues/25))
 - [ ] `inspect`: an image's config, layers and packages ([#24](https://github.com/millsks/pixi-oci/issues/24))
 - [ ] `check`: static image checks on any OS ([#11](https://github.com/millsks/pixi-oci/issues/11))
 - [ ] Base images with `--base` ([#12](https://github.com/millsks/pixi-oci/issues/12))

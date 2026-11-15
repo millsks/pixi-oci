@@ -504,6 +504,10 @@ mod tests {
         let again = dir.path().join("again.tar");
         build(&plan, &options(again.clone()), &fetcher, &mut std::io::sink()).unwrap();
         assert_eq!(fs::read(&archive).unwrap(), fs::read(&again).unwrap());
+        for image in [dir.path().join("one"), archive] {
+            let report = crate::validate::validate(&image).unwrap();
+            assert!(report.valid, "{}", report.text());
+        }
     }
 
     #[test]

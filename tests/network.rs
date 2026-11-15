@@ -71,6 +71,16 @@ fn a_built_image_runs_its_python() {
         .unwrap();
     assert!(status.success());
 
+    let validated = Command::cargo_bin("pixi-oci")
+        .unwrap()
+        .arg("validate")
+        .arg(&archive)
+        .output()
+        .unwrap();
+    let report = String::from_utf8_lossy(&validated.stdout);
+    assert!(validated.status.success(), "{report}");
+    assert!(report.contains("is a valid OCI image"), "{report}");
+
     unpack_image(&archive, dir.path());
     let output = Command::new(prefix.join("bin/python"))
         .args([

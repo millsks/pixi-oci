@@ -74,12 +74,19 @@ layout directory instead.
 
 ## 4. Look inside
 
-Any OCI tool reads it, with no daemon:
+Check it against the OCI image spec, with nothing else installed:
+
+```console
+$ pixi oci validate hello.tar
+hello.tar is a valid OCI image
+  manifest sha256:9ec8407e4f18 for linux/amd64: 7 layers, 62.6 MiB
+```
+
+Any OCI tool reads it too, with no daemon:
 
 ```sh
 skopeo inspect oci-archive:hello.tar            # platform, layers, environment variables
 skopeo inspect --config oci-archive:hello.tar   # the full image config
-crane validate --tarball hello.tar              # every digest checked
 ```
 
 The image sets `PATH` to `/opt/env/bin:...` and `CONDA_PREFIX` to `/opt/env`. Add your own settings with `--env`,

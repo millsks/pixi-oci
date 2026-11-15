@@ -88,8 +88,8 @@ The same lockfile gives the same image digest on any machine:
 - the config's `created` time is the same `SOURCE_DATE_EPOCH`
 
 Layers are tar archives in GNU format, compressed with gzip, so every container runtime and registry reads them. CI
-builds a test image on Linux, macOS and Windows on every change and fails if the digests differ; `crane validate`,
-`umoci unpack` and `skopeo copy` all accept the result.
+builds a test image on Linux, macOS and Windows on every change and fails if the digests differ; `pixi oci validate`,
+`crane validate`, `umoci unpack` and `skopeo copy` all accept the result.
 
 ## Memory and disk
 
