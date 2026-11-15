@@ -1,0 +1,188 @@
+//! `pixi-oci` as pixi runs it, against a lockfile pixi wrote (tests/fixtures/workspace).
+
+use assert_cmd::Command;
+use predicates::prelude::*;
+
+const LOCKFILE: &str = "tests/fixtures/workspace/pixi.lock";
+
+fn pixi_oci() -> Command {
+    Command::cargo_bin("pixi-oci").unwrap()
+}
+
+fn plan_json(args: &[&str]) -> serde_json::Value {
+    let output = pixi_oci()
+        .args(["plan", "--lockfile", LOCKFILE, "--format", "json"])
+        .args(args)
+        .output()
+        .unwrap();
+    assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
+    serde_json::from_slice(&output.stdout).unwrap()
+}
+
+fn layer_names(plan: &serde_json::Value) -> Vec<Vec<String>> {
+    plan["layers"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|layer| {
+            layer["packages"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|package| package["name"].as_str().unwrap().to_string())
+                .collect()
+        })
+        .collect()
+}
+
+#[test]
+fn help_and_version_name_the_pixi_subcommand() {
+    pixi_oci()
+        .arg("--help")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Usage: pixi oci"));
+    pixi_oci()
+        .arg("--version")
+        .assert()
+        .success()
+        .stdout(predicate::str::starts_with("pixi-oci "));
+}
+
+#[test]
+fn the_text_plan_lists_one_layer_per_package() {
+    pixi_oci()
+        .args(["plan", "--lockfile", LOCKFILE, "--platform", "linux-64"])
+        .assert()
+        .success()
+        .stdout(predicate::str::starts_with(
+            "Environment default on linux-64 (image platform linux/amd64)\n",
+        ))
+        .stdout(predicate::str::contains(
+            "1 PyPI package, 23 layers, download size unknown",
+        ))
+        .stdout(predicate::str::contains("  #  Layer"))
+        .stdout(predicate::str::contains("python 3.13"));
+}
+
+#[test]
+fn dependencies_sit_below_what_depends_on_them() {
+    let plan = plan_json(&["--platform", "linux-64"]);
+    let layers = layer_names(&plan);
+    let position = |name: &str| layers.iter().position(|layer| layer.iter().any(|n| n == name)).unwrap();
+    assert!(position("libgcc") < position("openssl"));
+    assert!(position("openssl") < position("python"));
+    assert!(position("libzlib") < position("python"));
+    // The PyPI layer is the top one.
+    assert_eq!(layers.last().unwrap(), &["six"]);
+    assert_eq!(plan["layers"].as_array().unwrap().last().unwrap()["kind"], "pypi");
+}
+
+#[test]
+fn the_plan_is_the_same_on_every_run() {
+    assert_eq!(
+        plan_json(&["--platform", "linux-64"]),
+        plan_json(&["--platform", "linux-64"])
+    );
+}
+
+#[test]
+fn json_carries_what_a_build_needs() {
+    let plan = plan_json(&["--environment", "slim", "--platform", "linux-aarch64"]);
+    assert_eq!(plan["environment"], "slim");
+    assert_eq!(
+        plan["oci_platform"],
+        serde_json::json!({"os": "linux", "architecture": "arm64", "variant": "v8"})
+    );
+    assert_eq!(layer_names(&plan), [["libzlib"], ["zlib"]]);
+    let zlib = &plan["layers"][1]["packages"][0];
+    assert_eq!(zlib["kind"], "conda");
+    assert!(
+        zlib["location"]
+            .as_str()
+            .unwrap()
+            .starts_with("https://conda.anaconda.org/conda-forge/linux-aarch64/")
+    );
+    assert_eq!(zlib["sha256"].as_str().unwrap().len(), 64);
+    assert!(zlib["size"].as_u64().unwrap() > 0);
+    assert_eq!(plan["layers"][1]["size"], zlib["size"]);
+}
+
+#[test]
+fn max_layers_merges_the_top_of_the_order() {
+    let plan = plan_json(&["--platform", "linux-64", "--max-layers", "5"]);
+    let kinds: Vec<&str> = plan["layers"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|layer| layer["kind"].as_str().unwrap())
+        .collect();
+    assert_eq!(kinds, ["conda", "conda", "conda", "conda-merged", "pypi"]);
+    let packages: usize = layer_names(&plan).iter().map(Vec::len).sum();
+    assert_eq!(packages, 23);
+}
+
+#[test]
+fn a_platform_that_is_not_linux_is_refused() {
+    pixi_oci()
+        .args(["plan", "--lockfile", LOCKFILE, "--platform", "osx-arm64"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("osx-arm64 is not a Linux platform"));
+}
+
+#[test]
+fn an_unlocked_platform_names_the_locked_ones() {
+    pixi_oci()
+        .args(["plan", "--lockfile", LOCKFILE, "--platform", "linux-ppc64le"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("is not locked for linux-ppc64le"))
+        .stderr(predicate::str::contains("linux-64, linux-aarch64, osx-arm64"));
+}
+
+#[test]
+fn an_unknown_environment_names_the_known_ones() {
+    pixi_oci()
+        .args(["plan", "--lockfile", LOCKFILE, "--environment", "prod"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("no environment named `prod`"))
+        .stderr(predicate::str::contains("default, slim"));
+}
+
+#[test]
+fn a_missing_lockfile_says_how_to_make_one() {
+    pixi_oci()
+        .args(["plan", "--lockfile", "tests/fixtures/missing/pixi.lock"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("could not read"))
+        .stderr(predicate::str::contains("pixi lock"));
+}
+
+#[test]
+fn a_file_that_is_not_a_lockfile_is_refused() {
+    pixi_oci()
+        .args(["plan", "--lockfile", "tests/fixtures/workspace/pixi.toml"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("is not a lockfile pixi-oci can read"));
+}
+
+#[test]
+fn one_layer_is_too_few() {
+    pixi_oci()
+        .args([
+            "plan",
+            "--lockfile",
+            LOCKFILE,
+            "--max-layers",
+            "1",
+            "--platform",
+            "linux-64",
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("--max-layers must be at least 2"));
+}

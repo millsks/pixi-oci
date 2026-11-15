@@ -1,0 +1,41 @@
+[package]
+name = "pixi-oci"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.89"
+description = "Build OCI container images straight from a pixi.lock, without a Dockerfile or a Docker daemon"
+license = "Apache-2.0"
+repository = "https://github.com/millsks/pixi-oci"
+readme = "README.md"
+keywords = ["pixi", "oci", "container", "conda"]
+categories = ["command-line-utilities", "development-tools"]
+publish = false
+
+# The library is the binary's insides, exposed so the tests can reach them; it is not a designed API and makes no
+# stability promise.
+[lib]
+name = "pixi_oci"
+path = "src/lib.rs"
+
+[[bin]]
+name = "pixi-oci"
+path = "src/main.rs"
+
+[dependencies]
+clap = { version = "4.6.7", features = ["derive"] }
+miette = { version = "7.6.0", features = ["fancy"] }
+rattler_conda_types = { version = "0.53", default-features = false }
+rattler_lock = { version = "0.33.0", default-features = false }
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = { version = "1.0.151", features = ["preserve_order"] }
+thiserror = "2.0.20"
+
+[dev-dependencies]
+assert_cmd = "2.2.2"
+predicates = "3.1.4"
+
+[profile.release]
+lto = true
+codegen-units = 1
+strip = true
+panic = "abort"
