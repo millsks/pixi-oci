@@ -836,8 +836,9 @@ downloads everything again on every cache miss, and produces layers that say not
   Linux modes or symlinks.</li>
 <li><strong>Reproducible.</strong> The same lockfile gives the same image digest on every machine; CI checks Linux, macOS and
   Windows against each other on every change.</li>
-<li><strong>One layer per package.</strong> Dependencies sit at the bottom, so changing one package re-uploads one layer, and images
-  built from the same packages share layers in the registry.</li>
+<li><strong>Layers that cache well.</strong> Large packages get layers of their own and small ones share a few, dependencies at the
+  bottom, so changing one package re-uploads one small layer, and images built from the same packages share layers
+  in the registry.</li>
 <li><strong>Checked.</strong> Every archive must match the sha256 the lockfile recorded before anything reads it.</li>
 </ul>
 <h2 id="where-to-go">Where to go<a class="headerlink" href="#where-to-go" title="Permanent link">&para;</a></h2>

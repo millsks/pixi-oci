@@ -886,9 +886,19 @@
 <td>a <code>linux-*</code> conda platform: <code>linux-64</code>, <code>linux-aarch64</code>, <code>linux-ppc64le</code>, ...</td>
 </tr>
 <tr>
+<td><code>--layers grouped\|per-package\|single</code></td>
+<td><code>grouped</code></td>
+<td>how to split the environment into layers: packages of 4 MiB or more alone and smaller ones grouped, a layer per package, or the whole environment in one layer. See <a href="../how-it-works/#planning-the-layers">Planning the layers</a>.</td>
+</tr>
+<tr>
 <td><code>--max-layers N</code></td>
 <td><code>100</code></td>
-<td>the most layers to use; past it, the packages fewest others depend on share the last conda layer. At least 2.</td>
+<td>the most layers to use; past it, the layers of the packages fewest others depend on are merged into the last conda layer. At least 2, except with <code>--layers single</code>.</td>
+</tr>
+<tr>
+<td><code>--packages</code></td>
+<td></td>
+<td>list the packages of every layer that holds several</td>
 </tr>
 <tr>
 <td><code>--format text\|json</code></td>
@@ -900,7 +910,7 @@
 <p>The default platform is <code>linux-aarch64</code> on an ARM machine (an Apple Silicon Mac, an ARM server) and <code>linux-64</code>
 everywhere else.</p>
 <h2 id="pixi-oci-build"><code>pixi oci build</code><a class="headerlink" href="#pixi-oci-build" title="Permanent link">&para;</a></h2>
-<p>Builds an image of an environment. It takes <code>plan</code>'s <code>--lockfile</code>, <code>-e</code>, <code>-p</code> and <code>--max-layers</code>, and:</p>
+<p>Builds an image of an environment. It takes <code>plan</code>'s <code>--lockfile</code>, <code>-e</code>, <code>-p</code>, <code>--layers</code> and <code>--max-layers</code>, and:</p>
 <table>
 <thead>
 <tr>
@@ -966,8 +976,8 @@ everywhere else.</p>
 <code>CONDA_PREFIX=&lt;prefix&gt;</code>; <code>--env</code> adds to them. It is labelled <code>dev.pixi.environment</code> and <code>dev.pixi.platform</code>.</p>
 <p>Progress goes to stderr, one line per layer as it starts. The summary goes to stdout:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>Wrote app:1.0 to app.tar
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>  manifest sha256:c41ba44878826e5db8f121aeaa113ff80aba1fac14283b5172491b08afa4c7a8
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>  23 layers, 62.6 MiB for linux/amd64
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>  manifest sha256:9ec8407e4f1860919cd8dd7af6027a9bdcb91a5a008b2c5ea657ed3f300044ef
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>  7 layers, 62.6 MiB for linux/amd64
 </code></pre></div>
 <h2 id="environment-variables">Environment variables<a class="headerlink" href="#environment-variables" title="Permanent link">&para;</a></h2>
 <table>

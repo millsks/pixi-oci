@@ -922,27 +922,31 @@ installed into images yet, so keep this environment to conda packages for now.</
 <p><code>plan</code> reads the lockfile and shows the layers, without downloading anything:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="gp">$ </span>pixi<span class="w"> </span>oci<span class="w"> </span>plan<span class="w"> </span>-p<span class="w"> </span>linux-64
 <a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="go">Environment default on linux-64 (image platform linux/amd64)</span>
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="go">23 conda packages, 0 PyPI packages, 23 layers, 44.9 MiB to download</span>
-<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>
-<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="gp">   #  </span>Layer<span class="w">                       </span>Download
-<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="go">   1  ca-certificates 2026.10.23  127.0 KiB</span>
-<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="go">   2  libgomp 16.2.0              625.6 KiB</span>
-<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="go">   ...</span>
-<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="go">  22  python 3.13.18              23.2 MiB</span>
-<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="go">  23  six 1.17.0                  18.0 KiB</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="go">23 conda packages, 0 PyPI packages, 7 layers, 44.9 MiB to download</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="go">4 conda packages in layers of their own, 19 sharing 3 layers</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="gp">  #  </span>Layer<span class="w">              </span>Download
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="go">  1  4 conda packages   1.8 MiB</span>
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="go">  2  libpython 3.13.18  9.3 MiB</span>
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="go">  3  12 conda packages  5.9 MiB</span>
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="go">  4  tk 8.6.13          3.4 MiB</span>
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a><span class="go">  5  3 conda packages   1.4 MiB</span>
+<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a><span class="go">  6  python 3.13.18     23.2 MiB</span>
+<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a><span class="go">  7  six 1.17.0         18.0 KiB</span>
 </code></pre></div>
-<p>One layer per package, the ones everything depends on first. <code>--format json</code> gives the same plan with every
-package's URL, sha256 and size.</p>
+<p>Packages of 4 MiB or more get a layer of their own, smaller ones share a few, and the ones everything depends on come
+first. <code>--packages</code> lists what each shared layer holds, and <code>--format json</code> gives the same plan with every package's
+URL, sha256 and size.</p>
 <h2 id="3-build-it">3. Build it<a class="headerlink" href="#3-build-it" title="Permanent link">&para;</a></h2>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="gp">$ </span>pixi<span class="w"> </span>oci<span class="w"> </span>build<span class="w"> </span>-p<span class="w"> </span>linux-64<span class="w"> </span>--tag<span class="w"> </span>hello:1.0<span class="w"> </span>-o<span class="w"> </span>hello.tar
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="go">[1/23] ca-certificates 2026.10.23 (127.0 KiB)</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="go">[1/7] 4 conda packages (1.8 MiB)</span>
 <a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="go">...</span>
-<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="go">[23/23] six 1.17.0 (18.0 KiB)</span>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="go">[7/7] six 1.17.0 (18.0 KiB)</span>
 <a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="go">Wrote hello:1.0 to hello.tar</span>
-<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="go">  manifest sha256:c41ba44878826e5db8f121aeaa113ff80aba1fac14283b5172491b08afa4c7a8</span>
-<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="go">  23 layers, 62.6 MiB for linux/amd64</span>
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="go">  manifest sha256:9ec8407e4f1860919cd8dd7af6027a9bdcb91a5a008b2c5ea657ed3f300044ef</span>
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="go">  7 layers, 62.6 MiB for linux/amd64</span>
 </code></pre></div>
-<p>Each package is downloaded once into the cache, checked against the lockfile's sha256, and written into its own
+<p>Each package is downloaded once into the cache, checked against the lockfile's sha256, and written into its
 layer with its paths rewritten for <code>/opt/env</code>, where the environment lives in the image. Build again and you get
 the same manifest digest, on this machine or any other. (Your digest will differ from this one: it depends on
 exactly what your lockfile locks.)</p>

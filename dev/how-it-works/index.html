@@ -922,17 +922,27 @@
 <h2 id="planning-the-layers">Planning the layers<a class="headerlink" href="#planning-the-layers" title="Permanent link">&para;</a></h2>
 <p><code>plan</code> reads one environment of <code>pixi.lock</code> for one platform and decides the layers:</p>
 <ol>
-<li><strong>One layer per conda package</strong>, so changing one package re-uploads one layer, and images built from the same
-   packages share those layers in the registry.</li>
+<li><strong>Large packages alone, small ones grouped.</strong> Layers are named by their sha256, so a change to one package
+   re-uploads only the layer that holds it, and images built from the same packages share layers in the registry. A
+   conda package of 4 MiB or more gets a layer of its own: those are the ones worth re-uploading alone. Smaller ones
+   are grouped, from about 1 MiB to 8 MiB a group, so a few hundred packages do not each spend a layer on a few
+   kilobytes. A group ends after a package whose name hashes to a cut point (about one name in four) once it holds 1
+   MiB, or at 8 MiB whatever the names. Because the cut points belong to names, not positions, adding or removing a
+   package changes only the group it lands in, and the layers above keep their digests. A group still under 1 MiB
+   when a large package comes along stays open past it, rather than become a tiny layer of its own.</li>
 <li><strong>Dependencies first.</strong> The packages everything rests on (<code>libgcc</code>, <code>openssl</code>, <code>python</code>) sit at the bottom, where
    they change least often. Ties go by name, so the order is the same on every run; a dependency cycle (<code>python</code> and
    <code>pip</code>) is broken at its alphabetically first package.</li>
 <li><strong>Capped.</strong> Overlay file systems limit the layer count (Docker's overlay2 refuses an image of more than about 128), so past
-   <code>--max-layers</code> (100) the packages at the top of the order, the ones fewest others depend on, share the last conda
-   layer.</li>
+   <code>--max-layers</code> (100) the layers at the top of the order, the ones fewest others depend on, are merged into the last
+   conda layer. Grouping keeps even a few hundred packages well under it: a 385-package data-science and Jupyter
+   environment plans into 84 layers.</li>
 <li><strong>PyPI on top.</strong> All PyPI packages share the top layer: they install into one site-packages and are usually what
    changes most. (Planned, but not yet installed by <code>build</code>.)</li>
 </ol>
+<p><code>--layers</code> chooses another layout: <code>per-package</code> gives every conda package a layer of its own, as long as the cap
+allows, and <code>single</code> puts the whole environment, conda and PyPI, in one layer, which suits an image built once and
+never updated. <code>plan --packages</code> lists what each shared layer holds.</p>
 <p>Conda packages pixi builds from source have no archive yet, so an environment with them is refused, by name.</p>
 <h2 id="fetching">Fetching<a class="headerlink" href="#fetching" title="Permanent link">&para;</a></h2>
 <p>Every archive of the plan is fetched before any layer is written, one at a time, so a failed download stops the build
