@@ -168,8 +168,8 @@ $ pixi oci check app.tar --format json
 ### `pixi oci push`
 
 Sends an image to any registry with no Docker: only the blobs the registry lacks, then the manifest under the tag.
-Credentials come from `docker login` and `podman login`, or `PIXI_OCI_REGISTRY_USERNAME` and
-`PIXI_OCI_REGISTRY_PASSWORD` in CI.
+Credentials are pixi's own: `pixi auth login ghcr.io --username <user> --password <token>` once, or
+`PIXI_OCI_REGISTRY_USERNAME` and `PIXI_OCI_REGISTRY_PASSWORD` in CI. No Docker or Podman is needed.
 
 ```console
 $ pixi oci push app.tar ghcr.io/team/app:1.0

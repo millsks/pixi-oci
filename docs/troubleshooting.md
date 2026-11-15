@@ -97,13 +97,18 @@ pixi-oci prints them, with the variable parts in angle brackets.
     `skopeo inspect docker://<image>` prints it ([Base images](base-images.md#pinned-by-digest)).
 
 **`... refused access to ...`** when pulling a base
-:   The registry wants credentials. Log in with `docker login` or `podman login` (or set up a credential helper):
-    pixi-oci reads what they store.
+:   The registry wants credentials. Log in with `pixi auth login <registry> --username <user> --password <token>`:
+    pixi-oci reads pixi's credentials.
 
 **`<registry> refused access to <repository>`** when pushing
-:   The registry wants credentials that may push to that repository. Log in with `docker login` or `podman login`,
-    or set `PIXI_OCI_REGISTRY_USERNAME` and `PIXI_OCI_REGISTRY_PASSWORD`; in GitHub Actions, give the job
-    `packages: write` to push to GHCR with `GITHUB_TOKEN`.
+:   The registry wants credentials that may push to that repository. Log in with
+    `pixi auth login <registry> --username <user> --password <token>` (for GHCR, a personal access token with
+    `write:packages`), or set `PIXI_OCI_REGISTRY_USERNAME` and `PIXI_OCI_REGISTRY_PASSWORD`; in GitHub Actions, give
+    the job `packages: write` to push to GHCR with `GITHUB_TOKEN`.
+
+**`cannot read pixi's credentials for <registry>`**
+:   pixi's credential store could not be read, for example a keychain that is locked. `pixi auth logout <registry>`
+    and log in again; `pixi auth login` works the same way for pixi itself.
 
 **`<registry> stored the manifest as <digest>, not <digest>`**
 :   The registry changed the manifest it was sent, so the image is not stored under the digest pixi-oci built. Pull

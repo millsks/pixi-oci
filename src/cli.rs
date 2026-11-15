@@ -84,8 +84,7 @@ pub struct PushArgs {
     pub image: PathBuf,
 
     /// Where to push it: [registry/]repository[:tag], such as ghcr.io/team/app:1.0; `latest` when no tag is given.
-    /// Credentials come from `docker login` and `podman login`, or PIXI_OCI_REGISTRY_USERNAME and
-    /// PIXI_OCI_REGISTRY_PASSWORD.
+    /// Credentials are pixi's (`pixi auth login`), or PIXI_OCI_REGISTRY_USERNAME and PIXI_OCI_REGISTRY_PASSWORD.
     #[arg(value_name = "DESTINATION")]
     pub destination: String,
 

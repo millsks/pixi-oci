@@ -1,9 +1,10 @@
 //! Pulling an image from an OCI registry, pinned by digest, into the cache: the manifest for one platform, its
 //! config, and its layers, each checked against its digest before it is kept.
 //!
-//! Registries are spoken to over the distribution API (`/v2/`), anonymously or with the credentials docker and
-//! podman keep (`config.json`, `auth.json`, credential helpers), through bearer tokens or basic auth as the registry
-//! asks. Nothing is unpacked: blobs are kept as they were served, named by their digest.
+//! Registries are spoken to over the distribution API (`/v2/`), anonymously or with the credentials `pixi auth
+//! login` keeps (or, for CI, `PIXI_OCI_REGISTRY_USERNAME` and `PIXI_OCI_REGISTRY_PASSWORD`), through bearer tokens
+//! or basic auth as the registry asks. Nothing of docker's or podman's is read or run, and nothing is unpacked:
+//! blobs are kept as they were served, named by their digest.
 
 use std::collections::BTreeMap;
 use std::fs;
@@ -52,8 +53,8 @@ pub enum RegistryError {
 
     #[error("{registry} refused access to {repository}")]
     #[diagnostic(help(
-        "log in to {registry} with `docker login`, `podman login` or a credential helper; pixi-oci \
-        reads their credentials"
+        "log in with `pixi auth login {registry} --username <name> --password <token>`, or set \
+        PIXI_OCI_REGISTRY_USERNAME and PIXI_OCI_REGISTRY_PASSWORD"
     ))]
     Unauthorized { registry: String, repository: String },
 
@@ -82,8 +83,9 @@ pub enum RegistryError {
         source: io::Error,
     },
 
-    #[error("the credential helper docker-credential-{helper} failed: {message}")]
-    Helper { helper: String, message: String },
+    #[error("cannot read pixi's credentials for {registry}: {message}")]
+    #[diagnostic(help("`pixi auth logout {registry}`, then log in again with `pixi auth login`"))]
+    Credentials { registry: String, message: String },
 }
 
 /// An image reference: `[registry/]repository[:tag][@digest]`, read as docker reads it.
@@ -223,37 +225,47 @@ impl CredentialSource for Anonymous {
     }
 }
 
-/// The credentials `docker login` and `podman login` keep: `REGISTRY_AUTH_FILE`, podman's `auth.json`, then
-/// docker's `config.json`, with its credential helpers.
-pub struct DockerConfig {
-    files: Vec<PathBuf>,
+/// The credentials `pixi auth login` keeps, read as pixi reads them: the file `RATTLER_AUTH_FILE` names, the
+/// operating system's keychain, `~/.rattler/credentials.json`, then `.netrc`. A user name and password is used as
+/// it is; a token alone is sent as the password, which registries such as GHCR take with any user name.
+pub struct PixiCredentials {
+    storage: Option<rattler_networking::AuthenticationStorage>,
 }
 
-impl DockerConfig {
+impl PixiCredentials {
     pub fn from_env() -> Self {
-        let env = |key: &str| std::env::var_os(key).map(PathBuf::from);
-        let home = env("HOME").or_else(|| env("USERPROFILE"));
-        let mut files = Vec::new();
-        files.extend(env("REGISTRY_AUTH_FILE"));
-        files.extend(env("XDG_RUNTIME_DIR").map(|dir| dir.join("containers/auth.json")));
-        files.extend(env("XDG_CONFIG_HOME").map(|dir| dir.join("containers/auth.json")));
-        files.extend(home.as_ref().map(|home| home.join(".config/containers/auth.json")));
-        files.extend(env("DOCKER_CONFIG").map(|dir| dir.join("config.json")));
-        files.extend(home.map(|home| home.join(".docker/config.json")));
-        DockerConfig { files }
+        PixiCredentials {
+            storage: rattler_networking::AuthenticationStorage::from_env_and_defaults().ok(),
+        }
     }
 }
 
-impl CredentialSource for DockerConfig {
+impl CredentialSource for PixiCredentials {
     fn credentials(&self, registry: &str) -> Result<Option<Credentials>, RegistryError> {
-        for file in &self.files {
-            let Ok(bytes) = fs::read(file) else { continue };
-            let Ok(config) = serde_json::from_slice::<Value>(&bytes) else {
-                continue;
+        let Some(storage) = &self.storage else {
+            return Ok(None);
+        };
+        for host in config_keys(registry).iter().map(|key| key_host(key)) {
+            let found = storage.get(host).map_err(|err| RegistryError::Credentials {
+                registry: registry.to_string(),
+                message: err.to_string(),
+            })?;
+            let credentials = match found {
+                Some(rattler_networking::Authentication::BasicHTTP { username, password }) => {
+                    Credentials { username, password }
+                }
+                Some(rattler_networking::Authentication::BearerToken(token)) => Credentials {
+                    username: "pixi-oci".to_string(),
+                    password: token,
+                },
+                Some(rattler_networking::Authentication::OAuth { access_token, .. }) => Credentials {
+                    username: "pixi-oci".to_string(),
+                    password: access_token,
+                },
+                // A conda token goes in a channel's URL, and S3 keys to a bucket: neither signs in to a registry.
+                _ => continue,
             };
-            if let Some(found) = from_config(&config, registry, run_helper)? {
-                return Ok(Some(found));
-            }
+            return Ok(Some(credentials));
         }
         Ok(None)
     }
@@ -304,7 +316,7 @@ impl CredentialSource for Chain {
     }
 }
 
-/// The names a registry is filed under in a docker config: Docker Hub has several.
+/// The names a registry is known by: Docker Hub has several.
 fn config_keys(registry: &str) -> Vec<String> {
     if registry == "docker.io" {
         [
@@ -330,85 +342,6 @@ fn key_host(key: &str) -> &str {
     key.split('/').next().unwrap_or(key)
 }
 
-/// Credentials for `registry` from one docker or podman config: a helper named for it, the `auths` entry, then the
-/// config's default credential store.
-fn from_config(
-    config: &Value,
-    registry: &str,
-    helper: impl Fn(&str, &str) -> Result<Option<Credentials>, RegistryError>,
-) -> Result<Option<Credentials>, RegistryError> {
-    let keys = config_keys(registry);
-    let hosts: Vec<&str> = keys.iter().map(|key| key_host(key)).collect();
-    let server = keys[0].as_str();
-    if let Some(helpers) = config["credHelpers"].as_object()
-        && let Some(name) = helpers
-            .iter()
-            .find(|(key, _)| hosts.contains(&key_host(key)))
-            .and_then(|(_, name)| name.as_str())
-    {
-        return helper(name, server);
-    }
-    if let Some(auths) = config["auths"].as_object() {
-        for (key, entry) in auths {
-            if !hosts.contains(&key_host(key)) {
-                continue;
-            }
-            if let Some(token) = entry["identitytoken"].as_str().filter(|token| !token.is_empty()) {
-                return Ok(Some(Credentials {
-                    username: "<token>".to_string(),
-                    password: token.to_string(),
-                }));
-            }
-            if let Some(auth) = entry["auth"].as_str()
-                && let Some(decoded) = base64_decode(auth)
-                && let Some((username, password)) = String::from_utf8(decoded).ok().and_then(|text| {
-                    text.split_once(':')
-                        .map(|(user, pass)| (user.to_string(), pass.to_string()))
-                })
-            {
-                return Ok(Some(Credentials { username, password }));
-            }
-        }
-    }
-    if let Some(store) = config["credsStore"].as_str().filter(|store| !store.is_empty()) {
-        return helper(store, server);
-    }
-    Ok(None)
-}
-
-/// Ask `docker-credential-<name>` for `server`'s credentials, as docker does.
-fn run_helper(name: &str, server: &str) -> Result<Option<Credentials>, RegistryError> {
-    let failed = |message: String| RegistryError::Helper {
-        helper: name.to_string(),
-        message,
-    };
-    let mut child = std::process::Command::new(format!("docker-credential-{name}"))
-        .arg("get")
-        .stdin(std::process::Stdio::piped())
-        .stdout(std::process::Stdio::piped())
-        .stderr(std::process::Stdio::piped())
-        .spawn()
-        .map_err(|err| failed(err.to_string()))?;
-    if let Some(mut stdin) = child.stdin.take() {
-        stdin
-            .write_all(server.as_bytes())
-            .map_err(|err| failed(err.to_string()))?;
-    }
-    let output = child.wait_with_output().map_err(|err| failed(err.to_string()))?;
-    if !output.status.success() {
-        // A helper with nothing stored for the server says so and fails; that is not an error.
-        return Ok(None);
-    }
-    let value: Value = serde_json::from_slice(&output.stdout).map_err(|err| failed(err.to_string()))?;
-    match (value["Username"].as_str(), value["Secret"].as_str()) {
-        (Some(username), Some(password)) if !password.is_empty() => Ok(Some(Credentials {
-            username: username.to_string(),
-            password: password.to_string(),
-        })),
-        _ => Ok(None),
-    }
-}
-
 const BASE64: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
 fn base64_encode(bytes: &[u8]) -> String {
@@ -426,23 +359,6 @@ fn base64_encode(bytes: &[u8]) -> String {
         }
     }
     out
-}
-
-fn base64_decode(text: &str) -> Option<Vec<u8>> {
-    let mut out = Vec::new();
-    let mut bits = 0u32;
-    let mut count = 0;
-    for byte in text.trim().bytes().filter(|b| *b != b'=') {
-        let value = BASE64.iter().position(|c| *c == byte)? as u32;
-        bits = (bits << 6) | value;
-        count += 6;
-        if count >= 8 {
-            count -= 8;
-            out.push((bits >> count) as u8);
-            bits &= (1 << count) - 1;
-        }
-    }
-    Some(out)
 }
 
 /// One layer of a pulled image, in the cache.
@@ -492,7 +408,7 @@ impl Registry {
     pub fn for_registry(root: PathBuf, registry: Option<&str>) -> Self {
         let credentials = Chain(vec![
             Box::new(EnvCredentials::from_env(registry)),
-            Box::new(DockerConfig::from_env()),
+            Box::new(PixiCredentials::from_env()),
         ]);
         Self::with(root, Box::new(credentials), ureq::Proxy::try_from_env())
     }
@@ -1454,60 +1370,43 @@ mod tests {
     }
 
     #[test]
-    fn credentials_come_from_docker_and_podman_configs() {
-        let auth = base64_encode(b"kevin:s3cret:with:colons");
-        let config = json!({
-            "auths": {
-                "https://index.docker.io/v1/": {"auth": auth},
-                "quay.io": {"identitytoken": "id-token"},
-                "ghcr.io": {"auth": "!!not base64"},
+    fn credentials_come_from_pixis_store() {
+        use rattler_networking::Authentication;
+        use rattler_networking::authentication_storage::backends::memory::MemoryStorage;
+        let mut storage = rattler_networking::AuthenticationStorage::empty();
+        storage.add_backend(std::sync::Arc::new(MemoryStorage::new()));
+        let store = |host: &str, auth: Authentication| storage.store(host, &auth).unwrap();
+        store(
+            "ghcr.io",
+            Authentication::BasicHTTP {
+                username: "kevin".to_string(),
+                password: "pat".to_string(),
             },
-            "credHelpers": {"registry.example.com": "fake"},
-            "credsStore": "store",
-        });
-        let helper = |name: &str, server: &str| {
-            Ok(Some(Credentials {
-                username: name.to_string(),
-                password: server.to_string(),
-            }))
-        };
-        let hub = from_config(&config, "docker.io", helper).unwrap().unwrap();
-        assert_eq!(
-            (hub.username.as_str(), hub.password.as_str()),
-            ("kevin", "s3cret:with:colons")
         );
-        let quay = from_config(&config, "quay.io", helper).unwrap().unwrap();
-        assert_eq!(
-            (quay.username.as_str(), quay.password.as_str()),
-            ("<token>", "id-token")
+        store("quay.io", Authentication::BearerToken("robot-token".to_string()));
+        store(
+            "index.docker.io",
+            Authentication::BasicHTTP {
+                username: "hub".to_string(),
+                password: "secret".to_string(),
+            },
         );
-        let helped = from_config(&config, "registry.example.com", helper).unwrap().unwrap();
+        store("conda.example.com", Authentication::CondaToken("t".to_string()));
+        let pixi = PixiCredentials { storage: Some(storage) };
+        let found = |registry: &str| pixi.credentials(registry).unwrap().map(|c| (c.username, c.password));
+        assert_eq!(found("ghcr.io"), Some(("kevin".to_string(), "pat".to_string())));
         assert_eq!(
-            (helped.username.as_str(), helped.password.as_str()),
-            ("fake", "registry.example.com")
+            found("quay.io"),
+            Some(("pixi-oci".to_string(), "robot-token".to_string()))
         );
-        // An entry that cannot be read falls through to the default store.
-        assert_eq!(
-            from_config(&config, "ghcr.io", helper).unwrap().unwrap().username,
-            "store"
-        );
-        assert_eq!(from_config(&json!({}), "ghcr.io", helper).unwrap(), None);
-        assert!(!format!("{hub:?}").contains("s3cret"));
-
-        let dir = tempfile::tempdir().unwrap();
-        let file = dir.path().join("config.json");
-        fs::write(
-            &file,
-            serde_json::to_vec(&json!({"auths": {"ghcr.io": {"auth": base64_encode(b"a:b")}}})).unwrap(),
-        )
-        .unwrap();
-        let docker = DockerConfig {
-            files: vec![dir.path().join("missing.json"), dir.path().join("bad.json"), file],
-        };
-        fs::write(dir.path().join("bad.json"), b"{").unwrap();
-        assert_eq!(docker.credentials("ghcr.io").unwrap().unwrap().username, "a");
-        assert_eq!(docker.credentials("quay.io").unwrap(), None);
-        assert!(!DockerConfig::from_env().files.is_empty() || std::env::var_os("HOME").is_none());
+        // Docker Hub is found under any of the names it is known by.
+        assert_eq!(found("docker.io"), Some(("hub".to_string(), "secret".to_string())));
+        // A conda token is for a channel's URL, not a registry.
+        assert_eq!(found("conda.example.com"), None);
+        assert_eq!(found("registry.example.com"), None);
+        assert_eq!(PixiCredentials { storage: None }.credentials("ghcr.io").unwrap(), None);
+        // The real store, as pixi reads it on this machine, answers without failing.
+        assert!(PixiCredentials::from_env().credentials("registry.invalid").is_ok());
         assert!(Anonymous.credentials("x").unwrap().is_none());
     }
 
@@ -1545,24 +1444,11 @@ mod tests {
     }
 
     #[test]
-    fn a_missing_credential_helper_is_an_error_that_names_it() {
-        let err = run_helper("pixi-oci-test-no-such-helper", "example.com").unwrap_err();
-        assert!(
-            err.to_string()
-                .contains("docker-credential-pixi-oci-test-no-such-helper"),
-            "{err}"
-        );
-    }
-
-    #[test]
     fn base64_and_challenges_are_read_like_the_specs_say() {
-        for text in ["", "p", "pi", "pix", "pixi", "pixi-", "pixi-o"] {
-            assert_eq!(base64_decode(&base64_encode(text.as_bytes())).unwrap(), text.as_bytes());
-        }
         assert_eq!(base64_encode(b"foobar"), "Zm9vYmFy");
         assert_eq!(base64_encode(b"pi"), "cGk=");
-        assert_eq!(base64_decode("cGk="), Some(b"pi".to_vec()));
-        assert_eq!(base64_decode("@@"), None);
+        assert_eq!(base64_encode(b""), "");
+        assert_eq!(base64_encode(b"pix"), "cGl4");
         let (scheme, params) = parse_challenge(
             r#"Bearer realm="https://auth.docker.io/token",service="registry.docker.io",scope="repository:library/debian:pull""#,
         );

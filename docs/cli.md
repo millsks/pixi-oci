@@ -149,10 +149,19 @@ Because layers are named by their digest, pushing a rebuilt image sends only the
 package and a push sends its layer and the config, nothing else. When the image was built on a base that lives on
 the same registry, the base's layers are mounted from its repository rather than uploaded.
 
-**Credentials.** pixi-oci uses what `docker login` and `podman login` store (`REGISTRY_AUTH_FILE`, podman's
-`auth.json`, docker's `config.json` and its credential helpers). In CI, set `PIXI_OCI_REGISTRY_USERNAME` and
-`PIXI_OCI_REGISTRY_PASSWORD`: they are given only to the push's destination, or to `PIXI_OCI_REGISTRY` when that is
-set, never to another registry, such as a base image's. In GitHub Actions:
+**Credentials.** pixi-oci uses pixi's own: log in once with `pixi auth login`, which stores them in the operating
+system's keychain (or `~/.rattler/credentials.json`), on Windows, macOS and Linux alike. No Docker or Podman is needed
+or read.
+
+```sh
+pixi auth login ghcr.io --username <your-user> --password <token>
+pixi oci push app.tar ghcr.io/<your-user>/app:1.0
+```
+
+For GHCR the token is a GitHub personal access token with `write:packages`; `pixi auth login ghcr.io --token <token>`
+works as well. In CI, set `PIXI_OCI_REGISTRY_USERNAME` and `PIXI_OCI_REGISTRY_PASSWORD` instead: they are given only
+to the push's destination, or to `PIXI_OCI_REGISTRY` when that is set, never to another registry, such as a base
+image's. In GitHub Actions:
 
 ```yaml
 permissions:

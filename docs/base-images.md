@@ -65,9 +65,15 @@ The manifest records the base with the image spec's own annotations, `org.openco
 ## Registries and credentials
 
 Bases are pulled over the registry API with no Docker or Podman, anonymously when the registry allows it. For a
-private registry, pixi-oci uses the credentials `docker login` and `podman login` keep, in this order:
-`REGISTRY_AUTH_FILE`, podman's `auth.json`, then docker's `config.json`, including its credential helpers
-(`credHelpers`, `credsStore`). Proxies come from `HTTPS_PROXY`, `HTTP_PROXY` and `NO_PROXY`.
+private registry, pixi-oci uses pixi's own credentials, the ones `pixi auth login` stores, read as pixi reads them:
+the file `RATTLER_AUTH_FILE` names, the operating system's keychain (macOS Keychain, Windows Credential Manager, the
+Linux secret service), `~/.rattler/credentials.json`, then `.netrc`. Nothing of Docker's or Podman's is read or run.
+
+```sh
+pixi auth login registry.example.com --username <your-user> --password <token>
+```
+
+Proxies come from `HTTPS_PROXY`, `HTTP_PROXY` and `NO_PROXY`.
 
 Every manifest, config and layer is checked against its digest and kept in the cache (`--cache-dir`) under
 `blobs/sha256`, so a base is downloaded once.
