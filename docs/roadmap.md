@@ -30,6 +30,8 @@ scope and acceptance criteria live and its pull requests are linked. Comment the
       podman's credentials; UBI 9 minimal and Debian 12 slim documented and run in CI ([#12](https://github.com/millsks/pixi-oci/issues/12))
 - [x] **PyPI wheels**: installed into the top layer as pip and uv install them, checked against `pixi install`
       ([#17](https://github.com/millsks/pixi-oci/issues/17))
+- [x] **Examples**: 14 real pixi workspaces, from python alone to a few hundred packages, planned on every pull
+      request and built and checked in CI ([#22](https://github.com/millsks/pixi-oci/issues/22))
 
 ## Next
 
@@ -49,8 +51,6 @@ scope and acceptance criteria live and its pull requests are linked. Comment the
 
 - [ ] `pixi oci diff`: two images compared layer by layer, with the packages behind each change and what a rebuild
       re-uploads ([#26](https://github.com/millsks/pixi-oci/issues/26))
-- [ ] An `examples/` directory of real pixi workspaces, small to a few hundred packages, planned in CI and measured
-      ([#22](https://github.com/millsks/pixi-oci/issues/22))
 - [ ] Multi-platform image indexes: `linux-64` and `linux-aarch64` under one tag
       ([#15](https://github.com/millsks/pixi-oci/issues/15))
 - [ ] pixi's activation variables, and an entrypoint from a pixi task

@@ -209,10 +209,10 @@ Every item has an issue labelled [`roadmap`](https://github.com/millsks/pixi-oci
 - [x] `check`: will the image run, checked without running it ([#11](https://github.com/millsks/pixi-oci/issues/11))
 - [x] Base images with `--base`, pinned by digest ([#12](https://github.com/millsks/pixi-oci/issues/12))
 - [x] PyPI wheels in the top layer ([#17](https://github.com/millsks/pixi-oci/issues/17))
+- [x] [Examples](examples/README.md) of real pixi workspaces, small to large ([#22](https://github.com/millsks/pixi-oci/issues/22))
 - [ ] `push` to any registry ([#13](https://github.com/millsks/pixi-oci/issues/13))
 - [ ] `run`: rootless containers on Linux and in CI ([#14](https://github.com/millsks/pixi-oci/issues/14))
 - [ ] `diff`: two images compared layer by layer ([#26](https://github.com/millsks/pixi-oci/issues/26))
-- [ ] Examples of real pixi workspaces, small to large ([#22](https://github.com/millsks/pixi-oci/issues/22))
 - [ ] Multi-platform image indexes ([#15](https://github.com/millsks/pixi-oci/issues/15))
 - [ ] pixi's activation variables and an entrypoint from a task
       ([#16](https://github.com/millsks/pixi-oci/issues/16))

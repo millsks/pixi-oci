@@ -1,0 +1,11 @@
+# A Streamlit dashboard with charts.
+[workspace]
+name = "streamlit-dashboard"
+channels = ["conda-forge"]
+platforms = ["linux-64", "linux-aarch64"]
+
+[dependencies]
+python = "3.13.*"
+streamlit = "*"
+altair = "*"
+pandas = "*"

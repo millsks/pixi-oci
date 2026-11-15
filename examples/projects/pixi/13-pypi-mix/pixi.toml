@@ -1,0 +1,14 @@
+# conda python with PyPI wheels on top, entry points from wheels included.
+[workspace]
+name = "pypi-mix"
+channels = ["conda-forge"]
+platforms = ["linux-64", "linux-aarch64"]
+
+[dependencies]
+python = "3.13.*"
+requests = "*"
+
+[pypi-dependencies]
+httpx = "*"
+rich-cli = "*"
+ruff = "*"

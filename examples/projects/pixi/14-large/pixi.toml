@@ -1,0 +1,22 @@
+# Data science, machine learning, geospatial and Jupyter: a few hundred packages.
+[workspace]
+name = "large"
+channels = ["conda-forge"]
+platforms = ["linux-64", "linux-aarch64"]
+
+[dependencies]
+python = "3.13.*"
+jupyterlab = "*"
+pandas = "*"
+polars = "*"
+scipy = "*"
+scikit-learn = "*"
+matplotlib = "*"
+seaborn = "*"
+pytorch = "*"
+dask = "*"
+sqlalchemy = "*"
+pyarrow = "*"
+statsmodels = "*"
+xgboost = "*"
+gdal = "*"

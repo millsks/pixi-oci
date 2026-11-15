@@ -29,6 +29,7 @@ One crate, `pixi-oci`, a binary pixi runs as `pixi oci`: it builds OCI container
 | `src/read.rs` | an image read back: a layout directory, or a `.tar` read in place by offset |
 | `src/validate.rs` | `validate`: an image checked against the OCI image spec, every problem collected |
 | `tests/cli.rs` | the binary end to end, against `tests/fixtures/workspace/pixi.lock` |
+| `tests/examples.rs` | every example under `examples/projects/pixi` plans; with the network, locks are current and a few build and check |
 | `tests/network.rs` | a real build from conda-forge, unpacked and run; only with `PIXI_OCI_NETWORK_TESTS=1` on Linux |
 
 ## Commands
@@ -49,6 +50,8 @@ Everything runs through pixi.
 
 ## Off-limits and traps
 
+- `examples/projects/pixi/*/pixi.lock` are written by pixi: re-lock one with `pixi run examples-lock NAME`, never edit
+  it. `tests/examples.rs` checks each against its manifest when the network tests run.
 - `tests/fixtures/workspace/pixi.lock` is written by pixi: regenerate it with `pixi run fixture`, never edit it.
   Tests assert on its package counts, so re-locking can mean updating them.
 - The four rattler crates (`rattler`, `rattler_conda_types`, `rattler_lock`, `rattler_package_streaming`) are pinned
