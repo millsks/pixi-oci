@@ -20,6 +20,7 @@ mod parity;
 pub mod plan;
 pub mod platform;
 pub mod read;
+pub mod registry;
 pub mod report;
 pub mod stream;
 pub mod target;
