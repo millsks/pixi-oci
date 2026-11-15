@@ -328,22 +328,27 @@ fn validate_reports_problems_and_fails() {
 #[test]
 fn validate_refuses_what_is_not_an_image() {
     let dir = tempfile::tempdir().unwrap();
-    pixi_oci()
-        .arg("validate")
-        .arg(dir.path().join("missing.tar"))
-        .assert()
-        .failure()
-        .stderr(predicate::str::contains("does not exist"));
+    let stderr = |path: &std::path::Path| {
+        let output = pixi_oci().arg("validate").arg(path).output().unwrap();
+        assert!(!output.status.success());
+        // miette wraps lines at the terminal width and frames them, so a message's words are compared without
+        // either: where it wraps depends on the path's length.
+        String::from_utf8_lossy(&output.stderr)
+            .split(|c: char| c.is_whitespace() || "│╰─▶×".contains(c))
+            .filter(|word| !word.is_empty())
+            .collect::<Vec<_>>()
+            .join(" ")
+    };
+    assert!(stderr(&dir.path().join("missing.tar")).contains("does not exist"));
     let text = dir.path().join("notes.txt");
     std::fs::write(
         &text,
         "not an archive, just some text that is long enough to fill a header",
     )
     .unwrap();
-    pixi_oci()
-        .arg("validate")
-        .arg(&text)
-        .assert()
-        .failure()
-        .stderr(predicate::str::contains("neither an OCI image layout directory"));
+    let message = stderr(&text);
+    assert!(
+        message.contains("is neither an OCI image layout directory nor a .tar archive of one"),
+        "{message}"
+    );
 }
