@@ -24,13 +24,11 @@ scope and acceptance criteria live and its pull requests are linked. Comment the
       ([#25](https://github.com/millsks/pixi-oci/issues/25))
 - [x] **`inspect`**: an image's settings and layers, with the packages each layer holds, as text, JSON or the exact
       stored documents ([#24](https://github.com/millsks/pixi-oci/issues/24))
+- [x] **`check`**: whether an image will run, without running it, on any OS: architecture, loader and glibc,
+      libraries by the loader's own search, shebangs, placeholders, the entrypoint ([#11](https://github.com/millsks/pixi-oci/issues/11))
 
 ## Next
 
-- [ ] **`pixi oci check`.** Static tests on any OS, nothing executed: every binary is a Linux ELF for the image's
-      architecture, its loader and libraries are in the image, shebangs name interpreters that exist, no placeholder
-      is left, and the entrypoint and `PATH` are right. It runs `validate` first, and would flag today's missing-glibc
-      failure. ([#11](https://github.com/millsks/pixi-oci/issues/11))
 - [ ] **Base images.** `--base` pulls a glibc base image (a distroless or UBI image) by digest, so python and the
       rest of conda-forge run. ([#12](https://github.com/millsks/pixi-oci/issues/12))
 - [ ] **Push.** `pixi oci push` sends the image to any registry, with docker-style credentials.

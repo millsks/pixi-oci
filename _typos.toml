@@ -4,3 +4,5 @@ extend-exclude = ["Cargo.lock", "pixi.lock", "tests/fixtures/**/pixi.lock"]
 [default.extend-words]
 # PyPI package name used in tests
 certifi = "certifi"
+# conda-build fills the prefix with `_placehold_placehold_...`; pixi oci check looks for it
+placehold = "placehold"

@@ -2046,6 +2046,7 @@ dependencies = [
  "clap",
  "flate2",
  "miette",
+ "object",
  "predicates",
  "rattler",
  "rattler_conda_types",

@@ -27,6 +27,7 @@ pixi-oci is one Rust binary, organized as a short pipeline. Each stage has one m
 | `target.rs` | The install target: the prefix in the image, the platform, and python for noarch packages. |
 | `layer.rs` | The layer writer: a GNU tar, gzip-compressed, every entry root-owned with one time and one of three modes, hashed twice on the way (diff_id and digest). |
 | `image.rs` | The image config, manifest, OCI layout, docker-compatible `manifest.json`, and the `.tar` archive. |
+| `check.rs` | `check`: the layers applied into a map of facts (modes, ELF dynamic sections, shebangs, placeholders), then the loader's and the shell's lookups run inside it. |
 | `inspect.rs` | `inspect`: an image's settings and layers, with each layer's packages read from its history line. |
 | `read.rs` | An image read back: a layout directory, or a `.tar` read in place by each file's offset, never unpacked. |
 | `validate.rs` | `validate`: every blob, digest, size, media type and `diff_id` of an image checked against the OCI image spec, with every problem collected. |

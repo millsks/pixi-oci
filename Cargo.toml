@@ -25,6 +25,8 @@ path = "src/main.rs"
 clap = { version = "4.6.7", features = ["derive"] }
 flate2 = "1.1.10"
 miette = { version = "7.6.0", features = ["fancy"] }
+# ELF reading for `check`; already in the build through miette's backtrace, with these same features.
+object = { version = "0.40.0", default-features = false, features = ["read_core", "elf", "std"] }
 rattler = { version = "=0.55.8", default-features = false }
 rattler_conda_types = { version = "=0.58.4", default-features = false }
 rattler_digest = { version = "=2.1.0", default-features = false }

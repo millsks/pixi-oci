@@ -90,6 +90,15 @@ pixi oci inspect hello.tar --packages   # every package of every shared layer
 pixi oci inspect hello.tar --raw config # the full image config, exactly as stored
 ```
 
+Check that it would run, without running it:
+
+```sh
+pixi oci check hello.tar
+```
+
+It reads every binary and script. Expect a `glibc` problem for now: conda packages use the system's glibc, and these
+images have no base image yet to provide it ([roadmap](roadmap.md)).
+
 It is a standard OCI image, so any OCI tool reads it as well, with no daemon:
 
 ```sh

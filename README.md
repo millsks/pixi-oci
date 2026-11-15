@@ -152,6 +152,17 @@ $ pixi oci validate app.tar --format json
 The images are standard, so `crane validate --tarball app.tar` and `skopeo copy oci-archive:app.tar ...` accept them
 too.
 
+### `pixi oci check`
+
+Checks that an image would run, without running it, on any OS: every ELF file is for the image's architecture, its
+loader and libraries are where the loader looks (`RPATH`, `RUNPATH`, `LD_LIBRARY_PATH`, the system directories),
+executable scripts' interpreters exist, no conda placeholder is left, and the entrypoint is on `PATH`. It runs
+`validate` first and exits `1` on any problem. Until base images land, every image reports a `glibc` problem.
+
+```console
+$ pixi oci check app.tar --format json
+```
+
 ### `pixi oci inspect`
 
 Shows an image's platform, digests, entrypoint, env and labels, then a row per layer with its size, digest and the
@@ -192,7 +203,7 @@ Every item has an issue labelled [`roadmap`](https://github.com/millsks/pixi-oci
 - [x] Grouped layers and `--layers` ([#10](https://github.com/millsks/pixi-oci/issues/10))
 - [x] `validate`: an image checked against the OCI spec ([#25](https://github.com/millsks/pixi-oci/issues/25))
 - [x] `inspect`: an image's config, layers and packages ([#24](https://github.com/millsks/pixi-oci/issues/24))
-- [ ] `check`: static image checks on any OS ([#11](https://github.com/millsks/pixi-oci/issues/11))
+- [x] `check`: will the image run, checked without running it ([#11](https://github.com/millsks/pixi-oci/issues/11))
 - [ ] Base images with `--base` ([#12](https://github.com/millsks/pixi-oci/issues/12))
 - [ ] `push` to any registry ([#13](https://github.com/millsks/pixi-oci/issues/13))
 - [ ] `run`: rootless containers on Linux and in CI ([#14](https://github.com/millsks/pixi-oci/issues/14))
