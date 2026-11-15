@@ -565,8 +565,10 @@ mod tests {
             })
             .unwrap_or_default();
         for (path, content, mode) in files {
+            // Made on Unix, as Linux wheels are: on Windows the crate would write DOS, which has no mode bits.
             let options = zip::write::SimpleFileOptions::default()
                 .compression_method(zip::CompressionMethod::Deflated)
+                .system(zip::System::Unix)
                 .unix_permissions(*mode);
             zip.start_file(*path, options).unwrap();
             zip.write_all(content).unwrap();
@@ -578,7 +580,9 @@ mod tests {
             ));
         }
         rows.push_str(&format!("{dist_info}/RECORD,,\n"));
-        let options = zip::write::SimpleFileOptions::default().unix_permissions(0o644);
+        let options = zip::write::SimpleFileOptions::default()
+            .system(zip::System::Unix)
+            .unix_permissions(0o644);
         zip.start_file(format!("{dist_info}/RECORD"), options).unwrap();
         zip.write_all(record.unwrap_or(&rows).as_bytes()).unwrap();
         zip.finish().unwrap().into_inner()

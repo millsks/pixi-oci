@@ -259,9 +259,10 @@ fn an_image_on_each_base_runs_its_python() {
 }
 
 /// Every file under `dir`, relative to it, with its sha256, leaving out what an installer writes about itself and
-/// what python writes when it runs.
-fn tree(dir: &Path) -> std::collections::BTreeMap<String, String> {
-    fn walk(root: &Path, dir: &Path, out: &mut std::collections::BTreeMap<String, String>) {
+/// what python writes when it runs. The environment's own path, `prefix`, is read as `<prefix>` in every file, since
+/// two installs into two places write their own place into files such as conda's `conda-site.pth`.
+fn tree(dir: &Path, prefix: &Path) -> std::collections::BTreeMap<String, String> {
+    fn walk(root: &Path, dir: &Path, prefix: &[u8], out: &mut std::collections::BTreeMap<String, String>) {
         for entry in fs::read_dir(dir).unwrap() {
             let path = entry.unwrap().path();
             let relative = path.strip_prefix(root).unwrap().to_string_lossy().replace('\\', "/");
@@ -272,9 +273,9 @@ fn tree(dir: &Path) -> std::collections::BTreeMap<String, String> {
                 continue;
             }
             if path.is_dir() {
-                walk(root, &path, out);
+                walk(root, &path, prefix, out);
             } else {
-                let bytes = fs::read(&path).unwrap();
+                let bytes = replace(&fs::read(&path).unwrap(), prefix, b"<prefix>");
                 out.insert(
                     relative,
                     pixi_oci::fetch::hex(&<sha2::Sha256 as sha2::Digest>::digest(&bytes)),
@@ -283,7 +284,23 @@ fn tree(dir: &Path) -> std::collections::BTreeMap<String, String> {
         }
     }
     let mut out = std::collections::BTreeMap::new();
-    walk(dir, dir, &mut out);
+    walk(dir, dir, prefix.to_string_lossy().as_bytes(), &mut out);
+    out
+}
+
+/// `bytes` with every `from` replaced by `to`.
+fn replace(bytes: &[u8], from: &[u8], to: &[u8]) -> Vec<u8> {
+    let mut out = Vec::with_capacity(bytes.len());
+    let mut i = 0;
+    while i < bytes.len() {
+        if !from.is_empty() && bytes[i..].starts_with(from) {
+            out.extend_from_slice(to);
+            i += from.len();
+        } else {
+            out.push(bytes[i]);
+            i += 1;
+        }
+    }
     out
 }
 
@@ -349,8 +366,8 @@ fn wheels_install_as_pixi_installs_them() {
     unpack_image(&archive, dir.path());
 
     let site = "lib/python3.13/site-packages";
-    let ours = tree(&prefix.join(site));
-    let theirs = tree(&reference.join(site));
+    let ours = tree(&prefix.join(site), &prefix);
+    let theirs = tree(&reference.join(site), &reference);
     let only_ours: Vec<&String> = ours.keys().filter(|path| !theirs.contains_key(*path)).collect();
     let only_theirs: Vec<&String> = theirs.keys().filter(|path| !ours.contains_key(*path)).collect();
     assert!(
