@@ -1,0 +1,17 @@
+# The workspace tests/fixtures/workspace/pixi.lock was locked from. Regenerate with `pixi lock` here.
+[workspace]
+name = "fixture"
+channels = ["conda-forge"]
+platforms = ["linux-64", "linux-aarch64", "osx-arm64"]
+
+[dependencies]
+python = "3.13.*"
+
+[pypi-dependencies]
+six = "==1.17.0"
+
+[feature.slim.dependencies]
+zlib = "*"
+
+[environments]
+slim = { features = ["slim"], no-default-feature = true }

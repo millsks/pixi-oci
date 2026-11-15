@@ -1,0 +1,20 @@
+# Cargo
+target/
+**/*.rs.bk
+*.pdb
+
+# pixi environments
+.pixi/*
+!.pixi/config.toml
+
+# Images and layouts a local run writes
+/*.tar
+/oci-layout/
+
+# Local Claude overrides and worktrees
+CLAUDE.local.md
+.claude/worktrees/
+
+# Environment files
+.env
+.env.*

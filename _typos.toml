@@ -1,0 +1,6 @@
+[files]
+extend-exclude = ["Cargo.lock", "pixi.lock", "tests/fixtures/**/pixi.lock"]
+
+[default.extend-words]
+# PyPI package name used in tests
+certifi = "certifi"
