@@ -1502,12 +1502,15 @@ pub(crate) mod tests {
             let dir = tempfile::tempdir().unwrap();
             let report = check(&built(dir.path(), name), None).unwrap();
             assert!(!report.ok);
-            assert_eq!(
-                kinds(&report.problems),
-                ["glibc", "shebang", "placeholder"],
-                "{}",
-                report.text()
-            );
+            // Test packages carry executable bits only where the host's file system has them; real conda archives
+            // always do. Without them the script is not run, so it has no shebang to check, and the entrypoint is
+            // not executable.
+            let expected: &[&str] = if cfg!(unix) {
+                &["glibc", "shebang", "placeholder"]
+            } else {
+                &["glibc", "placeholder", "entrypoint"]
+            };
+            assert_eq!(kinds(&report.problems), expected, "{}", report.text());
             assert!(report.notes.is_empty(), "{:#?}", report.notes);
             assert_eq!(report.platform.as_deref(), Some("linux/amd64"));
             assert_eq!(report.checked.elf, 2);
@@ -1528,7 +1531,9 @@ pub(crate) mod tests {
             );
             let json: serde_json::Value = serde_json::from_str(&report.json()).unwrap();
             assert_eq!(json["ok"], false);
-            assert_eq!(json["problems"][1]["paths"][0], "/opt/env/bin/run");
+            if cfg!(unix) {
+                assert_eq!(json["problems"][1]["paths"][0], "/opt/env/bin/run");
+            }
         }
     }
 
