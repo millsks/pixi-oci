@@ -828,33 +828,33 @@ workspaces, small to large, each with its lockfile and a README on how to build,
 <tr>
 <td><a href="https://github.com/millsks/pixi-oci/tree/main/examples/projects/pixi/01-hello-python"><code>01-hello-python</code></a></td>
 <td>python alone</td>
-<td>22 conda</td>
-<td>6</td>
-<td>44.9 MiB</td>
+<td>27 conda</td>
+<td>7</td>
+<td>46.1 MiB</td>
 <td><code>python</code></td>
 </tr>
 <tr>
 <td><a href="https://github.com/millsks/pixi-oci/tree/main/examples/projects/pixi/02-cli-tool"><code>02-cli-tool</code></a></td>
 <td>a noarch python CLI with entry points (HTTPie)</td>
-<td>41 conda</td>
+<td>46 conda</td>
 <td>8</td>
-<td>48.8 MiB</td>
+<td>50.0 MiB</td>
 <td><code>http</code></td>
 </tr>
 <tr>
 <td><a href="https://github.com/millsks/pixi-oci/tree/main/examples/projects/pixi/03-flask"><code>03-flask</code></a></td>
 <td>Flask served by gunicorn</td>
-<td>32 conda</td>
+<td>37 conda</td>
 <td>7</td>
-<td>46.6 MiB</td>
+<td>47.9 MiB</td>
 <td><code>gunicorn</code></td>
 </tr>
 <tr>
 <td><a href="https://github.com/millsks/pixi-oci/tree/main/examples/projects/pixi/04-fastapi"><code>04-fastapi</code></a></td>
 <td>FastAPI run by uvicorn</td>
-<td>97 conda</td>
-<td>14</td>
-<td>62.6 MiB</td>
+<td>102 conda</td>
+<td>15</td>
+<td>63.8 MiB</td>
 <td><code>uvicorn</code></td>
 </tr>
 <tr>
@@ -892,9 +892,9 @@ workspaces, small to large, each with its lockfile and a README on how to build,
 <tr>
 <td><a href="https://github.com/millsks/pixi-oci/tree/main/examples/projects/pixi/09-streamlit-dashboard"><code>09-streamlit-dashboard</code></a></td>
 <td>Streamlit with altair</td>
-<td>155 conda</td>
+<td>156 conda</td>
 <td>34</td>
-<td>161.6 MiB</td>
+<td>162.4 MiB</td>
 <td><code>streamlit</code></td>
 </tr>
 <tr>
@@ -908,25 +908,25 @@ workspaces, small to large, each with its lockfile and a README on how to build,
 <tr>
 <td><a href="https://github.com/millsks/pixi-oci/tree/main/examples/projects/pixi/11-machine-learning"><code>11-machine-learning</code></a></td>
 <td>xgboost, lightgbm, scikit-learn</td>
-<td>48 conda</td>
-<td>16</td>
-<td>137.0 MiB</td>
+<td>53 conda</td>
+<td>17</td>
+<td>138.2 MiB</td>
 <td><code>python</code></td>
 </tr>
 <tr>
 <td><a href="https://github.com/millsks/pixi-oci/tree/main/examples/projects/pixi/12-deep-learning"><code>12-deep-learning</code></a></td>
 <td>PyTorch on the CPU, torchvision</td>
-<td>83 conda</td>
+<td>84 conda</td>
 <td>25</td>
-<td>327.2 MiB</td>
+<td>328.0 MiB</td>
 <td><code>python</code></td>
 </tr>
 <tr>
 <td><a href="https://github.com/millsks/pixi-oci/tree/main/examples/projects/pixi/13-pypi-mix"><code>13-pypi-mix</code></a></td>
 <td>conda python with PyPI wheels on top (httpx, rich-cli, ruff)</td>
-<td>30 conda + 14 PyPI</td>
-<td>8</td>
-<td>45.6 MiB</td>
+<td>35 conda + 14 PyPI</td>
+<td>9</td>
+<td>46.8 MiB</td>
 <td><code>ruff</code></td>
 </tr>
 <tr>
@@ -945,8 +945,9 @@ Debian 12 slim). Even the largest, 385 packages, plans into 84 layers, well unde
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>pixi<span class="w"> </span>run<span class="w"> </span>examples-plan
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>pixi<span class="w"> </span>run<span class="w"> </span>examples-build<span class="w"> </span><span class="m">03</span>-flask<span class="w"> </span>gunicorn
 </code></pre></div>
-<p>Each example's README says what <a href="../cli/#pixi-oci-check"><code>check</code></a> reports for it: for every python environment, tk's
-<code>libX11.so.6</code>, which only <code>tkinter</code> needs.</p>
+<p>On <code>debian:bookworm-slim</code>, the default base of <code>examples-build</code>, the examples <a href="../cli/#pixi-oci-check"><code>check</code></a> clean,
+except the R and Node.js ones, whose packages ship a few things <code>check</code> rightly names; each example's README says
+what. Every python example includes <code>xorg-libx11</code>, since conda-forge's python depends on tk, which links to X11.</p>
 
 
 
