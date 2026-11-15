@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="pixi-oci">
+  <rect x="2" y="2" width="60" height="60" rx="14" fill="#0f172a"/>
+  <!-- Three stacked layers: an image built one package at a time. -->
+  <path d="M32 14 L50 23 L32 32 L14 23 Z" fill="#5eead4"/>
+  <path d="M14 31 L32 40 L50 31" fill="none" stroke="#2dd4bf" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M14 40 L32 49 L50 40" fill="none" stroke="#0d9488" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+</svg>

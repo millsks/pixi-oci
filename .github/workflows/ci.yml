@@ -138,6 +138,12 @@ jobs:
         with:
           name: digest-${{ matrix.os }}
           path: digest-*.txt
+      # The release binary, for trying pixi-oci before there is a release (docs/installation.md).
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pixi-oci-${{ matrix.os }}
+          path: target/release/pixi-oci${{ runner.os == 'Windows' && '.exe' || '' }}
+          retention-days: 14
 
   same-digest:
     name: Same image on every host
@@ -160,11 +166,23 @@ jobs:
           done
           exit $status
 
+  docs:
+    name: Docs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: prefix-dev/setup-pixi@v0.8.1
+        with:
+          environments: docs
+          cache: true
+      - name: Build the site strictly
+        run: pixi run -e docs docs-build
+
   # The one check a branch protection rule needs to require.
   result:
     name: CI result
     if: ${{ always() }}
-    needs: [lint, test, coverage, deny, msrv, digest, same-digest]
+    needs: [lint, test, coverage, deny, msrv, digest, same-digest, docs]
     runs-on: ubuntu-latest
     steps:
       - name: Every job passed
