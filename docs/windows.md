@@ -36,11 +36,13 @@ or a VM. Without those:
 | `pixi oci build`, for `linux-64` or `linux-aarch64` | Yes |
 | `pixi oci validate` | Yes |
 | `pixi oci inspect` | Yes |
+| `pixi oci check`: will it run? | Yes: it reads the binaries and scripts, and runs nothing |
 | Other OCI tools (`skopeo inspect`, `crane validate`) | Yes, with those tools installed |
 | Run the image | No: it needs a Linux kernel. CI runs it for you. |
 
-`pixi oci check`, a static check of an image that runs nothing and so works on Windows, is on the
-[roadmap](roadmap.md), as is a rootless `pixi oci run` for Linux and CI.
+`pixi oci check` tells you, on Windows, whether the image would run: a missing loader or library, a script whose
+interpreter is not there, an entrypoint not on `PATH`. A rootless `pixi oci run` for Linux and CI is on the
+[roadmap](roadmap.md).
 
 ## Paths
 

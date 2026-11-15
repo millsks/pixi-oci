@@ -368,3 +368,30 @@ fn inspect_refuses_what_is_not_an_image() {
         .code(2)
         .stderr(predicate::str::contains("cannot be used with"));
 }
+
+#[test]
+fn check_validates_first_and_fails() {
+    let dir = tempfile::tempdir().unwrap();
+    pixi_oci()
+        .arg("check")
+        .arg(dir.path())
+        .assert()
+        .failure()
+        .stdout(predicate::str::contains("2 problems in 0 files"))
+        .stdout(predicate::str::contains("note: skipped"));
+    let output = pixi_oci()
+        .arg("check")
+        .arg(dir.path())
+        .args(["--format", "json"])
+        .output()
+        .unwrap();
+    assert!(!output.status.success());
+    let report: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(report["problems"][0]["kind"], "spec");
+    pixi_oci()
+        .arg("check")
+        .arg(dir.path().join("missing.tar"))
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("does not exist"));
+}

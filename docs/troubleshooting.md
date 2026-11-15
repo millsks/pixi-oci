@@ -85,7 +85,12 @@ pixi-oci prints them, with the variable parts in angle brackets.
 
 **`exec /opt/env/bin/python: no such file or directory`** from `docker run` or `podman run`
 :   The program exists; its loader does not. Images have no base yet, so there is no glibc. Base images are the next
-    milestone on the [roadmap](roadmap.md).
+    milestone on the [roadmap](roadmap.md). `pixi oci check` reports this, on any OS, before you load the image.
+
+**`pixi oci check` reports `library: libX11.so.6 ...`, or another library**
+:   A binary in the environment links to a library no package in the environment provides. conda-forge's `tk`, for
+    one, links to `libX11.so.6`, so `tkinter` needs `xorg-libx11` in the environment (`pixi add xorg-libx11`). If
+    nothing in the image uses that binary, the image runs without it.
 
 **`pixi oci` is an unknown command**
 :   pixi cannot see the executable: see [Installation](installation.md#check-it).

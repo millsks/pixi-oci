@@ -80,6 +80,47 @@ their `diff_id` is not checked.
 The image is a standard OCI image, so other tools check it the same way: `crane validate --tarball app.tar`, or
 `skopeo copy oci-archive:app.tar ...` as a smoke test.
 
+## `pixi oci check`
+
+Checks that an image will run, by Linux's rules, without running it, so it works on Windows and macOS too. It runs
+[`validate`](#pixi-oci-validate) first, and looks at the files only if the image is valid.
+
+```console
+$ pixi oci check app.tar
+app.tar: 4 problems in 5195 files (134 ELF files, 56 scripts)
+  glibc: glibc is not in the image: 129 ELF files need /lib64/ld-linux-x86-64.so.2, ld-linux-x86-64.so.2, libc.so.6, libdl.so.2, libm.so.6, libpthread.so.0, librt.so.1, libutil.so.1
+    /opt/env/bin/bunzip2, /opt/env/bin/bzcat, /opt/env/bin/bzip2, and 126 more
+    help: conda packages use the system's glibc: build on a base image that has it (`--base`, #12), or add the loader and libraries in a layer below the environment
+  library: libX11.so.6 is needed by 1 ELF file, but the loader would not find it
+    /opt/env/lib/libtk8.6.so
+  shebang: 20 scripts start with #!/bin/sh, which is not in the image
+    /opt/env/bin/bzdiff, /opt/env/bin/bzgrep, /opt/env/bin/bzmore, and 17 more
+  ...
+  note: entrypoint: the image sets no entrypoint or cmd, so a container needs a command
+```
+
+| Argument or option | Default | |
+|---|---|---|
+| `IMAGE` | | an OCI image layout directory, or a `.tar` archive of one, read in place |
+| `-p, --platform NAME` | the only one | for an image of several platforms, which one: `linux/arm64/v8`, or `linux-aarch64` |
+| `--format text\|json` | `text` | `json` gives `ok`, what was checked, and each problem and note with every path it affects |
+
+It applies the layers in order, whiteouts included, and then:
+
+| Problem | What it means |
+|---|---|
+| `architecture` | an ELF file is for another machine than the image's platform |
+| `glibc` | ELF files need a loader or glibc libraries no layer provides: an image without a base has none |
+| `library` | a library an ELF file needs (`DT_NEEDED`) is not where the loader would look: its `RPATH` or `RUNPATH` (with `$ORIGIN`), the image's `LD_LIBRARY_PATH`, then `/lib`, `/usr/lib`, `/lib64`, `/usr/lib64` and the multiarch directories |
+| `shebang` | an executable script's `#!` interpreter is not in the image; for `#!/usr/bin/env prog`, `prog` is looked for on the image's `PATH` |
+| `placeholder` | a file still holds a conda build placeholder, so it was not rewritten for the image's prefix (`conda-meta` records and `__pycache__` caches excepted) |
+| `entrypoint` | the entrypoint, or cmd when there is none, is not on the image's `PATH`, or is not executable |
+| `elf` | a file starts like an ELF file but cannot be read as one |
+| `spec` | `validate` found a problem; the files were not looked at |
+
+Symlinks are followed as the kernel follows them. It exits `1` if there is any problem; a note, such as an image
+with no entrypoint, does not fail it. ELF files are parsed in memory up to 64 MiB, and from a temporary file beyond.
+
 ## `pixi oci inspect`
 
 Shows what an image holds, read from its index, manifest and config, without opening a layer or needing skopeo or

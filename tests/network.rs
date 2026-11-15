@@ -118,6 +118,36 @@ fn a_built_image_runs_its_python() {
     assert_eq!(names(&inspection["layers"]), names(&plan["layers"]));
     assert_eq!(inspection["reference"], "app:test");
 
+    // check reads the real binaries: no glibc yet (until a base image), tk's X11 library that the environment does
+    // not lock, and the shell scripts' interpreters; nothing else.
+    let checked = Command::cargo_bin("pixi-oci")
+        .unwrap()
+        .args(["check", archive.to_str().unwrap(), "--format", "json"])
+        .output()
+        .unwrap();
+    assert!(!checked.status.success());
+    let report: serde_json::Value = serde_json::from_slice(&checked.stdout).unwrap();
+    let kinds: Vec<&str> = report["problems"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|problem| problem["kind"].as_str().unwrap())
+        .collect();
+    assert!(kinds.contains(&"glibc"), "{report:#}");
+    assert!(
+        kinds.iter().all(|kind| ["glibc", "library", "shebang"].contains(kind)),
+        "{report:#}"
+    );
+    for problem in report["problems"].as_array().unwrap() {
+        if problem["kind"] == "library" {
+            assert!(
+                problem["message"].as_str().unwrap().starts_with("libX11.so.6 "),
+                "{report:#}"
+            );
+        }
+    }
+    assert!(report["checked"]["elf"].as_u64().unwrap() > 50);
+
     unpack_image(&archive, dir.path());
     let output = Command::new(prefix.join("bin/python"))
         .args([
