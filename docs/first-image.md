@@ -22,8 +22,8 @@ six = "*"
 pixi lock
 ```
 
-Your own platform can stay in the list; only the `linux-*` ones can become images. PyPI dependencies are not
-installed into images yet, so keep this environment to conda packages for now.
+Your own platform can stay in the list; only the `linux-*` ones can become images. PyPI dependencies work too, as
+long as pixi locks wheels for them.
 
 ## 2. Plan it
 

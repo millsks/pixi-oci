@@ -28,13 +28,14 @@ pixi.lock ─▶ plan ─▶ fetch ─▶ stream each archive ─▶ tar ─▶ 
    conda layer. Grouping keeps even a few hundred packages well under it: a 385-package data-science and Jupyter
    environment plans into 84 layers.
 4. **PyPI on top.** All PyPI packages share the top layer: they install into one site-packages and are usually what
-   changes most. (Planned, but not yet installed by `build`.)
+   changes most.
 
 `--layers` chooses another layout: `per-package` gives every conda package a layer of its own, as long as the cap
 allows, and `single` puts the whole environment, conda and PyPI, in one layer, which suits an image built once and
 never updated. `plan --packages` lists what each shared layer holds.
 
-Conda packages pixi builds from source have no archive yet, so an environment with them is refused, by name.
+Conda packages pixi builds from source have no archive yet, so an environment with them is refused, by name; so are
+PyPI packages that are not wheels (sdists, git and path checkouts), which would have to be built.
 
 ## Fetching
 
@@ -75,6 +76,27 @@ The test suite keeps rattler's own installer as a reference: it installs every t
 symlink targets and `conda-meta` records. It does so for generated packages that cover text and binary placeholders,
 symlinks, case-only names, both archive formats, entry points and very large files, and for real conda-forge
 environments. A numpy, pandas, scipy and scikit-learn environment matches too: 15,888 entries, none different.
+
+
+## Installing PyPI wheels
+
+A wheel is a zip archive, read in place and written into the layer as pip and uv install one into a conda
+environment's python:
+
+| In the wheel | In the image |
+|---|---|
+| its root, `.data/purelib`, `.data/platlib` | `lib/pythonX.Y/site-packages` |
+| `.data/scripts` | `bin`, executable, with a `#!python` first line pointed at the environment's python |
+| `.data/headers` | `include/pythonX.Y/<name>` |
+| `.data/data` | the prefix |
+| `console_scripts` and `gui_scripts` entry points | a launcher each in `bin`, as pip writes them |
+
+Every file is checked against the wheel's own `RECORD` as it is written, and every path must stay inside the prefix.
+The installed `RECORD` lists where each file went, relative to `site-packages`, and `INSTALLER` says `pixi-oci`.
+Where a wheel installs a path a conda package of the same layer also installs, the wheel's file wins, as it would
+installing the wheels after the conda packages. Bytecode is not compiled into the image; python writes it on first
+import where it can. CI installs the same lockfile with `pixi install` and checks that site-packages holds the same
+files with the same bytes.
 
 ## Reproducible bytes
 

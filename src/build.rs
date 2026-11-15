@@ -29,8 +29,11 @@ pub enum BuildError {
     #[diagnostic(transparent)]
     Stream(#[from] StreamError),
 
-    #[error("environment `{environment}` has PyPI packages, which pixi-oci does not install yet: {}", .names.join(", "))]
-    #[diagnostic(help("build an environment without PyPI dependencies for now; PyPI support is on the roadmap"))]
+    #[error("environment `{environment}` has PyPI packages that are not wheels: {}", .names.join(", "))]
+    #[diagnostic(help(
+        "pixi-oci installs wheels and builds nothing: lock a version these packages publish wheels \
+        for, or build the wheels and depend on them"
+    ))]
     Pypi { environment: String, names: Vec<String> },
 
     #[error("{} already exists", .path.display())]
@@ -114,7 +117,8 @@ pub fn build(
         .layers
         .iter()
         .flat_map(|layer| &layer.packages)
-        .filter(|package| package.kind == Kind::Pypi)
+        // A wheel is installed as it is; anything else (an sdist, a git or path checkout) would have to be built.
+        .filter(|package| package.kind == Kind::Pypi && !is_wheel(package))
         .map(|package| package.name.clone())
         .collect();
     if !pypi.is_empty() {
@@ -343,6 +347,12 @@ fn settings(plan: &Plan, options: &BuildOptions) -> Settings {
         labels,
         base,
     }
+}
+
+/// Whether a PyPI package is a wheel with a hash the lockfile recorded.
+fn is_wheel(package: &crate::lock::Package) -> bool {
+    let location = package.location.split(['?', '#']).next().unwrap_or_default();
+    location.ends_with(".whl") && package.sha256.is_some()
 }
 
 fn prepare_output(output: &Path, force: bool) -> Result<(), BuildError> {
@@ -717,12 +727,17 @@ mod tests {
             size: None,
             record: None,
         };
-        let plan = plan_of(vec![pypi.clone()], 100);
+        // A wheel the lockfile records no hash for, and an sdist, which would have to be built.
+        let mut sdist = pypi.clone();
+        sdist.name = "abc".to_string();
+        sdist.location = "https://files.pythonhosted.org/abc-1.0.tar.gz".to_string();
+        sdist.sha256 = Some("0".repeat(64));
+        let plan = plan_of(vec![pypi.clone(), sdist], 100);
         let output = dir.path().join("image.tar");
         let err = build(&plan, &options(output.clone()), &fetcher, &mut std::io::sink()).unwrap_err();
         assert_eq!(
             err.to_string(),
-            "environment `test` has PyPI packages, which pixi-oci does not install yet: six"
+            "environment `test` has PyPI packages that are not wheels: abc, six"
         );
         pypi.kind = Kind::Conda;
         let mut relative = options(output.clone());

@@ -103,8 +103,9 @@ and 15.9 s for the same two images.
 | `--max-memory SIZE` | `512M` | how much memory the build's buffers may use, such as `128M` or `2G`; at least `16M` |
 | `--cache-dir PATH` | `PIXI_OCI_CACHE_DIR`, else the platform's cache | downloaded package archives, named by their sha256 |
 
-Not yet: PyPI packages (an environment with them is refused, by name), conda packages built from source, and
-private channels that need credentials.
+PyPI packages are installed from their wheels, into the top layer. Not yet: PyPI sdists and git or path
+packages, which would have to be built, conda packages built from source, and private channels that need
+credentials (each is refused by name).
 
 ### `pixi oci plan`
 
@@ -186,7 +187,8 @@ $ pixi oci inspect app.tar --packages
    package.
 3. Overlay filesystems cap the layer count (Docker's overlay2 refuses more than 128), so past `--max-layers` the
    layers at the top of the order are merged into one.
-4. All PyPI packages share the top layer: they install into the same site-packages and are usually what changes most.
+4. All PyPI packages share the top layer, installed from their wheels as pip and uv install them: they go into the
+   same site-packages and are usually what changes most.
 
 Conda packages pixi builds from source have no archive to extract yet, so environments with them are refused with
 their names.
@@ -206,6 +208,7 @@ Every item has an issue labelled [`roadmap`](https://github.com/millsks/pixi-oci
 - [x] `inspect`: an image's config, layers and packages ([#24](https://github.com/millsks/pixi-oci/issues/24))
 - [x] `check`: will the image run, checked without running it ([#11](https://github.com/millsks/pixi-oci/issues/11))
 - [x] Base images with `--base`, pinned by digest ([#12](https://github.com/millsks/pixi-oci/issues/12))
+- [x] PyPI wheels in the top layer ([#17](https://github.com/millsks/pixi-oci/issues/17))
 - [ ] `push` to any registry ([#13](https://github.com/millsks/pixi-oci/issues/13))
 - [ ] `run`: rootless containers on Linux and in CI ([#14](https://github.com/millsks/pixi-oci/issues/14))
 - [ ] `diff`: two images compared layer by layer ([#26](https://github.com/millsks/pixi-oci/issues/26))
@@ -213,7 +216,6 @@ Every item has an issue labelled [`roadmap`](https://github.com/millsks/pixi-oci
 - [ ] Multi-platform image indexes ([#15](https://github.com/millsks/pixi-oci/issues/15))
 - [ ] pixi's activation variables and an entrypoint from a task
       ([#16](https://github.com/millsks/pixi-oci/issues/16))
-- [ ] PyPI wheels in the top layer ([#17](https://github.com/millsks/pixi-oci/issues/17))
 - [ ] Private channels with pixi's credentials ([#18](https://github.com/millsks/pixi-oci/issues/18))
 - [ ] A [pixi-sbom](https://github.com/aesir-oss/pixi-sbom) SBOM attached, and
       [pixi-policy](https://github.com/aesir-oss/pixi-policy) before pushing

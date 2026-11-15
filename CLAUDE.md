@@ -25,6 +25,7 @@ One crate, `pixi-oci`, a binary pixi runs as `pixi oci`: it builds OCI container
 | `src/check.rs` | `check`: whether an image will run, from its layers' ELF files, scripts and entrypoint, run nowhere |
 | `src/inspect.rs` | `inspect`: an image's settings and layers, each layer's packages from its history line |
 | `src/registry.rs` | pulls a base image pinned by digest, for one platform, into the cache; docker and podman credentials |
+| `src/wheel.rs` | PyPI wheels written into a layer, as pip and uv install them; checked against `pixi install` in the network tests |
 | `src/read.rs` | an image read back: a layout directory, or a `.tar` read in place by offset |
 | `src/validate.rs` | `validate`: an image checked against the OCI image spec, every problem collected |
 | `tests/cli.rs` | the binary end to end, against `tests/fixtures/workspace/pixi.lock` |

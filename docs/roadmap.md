@@ -28,6 +28,8 @@ scope and acceptance criteria live and its pull requests are linked. Comment the
       libraries by the loader's own search, shebangs, placeholders, the entrypoint ([#11](https://github.com/millsks/pixi-oci/issues/11))
 - [x] **Base images**: `--base` builds on any image pinned by digest, pulled from any registry with docker's and
       podman's credentials; UBI 9 minimal and Debian 12 slim documented and run in CI ([#12](https://github.com/millsks/pixi-oci/issues/12))
+- [x] **PyPI wheels**: installed into the top layer as pip and uv install them, checked against `pixi install`
+      ([#17](https://github.com/millsks/pixi-oci/issues/17))
 
 ## Next
 
@@ -53,7 +55,6 @@ scope and acceptance criteria live and its pull requests are linked. Comment the
       ([#15](https://github.com/millsks/pixi-oci/issues/15))
 - [ ] pixi's activation variables, and an entrypoint from a pixi task
       ([#16](https://github.com/millsks/pixi-oci/issues/16))
-- [ ] PyPI wheels, installed into the top layer ([#17](https://github.com/millsks/pixi-oci/issues/17))
 - [ ] Private channels, with pixi's own credentials ([#18](https://github.com/millsks/pixi-oci/issues/18))
 - [ ] A [pixi-sbom](https://github.com/aesir-oss/pixi-sbom) SBOM attached to the image, and
       [pixi-policy](https://github.com/aesir-oss/pixi-policy) as a gate before pushing

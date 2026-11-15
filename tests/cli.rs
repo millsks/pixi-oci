@@ -212,7 +212,7 @@ fn an_unknown_environment_names_the_known_ones() {
         .assert()
         .failure()
         .stderr(predicate::str::contains("no environment named `prod`"))
-        .stderr(predicate::str::contains("default, app, slim"));
+        .stderr(predicate::str::contains("default, app, pypi, slim"));
 }
 
 #[test]
@@ -249,20 +249,6 @@ fn one_layer_is_too_few() {
         .assert()
         .failure()
         .stderr(predicate::str::contains("--max-layers must be at least 2"));
-}
-
-#[test]
-fn build_refuses_pypi_packages_by_name() {
-    let dir = tempfile::tempdir().unwrap();
-    let output = dir.path().join("image.tar");
-    pixi_oci()
-        .args(["build", "--lockfile", LOCKFILE, "--platform", "linux-64", "--output"])
-        .arg(&output)
-        .assert()
-        .failure()
-        .stderr(predicate::str::contains("has PyPI packages"))
-        .stderr(predicate::str::contains("six"));
-    assert!(!output.exists());
 }
 
 #[test]

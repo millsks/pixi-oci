@@ -42,7 +42,7 @@ pub enum FetchError {
         source: Box<rattler_package_streaming::ExtractError>,
     },
 
-    #[error("{location} is not a .conda or .tar.bz2 archive")]
+    #[error("{location} is not a .conda, .tar.bz2 or .whl archive")]
     UnknownArchive { location: String },
 
     #[error("could not use the package cache at {path}")]
@@ -203,16 +203,12 @@ fn check(package: &Package, expected: &str, actual: &str) -> Result<(), FetchErr
     }
 }
 
-/// `.conda` or `.tar.bz2`, from the end of a URL or path.
+/// `.conda`, `.tar.bz2` or, for a PyPI package, `.whl`, from the end of a URL or path.
 fn archive_extension(location: &str) -> Option<&'static str> {
     let name = location.split(['?', '#']).next().unwrap_or(location);
-    if name.ends_with(".conda") {
-        Some(".conda")
-    } else if name.ends_with(".tar.bz2") {
-        Some(".tar.bz2")
-    } else {
-        None
-    }
+    [".conda", ".tar.bz2", ".whl"]
+        .into_iter()
+        .find(|extension| name.ends_with(extension))
 }
 
 /// The path a `file://` URL or a plain path names; `None` for a remote URL. A `file://` URL is converted by the
@@ -279,7 +275,8 @@ mod tests {
         assert_eq!(archive_extension("https://x/linux-64/a-1-0.conda"), Some(".conda"));
         assert_eq!(archive_extension("https://x/linux-64/a-1-0.tar.bz2"), Some(".tar.bz2"));
         assert_eq!(archive_extension("https://x/a-1-0.conda?token=t"), Some(".conda"));
-        assert_eq!(archive_extension("https://x/a-1-0.whl"), None);
+        assert_eq!(archive_extension("https://x/a-1-0-py3-none-any.whl"), Some(".whl"));
+        assert_eq!(archive_extension("https://x/a-1.0.tar.gz"), None);
     }
 
     #[test]
@@ -344,7 +341,7 @@ mod tests {
     fn an_unknown_archive_type_is_refused() {
         let fetcher = Fetcher::new(tempfile::tempdir().unwrap().path().to_path_buf());
         let err = fetcher
-            .extracted(&package("https://x/a-1.whl", Some(&"0".repeat(64))))
+            .extracted(&package("https://x/a-1.tar.gz", Some(&"0".repeat(64))))
             .unwrap_err();
         assert!(matches!(err, FetchError::UnknownArchive { .. }), "{err}");
     }
