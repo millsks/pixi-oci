@@ -954,6 +954,10 @@
 <td>A base image pulled from a registry, pinned by digest: the platform's manifest from an index, its config and layers, each checked against its digest and cached by it. Anonymous or with docker's and podman's credentials, through bearer tokens or basic auth.</td>
 </tr>
 <tr>
+<td><code>wheel.rs</code></td>
+<td>A PyPI wheel installed into a layer as pip and uv install one: site-packages, scripts, headers, data, entry point launchers, every file checked against the wheel's RECORD and a new RECORD written.</td>
+</tr>
+<tr>
 <td><code>read.rs</code></td>
 <td>An image read back: a layout directory, or a <code>.tar</code> read in place by each file's offset, never unpacked.</td>
 </tr>

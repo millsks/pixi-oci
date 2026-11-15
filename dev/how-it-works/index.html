@@ -624,6 +624,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#installing-pypi-wheels" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Installing PyPI wheels
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#reproducible-bytes" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -926,6 +937,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#installing-pypi-wheels" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Installing PyPI wheels
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#reproducible-bytes" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -998,12 +1020,13 @@
    conda layer. Grouping keeps even a few hundred packages well under it: a 385-package data-science and Jupyter
    environment plans into 84 layers.</li>
 <li><strong>PyPI on top.</strong> All PyPI packages share the top layer: they install into one site-packages and are usually what
-   changes most. (Planned, but not yet installed by <code>build</code>.)</li>
+   changes most.</li>
 </ol>
 <p><code>--layers</code> chooses another layout: <code>per-package</code> gives every conda package a layer of its own, as long as the cap
 allows, and <code>single</code> puts the whole environment, conda and PyPI, in one layer, which suits an image built once and
 never updated. <code>plan --packages</code> lists what each shared layer holds.</p>
-<p>Conda packages pixi builds from source have no archive yet, so an environment with them is refused, by name.</p>
+<p>Conda packages pixi builds from source have no archive yet, so an environment with them is refused, by name; so are
+PyPI packages that are not wheels (sdists, git and path checkouts), which would have to be built.</p>
 <h2 id="fetching">Fetching<a class="headerlink" href="#fetching" title="Permanent link">&para;</a></h2>
 <p>Every archive of the plan is fetched before any layer is written, one at a time, so a failed download stops the build
 early. Each is checked against the sha256 the lockfile recorded, and kept in the cache named by that hash. A file
@@ -1057,6 +1080,45 @@ its layer is written.</p>
 symlink targets and <code>conda-meta</code> records. It does so for generated packages that cover text and binary placeholders,
 symlinks, case-only names, both archive formats, entry points and very large files, and for real conda-forge
 environments. A numpy, pandas, scipy and scikit-learn environment matches too: 15,888 entries, none different.</p>
+<h2 id="installing-pypi-wheels">Installing PyPI wheels<a class="headerlink" href="#installing-pypi-wheels" title="Permanent link">&para;</a></h2>
+<p>A wheel is a zip archive, read in place and written into the layer as pip and uv install one into a conda
+environment's python:</p>
+<table>
+<thead>
+<tr>
+<th>In the wheel</th>
+<th>In the image</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>its root, <code>.data/purelib</code>, <code>.data/platlib</code></td>
+<td><code>lib/pythonX.Y/site-packages</code></td>
+</tr>
+<tr>
+<td><code>.data/scripts</code></td>
+<td><code>bin</code>, executable, with a <code>#!python</code> first line pointed at the environment's python</td>
+</tr>
+<tr>
+<td><code>.data/headers</code></td>
+<td><code>include/pythonX.Y/&lt;name&gt;</code></td>
+</tr>
+<tr>
+<td><code>.data/data</code></td>
+<td>the prefix</td>
+</tr>
+<tr>
+<td><code>console_scripts</code> and <code>gui_scripts</code> entry points</td>
+<td>a launcher each in <code>bin</code>, as pip writes them</td>
+</tr>
+</tbody>
+</table>
+<p>Every file is checked against the wheel's own <code>RECORD</code> as it is written, and every path must stay inside the prefix.
+The installed <code>RECORD</code> lists where each file went, relative to <code>site-packages</code>, and <code>INSTALLER</code> says <code>pixi-oci</code>.
+Where a wheel installs a path a conda package of the same layer also installs, the wheel's file wins, as it would
+installing the wheels after the conda packages. Bytecode is not compiled into the image; python writes it on first
+import where it can. CI installs the same lockfile with <code>pixi install</code> and checks that site-packages holds the same
+files with the same bytes.</p>
 <h2 id="reproducible-bytes">Reproducible bytes<a class="headerlink" href="#reproducible-bytes" title="Permanent link">&para;</a></h2>
 <p>The same lockfile gives the same image digest on any machine:</p>
 <ul>

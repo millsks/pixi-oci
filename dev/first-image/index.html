@@ -976,8 +976,8 @@ it locks a <code>linux-*</code> platform:</p>
 </code></pre></div>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>pixi<span class="w"> </span>lock
 </code></pre></div>
-<p>Your own platform can stay in the list; only the <code>linux-*</code> ones can become images. PyPI dependencies are not
-installed into images yet, so keep this environment to conda packages for now.</p>
+<p>Your own platform can stay in the list; only the <code>linux-*</code> ones can become images. PyPI dependencies work too, as
+long as pixi locks wheels for them.</p>
 <h2 id="2-plan-it">2. Plan it<a class="headerlink" href="#2-plan-it" title="Permanent link">&para;</a></h2>
 <p><code>plan</code> reads the lockfile and shows the layers, without downloading anything:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="gp">$ </span>pixi<span class="w"> </span>oci<span class="w"> </span>plan<span class="w"> </span>-p<span class="w"> </span>linux-64

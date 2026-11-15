@@ -951,9 +951,13 @@ pixi-oci prints them, with the variable parts in angle brackets.</p>
 :   Images carry Linux programs. Pass a <code>linux-*</code> platform with <code>-p</code>: <code>linux-64</code> for x86 servers, <code>linux-aarch64</code> for
     ARM ones. Without <code>-p</code>, pixi-oci picks Linux on your machine's architecture, so this appears only when <code>-p</code> named
     <code>osx-*</code> or <code>win-*</code>.</p>
-<p><strong><code>environment &lt;name&gt; has PyPI packages, which pixi-oci does not install yet: &lt;names&gt;</code></strong>
-:   PyPI packages are not installed into images yet. Build an environment without PyPI dependencies, for example one
-    made with a feature: <code>[environments] image = { features = ["image"], no-default-feature = true }</code>.</p>
+<p><strong><code>environment &lt;name&gt; has PyPI packages that are not wheels: &lt;names&gt;</code></strong>
+:   pixi-oci installs wheels and builds nothing. These were locked as an sdist, a git checkout or a local path. Lock a
+    version that publishes wheels for the platform (most do), get the package from conda-forge instead, or build the
+    wheel and depend on it.</p>
+<p><strong><code>&lt;name&gt;'s wheel holds &lt;path&gt;, which its RECORD ...</code></strong>
+:   The wheel's files do not match the list of hashes inside it. The wheel matched the lockfile's hash, so it was
+    published this way: report it to the package.</p>
 <p><strong><code>environment &lt;name&gt; builds &lt;n&gt; packages from source: &lt;names&gt;</code></strong>
 :   pixi-oci installs built conda packages. Build those with <code>pixi build</code>, publish them to a channel, and lock the
     published packages.</p>
