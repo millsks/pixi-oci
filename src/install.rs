@@ -1,17 +1,19 @@
-//! Installing one conda package into a layer directory, as if into the image's prefix.
+//! The reference install the streamed build is tested against: rattler's own linker, into a directory on disk.
 //!
-//! Conda packages carry a placeholder prefix in some files (shebangs, `pkg-config` files, compiled-in paths) that
-//! installation replaces with the environment's real path. The layer is staged in a temporary directory, but the
-//! environment will live at the image's prefix, so rattler is told to write that path instead.
+//! Builds do not use this. It is how pixi-oci built layers before they were streamed from the archives, and the
+//! parity tests install every package both ways and compare the results file for file, so any difference between
+//! the streamed install and rattler's shows up as a failing test. It runs only on Unix, which can hold what a
+//! Linux layer holds.
 
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
-use rattler::install::{InstallOptions, PythonInfo, link_package_sync};
+use rattler::install::{InstallOptions, link_package_sync};
 use rattler_conda_types::prefix::Prefix;
-use rattler_conda_types::{PrefixRecord, RepoDataRecord, Subdir, Version};
+use rattler_conda_types::{PrefixRecord, RepoDataRecord};
 
 use crate::lock::Package;
+use crate::target::Target;
 
 /// Why a package could not be installed into its layer.
 #[derive(Debug, thiserror::Error, miette::Diagnostic)]
@@ -36,35 +38,6 @@ pub enum InstallError {
     #[error("{name}'s location in the lockfile is not a URL, so it has no repodata record to install from")]
     #[diagnostic(help("pixi-oci installs packages from channels; lock this one from a channel"))]
     NoRecord { name: String },
-
-    #[error("{platform} is not a platform rattler knows")]
-    Platform { platform: String },
-}
-
-/// What every package of one environment is installed with.
-pub struct Target {
-    /// The environment's path inside the image, such as `/opt/env`.
-    pub prefix: String,
-    pub platform: Subdir,
-    /// For noarch Python packages; `None` when the environment has no python.
-    pub python: Option<PythonInfo>,
-}
-
-impl Target {
-    /// The target for an environment at `prefix` on `platform`, whose python (if any) is `python_version`.
-    pub fn new(prefix: &str, platform: &str, python_version: Option<&str>) -> Result<Self, InstallError> {
-        let platform: Subdir = platform.parse().map_err(|_| InstallError::Platform {
-            platform: platform.to_string(),
-        })?;
-        let python = python_version
-            .and_then(|version| version.parse::<Version>().ok())
-            .and_then(|version| PythonInfo::from_version(&version, None, platform).ok());
-        Ok(Self {
-            prefix: prefix.trim_end_matches('/').to_string(),
-            platform,
-            python,
-        })
-    }
 }
 
 /// Install the extracted `package_dir` of `package` into `layer_root`, under the target's prefix, with its
@@ -126,19 +99,6 @@ pub fn skip_in_layer(prefix: &str, first: bool) -> impl Fn(&str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn the_target_knows_python_when_there_is_one() {
-        let target = Target::new("/opt/env/", "linux-64", Some("3.13.18")).unwrap();
-        assert_eq!(target.prefix, "/opt/env");
-        assert_eq!(target.python.unwrap().short_version, (3, 13));
-        let target = Target::new("/opt/env", "linux-aarch64", None).unwrap();
-        assert!(target.python.is_none());
-        assert!(matches!(
-            Target::new("/opt/env", "not-a-platform", None),
-            Err(InstallError::Platform { .. })
-        ));
-    }
 
     #[test]
     fn layers_drop_rattlers_markers() {

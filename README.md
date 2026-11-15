@@ -3,7 +3,8 @@
 A [pixi](https://pixi.sh) extension that builds OCI container images straight from `pixi.lock`: no Dockerfile, no
 Docker daemon, and no pixi inside the image.
 
-> **Status: early.** `pixi oci plan` and `pixi oci build` work today for environments of conda packages. Images
+> **Status: early.** `pixi oci plan` and `pixi oci build` work today for environments of conda packages, on Linux,
+> macOS and Windows. Images
 > have no base yet, so a dynamically linked program (python, most of conda-forge) needs the glibc a base image
 > provides; base images and pushing are the next milestone. See the [roadmap](#roadmap).
 
@@ -53,13 +54,34 @@ $ skopeo inspect oci-archive:app.tar
 $ podman load -i app.tar
 ```
 
-Each package is downloaded once, checked against the sha256 the lockfile recorded, and installed into its own layer
-with its paths rewritten for where the environment lives in the image (`/opt/env` by default), with its
-`conda-meta` record beside it. The image sets `PATH` and `CONDA_PREFIX` to that prefix.
+Each package is downloaded once and checked against the sha256 the lockfile recorded. Its layer is then written
+straight from the archive, never unpacked on the host: entries are read one at a time, paths are rewritten for
+where the environment lives in the image (`/opt/env` by default) with rattler's own replacement functions,
+`noarch: python` packages go under `lib/python3.X/site-packages` with their entry points, and a `conda-meta`
+record is added. The image sets `PATH` and `CONDA_PREFIX` to the prefix.
+
+Because the host never holds the layer's files, **it builds on Windows, macOS and Linux alike**, with no admin
+rights, WSL or VM: Unix modes, symlinks and names that differ only in case go from the archive into the layer
+without touching the host's file system. Tests compare the result with rattler's own installer file for file.
 
 Builds are reproducible: every file is owned by root and stamped with one time (`SOURCE_DATE_EPOCH`, or the Unix
-epoch), entries are in byte order, and gzip headers carry no time, so the same lockfile gives the same image digest
-on any machine.
+epoch), modes are 0755 or 0644, entries keep the archives' order, and gzip headers carry no time, so the same
+lockfile gives the same image digest on any machine. CI builds the same image on Linux, macOS and Windows and
+requires one digest.
+
+#### Memory
+
+Files pass through in 64 KiB chunks. A file whose paths are rewritten is held whole up to a limit (16 MiB by
+default) and above it is rewritten in 4 MiB pieces from a temporary file, so memory stays near the piece size however
+large the file. `--max-memory` sets the limit and how many layers are written at once; it never changes the image.
+
+| linux-64 image | Packages | Unpacked | Time | Peak memory |
+|---|---|---|---|---|
+| python and six | 23 | 317 MiB | 2.9 s | 48 MiB (28 MiB with `--max-memory 16M`) |
+| python, numpy, pandas, scipy, scikit-learn | 39 | 460 MiB | 5.3 s | 45 MiB |
+
+Measured on 2 cores with a warm cache. The build that installed each package into a folder on disk first took 4.1 s
+and 15.9 s for the same two images.
 
 | Option | Default | |
 |---|---|---|
@@ -71,11 +93,11 @@ on any machine.
 | `--env KEY=VALUE` | | an environment variable; repeatable |
 | `--entrypoint`, `--cmd` | | a JSON array (`["python", "-m", "http.server"]`) or words |
 | `--workdir PATH` | | the working directory |
-| `--cache-dir PATH` | `PIXI_OCI_CACHE_DIR`, else the platform's cache | downloaded and extracted packages |
+| `--max-memory SIZE` | `512M` | how much memory the build's buffers may use, such as `128M` or `2G`; at least `16M` |
+| `--cache-dir PATH` | `PIXI_OCI_CACHE_DIR`, else the platform's cache | downloaded package archives, named by their sha256 |
 
-Not yet: PyPI packages (an environment with them is refused, by name), conda packages built from source, private
-channels that need credentials, and Windows as a build host. Building on macOS works, but its default
-case-insensitive file system can merge files that differ only in case.
+Not yet: PyPI packages (an environment with them is refused, by name), conda packages built from source, and
+private channels that need credentials.
 
 ### `pixi oci plan`
 
@@ -125,6 +147,7 @@ their names.
 - [x] `plan`: read `pixi.lock`, map conda platforms to OCI platforms, order and cap layers
 - [x] `build`: download and verify packages against the lockfile's hashes, install each into a layer with prefix
       replacement, and write a reproducible OCI image layout or archive
+- [x] Layers streamed from the archives, so builds run on Windows; bounded memory with `--max-memory`
 - [ ] Credentials for private channels (pixi's own auth store)
 - [ ] Image config from pixi's activation: activation scripts' variables, entrypoint from a pixi task
 - [ ] PyPI packages: install wheels into the top layer
@@ -151,7 +174,7 @@ Everything runs through pixi:
 | | |
 |---|---|
 | `pixi run fmt`, `pixi run lint`, `pixi run check` | format, clippy with `-D warnings`, check |
-| `pixi run test` | unit and CLI tests; `PIXI_OCI_NETWORK_TESTS=1` adds a real build from conda-forge, run on Linux |
+| `pixi run test` | unit and CLI tests; `PIXI_OCI_NETWORK_TESTS=1` adds a real build from conda-forge (run on Linux) and parity with rattler on conda-forge packages |
 | `pixi run cov` | coverage, failing under 90% of lines |
 | `pixi run -e lint deny` | cargo-deny: advisories, licenses, sources |
 | `pixi run -e msrv msrv-check` | builds on the minimum supported Rust |

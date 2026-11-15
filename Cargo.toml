@@ -27,6 +27,7 @@ flate2 = "1.1.10"
 miette = { version = "7.6.0", features = ["fancy"] }
 rattler = { version = "=0.55.8", default-features = false }
 rattler_conda_types = { version = "=0.58.4", default-features = false }
+rattler_digest = { version = "=2.1.0", default-features = false }
 rattler_lock = { version = "=0.34.15", default-features = false }
 rattler_package_streaming = { version = "=0.28.6", default-features = false }
 serde = { version = "1.0.229", features = ["derive"] }
@@ -35,6 +36,7 @@ sha2 = "0.11"
 tar = "0.4.46"
 tempfile = "3.27.0"
 thiserror = "2.0.20"
+url = "2"
 ureq = { version = "3.4.2", default-features = false, features = [
   "rustls",
   "gzip",
@@ -45,7 +47,6 @@ ureq = { version = "3.4.2", default-features = false, features = [
 [dev-dependencies]
 assert_cmd = "2.2.2"
 predicates = "3.1.4"
-url = "2"
 
 [profile.release]
 lto = true
