@@ -985,6 +985,10 @@
 <td>A PyPI wheel installed into a layer as pip and uv install one: site-packages, scripts, headers, data, entry point launchers, every file checked against the wheel's RECORD and a new RECORD written.</td>
 </tr>
 <tr>
+<td><code>push.rs</code></td>
+<td><code>push</code>: validate, then each blob the registry lacks uploaded (or mounted from the base's repository), the manifest last, its digest checked.</td>
+</tr>
+<tr>
 <td><code>read.rs</code></td>
 <td>An image read back: a layout directory, or a <code>.tar</code> read in place by each file's offset, never unpacked.</td>
 </tr>

@@ -618,6 +618,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#pixi-oci-push" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        pixi oci push
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#pixi-oci-inspect" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -952,6 +963,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#pixi-oci-push" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        pixi oci push
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#pixi-oci-inspect" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1265,30 +1287,89 @@ their <code>diff_id</code> is not checked.</p>
 </table>
 <p>Symlinks are followed as the kernel follows them. It exits <code>1</code> if there is any problem; a note, such as an image
 with no entrypoint, does not fail it. ELF files are parsed in memory up to 64 MiB, and from a temporary file beyond.</p>
+<h2 id="pixi-oci-push"><code>pixi oci push</code><a class="headerlink" href="#pixi-oci-push" title="Permanent link">&para;</a></h2>
+<p>Sends an image to a registry, with no Docker or Podman. It runs <a href="#pixi-oci-validate"><code>validate</code></a> first, then asks the
+registry for each blob the image needs (its config, then its layers) and sends only the ones it lacks; the manifest
+goes last, under the tag, and the digest the registry reports must be the image's.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="gp">$ </span>pixi<span class="w"> </span>oci<span class="w"> </span>push<span class="w"> </span>app.tar<span class="w"> </span>ghcr.io/team/app:1.0
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="go">[1/9] sha256:3f2c09a1b4de already there</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="go">[2/9] sha256:9c1e77a0e5f2 uploading (2.1 MiB)</span>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="go">...</span>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="go">Pushed ghcr.io/team/app:1.0</span>
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="go">  digest sha256:e79ba52d8f3013771e01802686c9e7ff54726be037a96e9b0e7d7424165273dc</span>
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="go">  9 blobs: 1 uploaded (2.1 MiB), 0 mounted, 8 already there</span>
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Argument or option</th>
+<th>Default</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>IMAGE</code></td>
+<td></td>
+<td>an OCI image layout directory, or a <code>.tar</code> archive of one</td>
+</tr>
+<tr>
+<td><code>DESTINATION</code></td>
+<td></td>
+<td><code>[registry/]repository[:tag]</code>, <code>latest</code> when no tag is given; or <code>repository@sha256:...</code> to push by digest, which must be the image's</td>
+</tr>
+<tr>
+<td><code>-p, --platform NAME</code></td>
+<td>the only one</td>
+<td>for an image of several platforms, which one to push</td>
+</tr>
+<tr>
+<td><code>--format text\|json</code></td>
+<td><code>text</code></td>
+<td><code>json</code> gives the reference, digest, and how many blobs were uploaded, mounted and already there</td>
+</tr>
+</tbody>
+</table>
+<p>Because layers are named by their digest, pushing a rebuilt image sends only the layers that changed: change one
+package and a push sends its layer and the config, nothing else. When the image was built on a base that lives on
+the same registry, the base's layers are mounted from its repository rather than uploaded.</p>
+<p><strong>Credentials.</strong> pixi-oci uses what <code>docker login</code> and <code>podman login</code> store (<code>REGISTRY_AUTH_FILE</code>, podman's
+<code>auth.json</code>, docker's <code>config.json</code> and its credential helpers). In CI, set <code>PIXI_OCI_REGISTRY_USERNAME</code> and
+<code>PIXI_OCI_REGISTRY_PASSWORD</code>: they are given only to the push's destination, or to <code>PIXI_OCI_REGISTRY</code> when that is
+set, never to another registry, such as a base image's. In GitHub Actions:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="nt">permissions</span><span class="p">:</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">  </span><span class="nt">contents</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">read</span>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="w">  </span><span class="nt">packages</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">write</span>
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="nt">steps</span><span class="p">:</span>
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">run</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pixi oci push app.tar ghcr.io/${{ github.repository }}:${{ github.sha }}</span>
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="w">    </span><span class="nt">env</span><span class="p">:</span>
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="w">      </span><span class="nt">PIXI_OCI_REGISTRY_USERNAME</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${{ github.actor }}</span>
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a><span class="w">      </span><span class="nt">PIXI_OCI_REGISTRY_PASSWORD</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${{ secrets.GITHUB_TOKEN }}</span>
+</code></pre></div>
 <h2 id="pixi-oci-inspect"><code>pixi oci inspect</code><a class="headerlink" href="#pixi-oci-inspect" title="Permanent link">&para;</a></h2>
 <p>Shows what an image holds, read from its index, manifest and config, without opening a layer or needing skopeo or
 crane.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="gp">$ </span>pixi<span class="w"> </span>oci<span class="w"> </span>inspect<span class="w"> </span>app.tar
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="go">Image app:1.0 (app.tar)</span>
-<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="go">  platform    linux/amd64</span>
-<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="go">  manifest    sha256:9ec8407e4f1860919cd8dd7af6027a9bdcb91a5a008b2c5ea657ed3f300044ef</span>
-<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="go">  config      sha256:6ca92a53b6bf0bf0fc05e09b3e22b662af269f9136ff892344073894a1ad1312</span>
-<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="go">  created     1970-01-01T00:00:00Z</span>
-<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="go">  env         PATH=/opt/env/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin</span>
-<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a><span class="go">              CONDA_PREFIX=/opt/env</span>
-<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a><span class="go">  labels      dev.pixi.environment=app</span>
-<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a><span class="go">              dev.pixi.platform=linux-64</span>
-<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>
-<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a><span class="go">7 layers, 62.6 MiB</span>
-<a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a>
-<a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a><span class="gp">  #  </span>Layer<span class="w">              </span>Size<span class="w">      </span>Digest
-<a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a><span class="go">  1  4 packages         2.1 MiB   sha256:960cbb64893f</span>
-<a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a><span class="go">  2  libpython 3.13.18  13.9 MiB  sha256:12f0c952f0ec</span>
-<a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a><span class="go">  3  12 packages        8.3 MiB   sha256:cbef1ccd8e85</span>
-<a id="__codelineno-3-18" name="__codelineno-3-18" href="#__codelineno-3-18"></a><span class="go">  4  tk 8.6.13          4.0 MiB   sha256:74ddf65a7bef</span>
-<a id="__codelineno-3-19" name="__codelineno-3-19" href="#__codelineno-3-19"></a><span class="go">  5  3 packages         1.7 MiB   sha256:a8fb83f0c699</span>
-<a id="__codelineno-3-20" name="__codelineno-3-20" href="#__codelineno-3-20"></a><span class="go">  6  python 3.13.18     32.6 MiB  sha256:a6cd4f82fa1e</span>
-<a id="__codelineno-3-21" name="__codelineno-3-21" href="#__codelineno-3-21"></a><span class="go">  7  six 1.17.0         11.5 KiB  sha256:f0d9c9d4dea1</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="gp">$ </span>pixi<span class="w"> </span>oci<span class="w"> </span>inspect<span class="w"> </span>app.tar
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="go">Image app:1.0 (app.tar)</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="go">  platform    linux/amd64</span>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="go">  manifest    sha256:9ec8407e4f1860919cd8dd7af6027a9bdcb91a5a008b2c5ea657ed3f300044ef</span>
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="go">  config      sha256:6ca92a53b6bf0bf0fc05e09b3e22b662af269f9136ff892344073894a1ad1312</span>
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="go">  created     1970-01-01T00:00:00Z</span>
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="go">  env         PATH=/opt/env/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin</span>
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a><span class="go">              CONDA_PREFIX=/opt/env</span>
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a><span class="go">  labels      dev.pixi.environment=app</span>
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a><span class="go">              dev.pixi.platform=linux-64</span>
+<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>
+<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a><span class="go">7 layers, 62.6 MiB</span>
+<a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a>
+<a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a><span class="gp">  #  </span>Layer<span class="w">              </span>Size<span class="w">      </span>Digest
+<a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a><span class="go">  1  4 packages         2.1 MiB   sha256:960cbb64893f</span>
+<a id="__codelineno-5-16" name="__codelineno-5-16" href="#__codelineno-5-16"></a><span class="go">  2  libpython 3.13.18  13.9 MiB  sha256:12f0c952f0ec</span>
+<a id="__codelineno-5-17" name="__codelineno-5-17" href="#__codelineno-5-17"></a><span class="go">  3  12 packages        8.3 MiB   sha256:cbef1ccd8e85</span>
+<a id="__codelineno-5-18" name="__codelineno-5-18" href="#__codelineno-5-18"></a><span class="go">  4  tk 8.6.13          4.0 MiB   sha256:74ddf65a7bef</span>
+<a id="__codelineno-5-19" name="__codelineno-5-19" href="#__codelineno-5-19"></a><span class="go">  5  3 packages         1.7 MiB   sha256:a8fb83f0c699</span>
+<a id="__codelineno-5-20" name="__codelineno-5-20" href="#__codelineno-5-20"></a><span class="go">  6  python 3.13.18     32.6 MiB  sha256:a6cd4f82fa1e</span>
+<a id="__codelineno-5-21" name="__codelineno-5-21" href="#__codelineno-5-21"></a><span class="go">  7  six 1.17.0         11.5 KiB  sha256:f0d9c9d4dea1</span>
 </code></pre></div>
 <table>
 <thead>
@@ -1350,6 +1431,14 @@ oci-archive:app.tar</code>, or <code>crane config</code> and <code>crane manifes
 <tr>
 <td><code>HTTPS_PROXY</code>, <code>HTTP_PROXY</code>, <code>NO_PROXY</code></td>
 <td>the proxy for downloads</td>
+</tr>
+<tr>
+<td><code>PIXI_OCI_REGISTRY_USERNAME</code>, <code>PIXI_OCI_REGISTRY_PASSWORD</code></td>
+<td>credentials for one registry, for CI: <code>push</code>'s destination, or <code>PIXI_OCI_REGISTRY</code></td>
+</tr>
+<tr>
+<td><code>PIXI_OCI_REGISTRY</code></td>
+<td>the registry those credentials are for, such as <code>ghcr.io</code>; set it when a build should also use them to pull its base</td>
 </tr>
 <tr>
 <td><code>PIXI_OCI_NETWORK_TESTS</code></td>

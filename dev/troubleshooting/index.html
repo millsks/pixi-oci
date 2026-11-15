@@ -1038,6 +1038,13 @@ pixi-oci prints them, with the variable parts in angle brackets.</p>
 <p><strong><code>... refused access to ...</code></strong> when pulling a base
 :   The registry wants credentials. Log in with <code>docker login</code> or <code>podman login</code> (or set up a credential helper):
     pixi-oci reads what they store.</p>
+<p><strong><code>&lt;registry&gt; refused access to &lt;repository&gt;</code></strong> when pushing
+:   The registry wants credentials that may push to that repository. Log in with <code>docker login</code> or <code>podman login</code>,
+    or set <code>PIXI_OCI_REGISTRY_USERNAME</code> and <code>PIXI_OCI_REGISTRY_PASSWORD</code>; in GitHub Actions, give the job
+    <code>packages: write</code> to push to GHCR with <code>GITHUB_TOKEN</code>.</p>
+<p><strong><code>&lt;registry&gt; stored the manifest as &lt;digest&gt;, not &lt;digest&gt;</code></strong>
+:   The registry changed the manifest it was sent, so the image is not stored under the digest pixi-oci built. Pull
+    it by the digest the registry reports, and report it.</p>
 <p><strong><code>... has no image for linux/arm64/v8</code></strong>
 :   The base's index has no image for the platform being built. Pick a base built for it, or build for a platform
     the base has.</p>
