@@ -10,6 +10,8 @@ checks an image; CI proves the very same image runs, because the digest matches 
       and write a reproducible OCI image layout or archive
 - [x] **Streamed layers**: written straight from the archives, so builds run on Windows and macOS file systems, with
       memory bounded by `--max-memory`; checked against rattler's own installer file for file
+- [x] **Grouped layers**: packages of 4 MiB or more alone and small ones grouped at cut points their names fix, so a
+      large environment keeps its layers for the packages worth re-uploading; `--layers per-package` and `single` too
 
 ## Next
 

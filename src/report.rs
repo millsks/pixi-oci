@@ -3,10 +3,25 @@
 use std::fmt::Write as _;
 
 use crate::lock::Kind;
-use crate::plan::{LayerKind, Plan};
+use crate::plan::{Layer, LayerKind, Plan};
 
-/// The plan as a table, one row per layer.
-pub fn text(plan: &Plan) -> String {
+/// What a layer holds, in a few words: the package for a package's own layer, a count otherwise.
+pub fn describe(layer: &Layer) -> String {
+    let count = layer.packages.len();
+    match layer.kind {
+        LayerKind::Conda => {
+            let package = &layer.packages[0];
+            format!("{} {}", package.name, package.version)
+        }
+        LayerKind::CondaGroup => plural(count, "conda package"),
+        LayerKind::CondaMerged => format!("{count} more conda packages"),
+        LayerKind::Pypi => plural(count, "PyPI package"),
+        LayerKind::Environment => format!("the environment, {}", plural(count, "package")),
+    }
+}
+
+/// The plan as a table, one row per layer; with `packages`, every layer of several packages lists them below it.
+pub fn text(plan: &Plan, packages: bool) -> String {
     let mut out = String::new();
     let _ = writeln!(
         out,
@@ -27,23 +42,36 @@ pub fn text(plan: &Plan) -> String {
     if plan.layers.is_empty() {
         return out;
     }
-    let _ = writeln!(out);
-    let rows: Vec<(String, String, String)> = plan
+    let shared: Vec<&Layer> = plan
         .layers
         .iter()
-        .enumerate()
-        .map(|(i, layer)| {
-            let what = match layer.kind {
-                LayerKind::Conda => {
-                    let package = &layer.packages[0];
-                    format!("{} {}", package.name, package.version)
-                }
-                LayerKind::CondaMerged => format!("{} more conda packages", layer.packages.len()),
-                LayerKind::Pypi => plural(layer.packages.len(), "PyPI package"),
-            };
-            ((i + 1).to_string(), what, size_text(layer.size))
-        })
+        .filter(|layer| matches!(layer.kind, LayerKind::CondaGroup | LayerKind::CondaMerged))
         .collect();
+    if !shared.is_empty() {
+        let alone = plan
+            .layers
+            .iter()
+            .filter(|layer| layer.kind == LayerKind::Conda)
+            .count();
+        let _ = writeln!(
+            out,
+            "{} in layers of their own, {} sharing {}",
+            plural(alone, "conda package"),
+            shared.iter().map(|layer| layer.packages.len()).sum::<usize>(),
+            plural(shared.len(), "layer"),
+        );
+    }
+    let _ = writeln!(out);
+    let mut rows: Vec<(String, String, String)> = Vec::new();
+    for (i, layer) in plan.layers.iter().enumerate() {
+        rows.push(((i + 1).to_string(), describe(layer), size_text(layer.size)));
+        if packages && layer.kind != LayerKind::Conda {
+            for package in &layer.packages {
+                let what = format!("  {} {}", package.name, package.version);
+                rows.push((String::new(), what, size_text(package.size)));
+            }
+        }
+    }
     let number_width = rows.iter().map(|row| row.0.len()).max().unwrap_or(1);
     let what_width = rows.iter().map(|row| row.1.len()).max().unwrap_or(5).max("Layer".len());
     let _ = writeln!(out, "  {:>number_width$}  {:<what_width$}  Download", "#", "Layer");
@@ -90,7 +118,7 @@ pub fn size_text(size: Option<u64>) -> String {
 mod tests {
     use super::*;
     use crate::lock::{Locked, Package};
-    use crate::plan::plan;
+    use crate::plan::{Layering, plan};
 
     fn package(name: &str, kind: Kind, size: Option<u64>) -> Package {
         Package {
@@ -130,11 +158,12 @@ mod tests {
                 package("requests", Kind::Pypi, None),
             ],
         };
-        let text = text(&plan(locked, 3).unwrap());
+        let text = text(&plan(locked, Layering::PerPackage, 3).unwrap(), false);
         assert_eq!(
             text,
             "Environment prod on linux-64 (image platform linux/amd64)\n\
              3 conda packages, 1 PyPI package, 3 layers, download size unknown\n\
+             1 conda package in layers of their own, 2 sharing 1 layer\n\
              \n  \
                #  Layer                  Download\n  \
                1  a 1.2.3                2.0 KiB\n  \
@@ -144,15 +173,59 @@ mod tests {
     }
 
     #[test]
+    fn packages_lists_what_each_shared_layer_holds() {
+        let locked = Locked {
+            environment: "prod".to_string(),
+            platform: "linux-64".to_string(),
+            packages: vec![
+                package("big", Kind::Conda, Some(5 << 20)),
+                package("tiny", Kind::Conda, Some(10)),
+                package("zlib", Kind::Conda, Some(20)),
+                package("requests", Kind::Pypi, None),
+            ],
+        };
+        let plan = plan(locked, Layering::Grouped, 100).unwrap();
+        let expected = [
+            "Environment prod on linux-64 (image platform linux/amd64)",
+            "3 conda packages, 1 PyPI package, 3 layers, download size unknown",
+            "1 conda package in layers of their own, 2 sharing 1 layer",
+            "",
+            "  #  Layer             Download",
+            "  1  big 1.2.3         5.0 MiB",
+            "  2  2 conda packages  30 B",
+            "       tiny 1.2.3      10 B",
+            "       zlib 1.2.3      20 B",
+            "  3  1 PyPI package    unknown",
+            "       requests 1.2.3  unknown",
+        ];
+        assert_eq!(text(&plan, true), expected.join("\n") + "\n");
+        // Without the flag, the same plan has a row per layer.
+        assert_eq!(text(&plan, false).lines().count(), 8);
+    }
+
+    #[test]
+    fn the_whole_environment_is_one_row() {
+        let locked = Locked {
+            environment: "prod".to_string(),
+            platform: "linux-64".to_string(),
+            packages: vec![package("a", Kind::Conda, Some(1)), package("b", Kind::Conda, Some(1))],
+        };
+        let plan = plan(locked, Layering::Single, 100).unwrap();
+        let text = text(&plan, false);
+        assert!(text.contains("  1  the environment, 2 packages  2 B\n"), "{text}");
+        assert!(!text.contains("layers of their own"));
+    }
+
+    #[test]
     fn an_empty_plan_has_no_table() {
         let locked = Locked {
             environment: "default".to_string(),
             platform: "linux-aarch64".to_string(),
             packages: Vec::new(),
         };
-        let plan = plan(locked, 100).unwrap();
+        let plan = plan(locked, Layering::Grouped, 100).unwrap();
         assert_eq!(
-            text(&plan),
+            text(&plan, false),
             "Environment default on linux-aarch64 (image platform linux/arm64/v8)\n\
              0 conda packages, 0 PyPI packages, 0 layers, 0 B to download\n"
         );

@@ -12,7 +12,9 @@ Shows the layers an image of an environment would be built from, without downloa
 | `--lockfile PATH` | `pixi.lock` | the lockfile to read |
 | `-e, --environment NAME` | `default` | the environment to put in the image |
 | `-p, --platform NAME` | Linux on the host's architecture | a `linux-*` conda platform: `linux-64`, `linux-aarch64`, `linux-ppc64le`, ... |
-| `--max-layers N` | `100` | the most layers to use; past it, the packages fewest others depend on share the last conda layer. At least 2. |
+| `--layers grouped\|per-package\|single` | `grouped` | how to split the environment into layers: packages of 4 MiB or more alone and smaller ones grouped, a layer per package, or the whole environment in one layer. See [Planning the layers](how-it-works.md#planning-the-layers). |
+| `--max-layers N` | `100` | the most layers to use; past it, the layers of the packages fewest others depend on are merged into the last conda layer. At least 2, except with `--layers single`. |
+| `--packages` | | list the packages of every layer that holds several |
 | `--format text\|json` | `text` | `json` carries every package's kind, URL, sha256 and size |
 
 The default platform is `linux-aarch64` on an ARM machine (an Apple Silicon Mac, an ARM server) and `linux-64`
@@ -20,7 +22,7 @@ everywhere else.
 
 ## `pixi oci build`
 
-Builds an image of an environment. It takes `plan`'s `--lockfile`, `-e`, `-p` and `--max-layers`, and:
+Builds an image of an environment. It takes `plan`'s `--lockfile`, `-e`, `-p`, `--layers` and `--max-layers`, and:
 
 | Option | Default | |
 |---|---|---|
@@ -42,8 +44,8 @@ Progress goes to stderr, one line per layer as it starts. The summary goes to st
 
 ```text
 Wrote app:1.0 to app.tar
-  manifest sha256:c41ba44878826e5db8f121aeaa113ff80aba1fac14283b5172491b08afa4c7a8
-  23 layers, 62.6 MiB for linux/amd64
+  manifest sha256:9ec8407e4f1860919cd8dd7af6027a9bdcb91a5a008b2c5ea657ed3f300044ef
+  7 layers, 62.6 MiB for linux/amd64
 ```
 
 ## Environment variables

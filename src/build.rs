@@ -9,8 +9,8 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use crate::fetch::{FetchError, Fetcher};
 use crate::image::{self, ImageLayer, Reference, Settings, Written};
 use crate::lock::Kind;
-use crate::plan::{LayerKind, Plan};
-use crate::report::{plural, size_text};
+use crate::plan::Plan;
+use crate::report::size_text;
 use crate::stream::{self, StreamError};
 use crate::target::{Target, TargetError};
 
@@ -174,7 +174,7 @@ pub fn build(
                             out,
                             "[{}/{total}] {} ({})",
                             i + 1,
-                            describe(planned),
+                            crate::report::describe(planned),
                             size_text(planned.size)
                         );
                     }
@@ -277,17 +277,6 @@ fn prepare_output(output: &Path, force: bool) -> Result<(), BuildError> {
         fs::remove_file(output)
     };
     removed.map_err(write_err(output))
-}
-
-fn describe(layer: &crate::plan::Layer) -> String {
-    match layer.kind {
-        LayerKind::Conda => {
-            let package = &layer.packages[0];
-            format!("{} {}", package.name, package.version)
-        }
-        LayerKind::CondaMerged => format!("{} more conda packages", layer.packages.len()),
-        LayerKind::Pypi => plural(layer.packages.len(), "PyPI package"),
-    }
 }
 
 /// A layer's line in the image history: each package as `name version build`.
