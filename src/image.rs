@@ -92,6 +92,25 @@ impl Reference {
     }
 }
 
+impl Reference {
+    /// The name as docker normalizes it: `app:1` is `docker.io/library/app:1`, `team/app:1` is
+    /// `docker.io/team/app:1`, and a name whose first part has a dot, a colon or is `localhost` keeps its registry.
+    pub fn qualified(&self) -> String {
+        let has_registry = self
+            .name
+            .split_once('/')
+            .is_some_and(|(first, _)| first.contains('.') || first.contains(':') || first == "localhost");
+        let name = if has_registry {
+            self.name.clone()
+        } else if self.name.contains('/') {
+            format!("docker.io/{}", self.name)
+        } else {
+            format!("docker.io/library/{}", self.name)
+        };
+        format!("{name}:{}", self.tag)
+    }
+}
+
 impl std::fmt::Display for Reference {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}:{}", self.name, self.tag)
@@ -243,8 +262,9 @@ pub fn finish_layout(
             "size": manifest_blob.size,
             "platform": platform_json,
             "annotations": {
-                // containerd and nerdctl read the full name; skopeo and podman read the tag.
-                "io.containerd.image.name": reference.to_string(),
+                // containerd, nerdctl and docker's containerd image store read the full name, and take it as it is
+                // written, so it is written fully qualified; skopeo and podman read the tag.
+                "io.containerd.image.name": reference.qualified(),
                 "org.opencontainers.image.ref.name": reference.tag,
             },
         }],
@@ -379,6 +399,16 @@ mod tests {
         assert_eq!(parse("app:-x"), None);
         assert_eq!(parse(""), None);
         assert_eq!(Reference::parse("a:b").unwrap().to_string(), "a:b");
+    }
+
+    #[test]
+    fn the_containerd_name_is_fully_qualified() {
+        let qualified = |value: &str| Reference::parse(value).unwrap().qualified();
+        assert_eq!(qualified("app"), "docker.io/library/app:latest");
+        assert_eq!(qualified("team/app:1"), "docker.io/team/app:1");
+        assert_eq!(qualified("quay.io/team/app:1"), "quay.io/team/app:1");
+        assert_eq!(qualified("localhost/app:2"), "localhost/app:2");
+        assert_eq!(qualified("host:5000/app"), "host:5000/app:latest");
     }
 
     #[test]

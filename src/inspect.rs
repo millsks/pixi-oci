@@ -90,6 +90,15 @@ pub struct Inspection {
     pub layers: Vec<LayerInfo>,
 }
 
+/// A fully qualified name as docker shows it: `docker.io/library/app:1` is `app:1`, `docker.io/team/app:1` is
+/// `team/app:1`, and any other registry stays.
+fn familiar(name: &str) -> String {
+    name.strip_prefix("docker.io/library/")
+        .or_else(|| name.strip_prefix("docker.io/"))
+        .unwrap_or(name)
+        .to_string()
+}
+
 /// One image manifest an index leads to, with the annotations of the top-level entry that led there.
 struct Candidate {
     descriptor: Value,
@@ -151,7 +160,9 @@ pub fn inspect(path: &Path, platform: Option<&str>) -> Result<Inspection, Inspec
     let annotation = |key: &str| candidate.top["annotations"][key].as_str().map(str::to_string);
     Ok(Inspection {
         image: name.clone(),
-        reference: annotation("io.containerd.image.name").or_else(|| annotation("org.opencontainers.image.ref.name")),
+        reference: annotation("io.containerd.image.name")
+            .map(|name| familiar(&name))
+            .or_else(|| annotation("org.opencontainers.image.ref.name")),
         platform: candidate.platform.or_else(|| platform_text(&config)),
         manifest: Document {
             digest: manifest_digest,
@@ -625,6 +636,13 @@ mod tests {
             inspect(&dir.path().join("missing"), None).unwrap_err(),
             InspectError::Read(_)
         ));
+    }
+
+    #[test]
+    fn names_are_shown_as_docker_shows_them() {
+        assert_eq!(familiar("docker.io/library/app:1"), "app:1");
+        assert_eq!(familiar("docker.io/team/app:1"), "team/app:1");
+        assert_eq!(familiar("quay.io/team/app:1"), "quay.io/team/app:1");
     }
 
     #[test]
