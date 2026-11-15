@@ -20,6 +20,8 @@ pub enum Command {
     Plan(PlanArgs),
     /// Build an image of an environment, as an OCI image layout directory or a `.tar` archive.
     Build(BuildArgs),
+    /// Check an image against the OCI image spec: every blob, digest, size and diff_id. Nothing is run.
+    Validate(ValidateArgs),
 }
 
 /// Which environment of which lockfile, and for which platform.
@@ -64,6 +66,17 @@ pub struct PlanArgs {
     pub packages: bool,
 
     /// How to print the plan.
+    #[arg(long, value_enum, default_value_t = Format::Text)]
+    pub format: Format,
+}
+
+#[derive(Debug, Args)]
+pub struct ValidateArgs {
+    /// The image: an OCI image layout directory or a `.tar` archive of one.
+    #[arg(value_name = "IMAGE")]
+    pub image: PathBuf,
+
+    /// How to print the result.
     #[arg(long, value_enum, default_value_t = Format::Text)]
     pub format: Format,
 }

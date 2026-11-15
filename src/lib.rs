@@ -17,20 +17,49 @@ pub mod lock;
 mod parity;
 pub mod plan;
 pub mod platform;
+pub mod read;
 pub mod report;
 pub mod stream;
 pub mod target;
 #[cfg(test)]
 mod testing;
+pub mod validate;
 
-use cli::{BuildArgs, Cli, Command, Format, PlanArgs};
+use cli::{BuildArgs, Cli, Command, Format, PlanArgs, ValidateArgs};
+
+/// What a command prints, and whether it succeeded: a command can print a full report and still fail, as
+/// `validate` does for an invalid image.
+#[derive(Debug)]
+pub struct Output {
+    pub stdout: String,
+    pub success: bool,
+}
+
+impl From<String> for Output {
+    fn from(stdout: String) -> Self {
+        Output { stdout, success: true }
+    }
+}
 
 /// Run a parsed command line, returning what to print.
-pub fn run(cli: Cli) -> miette::Result<String> {
+pub fn run(cli: Cli) -> miette::Result<Output> {
     match cli.command {
-        Command::Plan(args) => run_plan(args),
-        Command::Build(args) => run_build(args),
+        Command::Plan(args) => run_plan(args).map(Output::from),
+        Command::Build(args) => run_build(args).map(Output::from),
+        Command::Validate(args) => run_validate(args),
     }
+}
+
+fn run_validate(args: ValidateArgs) -> miette::Result<Output> {
+    let report = validate::validate(&args.image)?;
+    let stdout = match args.format {
+        Format::Text => report.text(),
+        Format::Json => report.json() + "\n",
+    };
+    Ok(Output {
+        stdout,
+        success: report.valid,
+    })
 }
 
 /// Why the command line was refused before any work began.

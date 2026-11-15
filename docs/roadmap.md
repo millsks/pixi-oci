@@ -20,12 +20,11 @@ scope and acceptance criteria live and its pull requests are linked. Comment the
 - [x] **Grouped layers**: packages of 4 MiB or more alone and small ones grouped at cut points their names fix, so a
       large environment keeps its layers for the packages worth re-uploading; `--layers per-package` and `single` too
       ([#10](https://github.com/millsks/pixi-oci/issues/10))
+- [x] **`validate`**: an image checked against the OCI image spec on any OS, every blob, digest, size and `diff_id`
+      ([#25](https://github.com/millsks/pixi-oci/issues/25))
 
 ## Next
 
-- [ ] **`pixi oci validate`.** Check an image against the OCI spec: media types, every blob present with its digest
-      and size, diff_ids matching the uncompressed layers. Cheap, for any image, and run by `push` before uploading.
-      ([#25](https://github.com/millsks/pixi-oci/issues/25))
 - [ ] **`pixi oci inspect`.** An image's platform, config and layers, with the packages each layer holds, as text or
       JSON, with no skopeo or crane. ([#24](https://github.com/millsks/pixi-oci/issues/24))
 - [ ] **`pixi oci check`.** Static tests on any OS, nothing executed: every binary is a Linux ELF for the image's

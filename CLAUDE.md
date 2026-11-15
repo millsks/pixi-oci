@@ -22,6 +22,8 @@ One crate, `pixi-oci`, a binary pixi runs as `pixi oci`: it builds OCI container
 | `src/parity.rs` | test only, Unix: every plan built both ways must give the same files, modes, links and records |
 | `src/testing.rs` | test only: conda packages made in tests, images read back |
 | `src/image.rs` | config, manifest, OCI layout and archive |
+| `src/read.rs` | an image read back: a layout directory, or a `.tar` read in place by offset |
+| `src/validate.rs` | `validate`: an image checked against the OCI image spec, every problem collected |
 | `tests/cli.rs` | the binary end to end, against `tests/fixtures/workspace/pixi.lock` |
 | `tests/network.rs` | a real build from conda-forge, unpacked and run; only with `PIXI_OCI_NETWORK_TESTS=1` on Linux |
 

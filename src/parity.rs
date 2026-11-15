@@ -58,6 +58,8 @@ fn streamed(plan: &Plan, fetcher: &Fetcher, dir: &Path, name: &str, max_memory: 
         max_memory,
     };
     let written = build(plan, &options, fetcher, &mut std::io::sink()).unwrap();
+    let report = crate::validate::validate(&layout).unwrap();
+    assert!(report.valid, "{}", report.text());
     (testing::layout_layers(&layout), written.manifest.digest)
 }
 

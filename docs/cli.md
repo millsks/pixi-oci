@@ -48,6 +48,35 @@ Wrote app:1.0 to app.tar
   7 layers, 62.6 MiB for linux/amd64
 ```
 
+## `pixi oci validate`
+
+Checks an image against the [OCI image spec](https://github.com/opencontainers/image-spec), on any OS, running nothing.
+
+```console
+$ pixi oci validate app.tar
+app.tar is a valid OCI image
+  manifest sha256:9ec8407e4f18 for linux/amd64: 7 layers, 62.6 MiB
+```
+
+| Argument or option | Default | |
+|---|---|---|
+| `IMAGE` | | an OCI image layout directory, or a `.tar` archive of one, read in place |
+| `--format text\|json` | `text` | `json` gives `valid`, each manifest checked, and each problem as `at` and `message` |
+
+It checks:
+
+- `oci-layout` and `index.json`, and any index nested in it
+- every manifest and config: schema version, media types, and that the index lists each with its own media type
+- every blob: present, and its sha256 and size the ones its descriptor names
+- every layer: a layer media type, and for gzip and uncompressed layers, that its uncompressed tar hashes to the
+  config's `diff_id` for it
+- the config: as many `diff_ids` and history entries as layers, and the same platform as the index
+- `org.opencontainers.image.ref.name`, by the spec's grammar
+- for an archive, that the `manifest.json` `docker load` reads names the same config and layers
+
+It reports every problem it finds, not just the first, and exits `1` if there is any. zstd layers are hashed but
+their `diff_id` is not checked.
+
 ## Environment variables
 
 | Variable | |
@@ -62,5 +91,5 @@ Wrote app:1.0 to app.tar
 | Code | |
 |---|---|
 | `0` | success |
-| `1` | the command failed; the message says why and usually what to do ([Troubleshooting](troubleshooting.md)) |
+| `1` | the command failed, or `validate` found a problem; the message says why and usually what to do ([Troubleshooting](troubleshooting.md)) |
 | `2` | the command line was wrong: an unknown option or a value that does not parse |
