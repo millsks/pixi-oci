@@ -460,6 +460,33 @@
   
   
     <li class="md-nav__item">
+      <a href="../base-images/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Base images
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../cli/" class="md-nav__link">
         
   
@@ -683,10 +710,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_10" >
         
           
-          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="">
+          <label class="md-nav__link" for="__nav_10" id="__nav_10_label" tabindex="">
             
   
   
@@ -704,8 +731,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_9">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_10_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_10">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -972,8 +999,17 @@ pixi-oci prints them, with the variable parts in angle brackets.</p>
     its <code>index.json</code>, so nothing half-written passes for an image.</p>
 <h2 id="running-the-image">Running the image<a class="headerlink" href="#running-the-image" title="Permanent link">&para;</a></h2>
 <p><strong><code>exec /opt/env/bin/python: no such file or directory</code></strong> from <code>docker run</code> or <code>podman run</code>
-:   The program exists; its loader does not. Images have no base yet, so there is no glibc. Base images are the next
-    milestone on the <a href="../roadmap/">roadmap</a>. <code>pixi oci check</code> reports this, on any OS, before you load the image.</p>
+:   The program exists; its loader does not: the image has no glibc. Build it on a base image with <code>--base</code>
+    (<a href="../base-images/">Base images</a>). <code>pixi oci check</code> reports this, on any OS, before you load the image.</p>
+<p><strong><code>... is not pinned to a digest</code></strong>
+:   <code>--base</code> takes an image with its digest, so the build stays reproducible. <code>crane digest &lt;image&gt;</code> or
+    <code>skopeo inspect docker://&lt;image&gt;</code> prints it (<a href="../base-images/#pinned-by-digest">Base images</a>).</p>
+<p><strong><code>... refused access to ...</code></strong> when pulling a base
+:   The registry wants credentials. Log in with <code>docker login</code> or <code>podman login</code> (or set up a credential helper):
+    pixi-oci reads what they store.</p>
+<p><strong><code>... has no image for linux/arm64/v8</code></strong>
+:   The base's index has no image for the platform being built. Pick a base built for it, or build for a platform
+    the base has.</p>
 <p><strong><code>pixi oci check</code> reports <code>library: libX11.so.6 ...</code>, or another library</strong>
 :   A binary in the environment links to a library no package in the environment provides. conda-forge's <code>tk</code>, for
     one, links to <code>libX11.so.6</code>, so <code>tkinter</code> needs <code>xorg-libx11</code> in the environment (<code>pixi add xorg-libx11</code>). If

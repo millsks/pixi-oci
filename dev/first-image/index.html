@@ -573,6 +573,33 @@
   
   
     <li class="md-nav__item">
+      <a href="../base-images/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Base images
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../cli/" class="md-nav__link">
         
   
@@ -694,10 +721,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_10" >
         
           
-          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="">
+          <label class="md-nav__link" for="__nav_10" id="__nav_10_label" tabindex="">
             
   
   
@@ -715,8 +742,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_9">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_10_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_10">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -987,32 +1014,39 @@ exactly what your lockfile locks.)</p>
 every container tool can read.</p>
 <p>The output is a <code>.tar</code> archive here. Give <code>-o</code> a path that does not end in <code>.tar</code> (<code>-o hello-image</code>) for an OCI image
 layout directory instead.</p>
+<p>That image holds the environment alone. conda packages use the system's glibc, so to run one, build it on a base
+image that has glibc and a shell, pinned by its digest (<a href="../base-images/">Base images</a>):</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>pixi<span class="w"> </span>oci<span class="w"> </span>build<span class="w"> </span>-p<span class="w"> </span>linux-64<span class="w"> </span>--tag<span class="w"> </span>hello:1.0<span class="w"> </span>-o<span class="w"> </span>hello.tar<span class="w"> </span>--entrypoint<span class="w"> </span>python<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="w">  </span>--base<span class="w"> </span>registry.access.redhat.com/ubi9/ubi-minimal@sha256:baafce2d34783a28b4a472779f304e97e00f9d35c99553bc53b068b14344d9a9
+</code></pre></div>
+<p><code>debian:bookworm-slim@sha256:734a72b3d6142a71993b4bc580ca01d8ca687f77a2c422d96a961d3376b179bc</code> works the same way.</p>
 <h2 id="4-look-inside">4. Look inside<a class="headerlink" href="#4-look-inside" title="Permanent link">&para;</a></h2>
 <p>Check it against the OCI image spec, with nothing else installed:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="gp">$ </span>pixi<span class="w"> </span>oci<span class="w"> </span>validate<span class="w"> </span>hello.tar
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="go">hello.tar is a valid OCI image</span>
-<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="go">  manifest sha256:9ec8407e4f18 for linux/amd64: 7 layers, 62.6 MiB</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="gp">$ </span>pixi<span class="w"> </span>oci<span class="w"> </span>validate<span class="w"> </span>hello.tar
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="go">hello.tar is a valid OCI image</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="go">  manifest sha256:9ec8407e4f18 for linux/amd64: 7 layers, 62.6 MiB</span>
 </code></pre></div>
 <p>See what is in it, and which packages each layer holds:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a>pixi<span class="w"> </span>oci<span class="w"> </span>inspect<span class="w"> </span>hello.tar<span class="w">              </span><span class="c1"># platform, settings, and a row per layer</span>
-<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>pixi<span class="w"> </span>oci<span class="w"> </span>inspect<span class="w"> </span>hello.tar<span class="w"> </span>--packages<span class="w">   </span><span class="c1"># every package of every shared layer</span>
-<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>pixi<span class="w"> </span>oci<span class="w"> </span>inspect<span class="w"> </span>hello.tar<span class="w"> </span>--raw<span class="w"> </span>config<span class="w"> </span><span class="c1"># the full image config, exactly as stored</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>pixi<span class="w"> </span>oci<span class="w"> </span>inspect<span class="w"> </span>hello.tar<span class="w">              </span><span class="c1"># platform, settings, and a row per layer</span>
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>pixi<span class="w"> </span>oci<span class="w"> </span>inspect<span class="w"> </span>hello.tar<span class="w"> </span>--packages<span class="w">   </span><span class="c1"># every package of every shared layer</span>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>pixi<span class="w"> </span>oci<span class="w"> </span>inspect<span class="w"> </span>hello.tar<span class="w"> </span>--raw<span class="w"> </span>config<span class="w"> </span><span class="c1"># the full image config, exactly as stored</span>
 </code></pre></div>
 <p>Check that it would run, without running it:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a>pixi<span class="w"> </span>oci<span class="w"> </span>check<span class="w"> </span>hello.tar
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>pixi<span class="w"> </span>oci<span class="w"> </span>check<span class="w"> </span>hello.tar
 </code></pre></div>
-<p>It reads every binary and script. Expect a <code>glibc</code> problem for now: conda packages use the system's glibc, and these
-images have no base image yet to provide it (<a href="../roadmap/">roadmap</a>).</p>
+<p>It reads every binary and script. Built without a base, the image gets a <code>glibc</code> problem: nothing in it provides the
+loader every conda binary needs. Built with <code>--base</code>, it reports only what the environment itself lacks, if
+anything.</p>
 <p>It is a standard OCI image, so any OCI tool reads it as well, with no daemon:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>skopeo<span class="w"> </span>inspect<span class="w"> </span>oci-archive:hello.tar<span class="w">            </span><span class="c1"># platform, layers, environment variables</span>
-<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>skopeo<span class="w"> </span>inspect<span class="w"> </span>--config<span class="w"> </span>oci-archive:hello.tar<span class="w">   </span><span class="c1"># the full image config</span>
-<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>crane<span class="w"> </span>validate<span class="w"> </span>--tarball<span class="w"> </span>hello.tar<span class="w">              </span><span class="c1"># every digest checked</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>skopeo<span class="w"> </span>inspect<span class="w"> </span>oci-archive:hello.tar<span class="w">            </span><span class="c1"># platform, layers, environment variables</span>
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>skopeo<span class="w"> </span>inspect<span class="w"> </span>--config<span class="w"> </span>oci-archive:hello.tar<span class="w">   </span><span class="c1"># the full image config</span>
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a>crane<span class="w"> </span>validate<span class="w"> </span>--tarball<span class="w"> </span>hello.tar<span class="w">              </span><span class="c1"># every digest checked</span>
 </code></pre></div>
 <p>The image sets <code>PATH</code> to <code>/opt/env/bin:...</code> and <code>CONDA_PREFIX</code> to <code>/opt/env</code>. Add your own settings with <code>--env</code>,
 <code>--entrypoint</code>, <code>--cmd</code> and <code>--workdir</code> (<a href="../cli/#pixi-oci-build">reference</a>).</p>
 <h2 id="5-load-it">5. Load it<a class="headerlink" href="#5-load-it" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>podman<span class="w"> </span>load<span class="w"> </span>-i<span class="w"> </span>hello.tar
-<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>docker<span class="w"> </span>load<span class="w"> </span>-i<span class="w"> </span>hello.tar
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>podman<span class="w"> </span>load<span class="w"> </span>-i<span class="w"> </span>hello.tar
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>docker<span class="w"> </span>load<span class="w"> </span>-i<span class="w"> </span>hello.tar
 </code></pre></div>
 <div class="admonition warning">
 <p class="admonition-title">It does not run yet</p>
@@ -1023,7 +1057,7 @@ and copying the environment onto a base of your own.</p>
 </div>
 <h2 id="other-platforms">Other platforms<a class="headerlink" href="#other-platforms" title="Permanent link">&para;</a></h2>
 <p>Build for ARM servers from any machine, with no emulation, since nothing is run:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a>pixi<span class="w"> </span>oci<span class="w"> </span>build<span class="w"> </span>-p<span class="w"> </span>linux-aarch64<span class="w"> </span>--tag<span class="w"> </span>hello:1.0-arm64<span class="w"> </span>-o<span class="w"> </span>hello-arm64.tar
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a>pixi<span class="w"> </span>oci<span class="w"> </span>build<span class="w"> </span>-p<span class="w"> </span>linux-aarch64<span class="w"> </span>--tag<span class="w"> </span>hello:1.0-arm64<span class="w"> </span>-o<span class="w"> </span>hello-arm64.tar
 </code></pre></div>
 
 
