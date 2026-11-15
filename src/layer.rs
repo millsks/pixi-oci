@@ -156,15 +156,25 @@ fn append<W: Write>(tar: &mut tar::Builder<W>, entry: &Entry, mtime: u64) -> io:
     }
 }
 
-#[cfg(unix)]
+/// The mode an entry gets in the layer. Only whether a file is executable is kept: the rest of a mode on disk
+/// depends on the umask it was created under, which must not reach the image or its digest.
 fn mode(metadata: &fs::Metadata) -> u32 {
+    if metadata.is_dir() || metadata.file_type().is_symlink() || executable(metadata) {
+        0o755
+    } else {
+        0o644
+    }
+}
+
+#[cfg(unix)]
+fn executable(metadata: &fs::Metadata) -> bool {
     use std::os::unix::fs::PermissionsExt;
-    metadata.permissions().mode() & 0o7777
+    metadata.permissions().mode() & 0o111 != 0
 }
 
 #[cfg(not(unix))]
-fn mode(metadata: &fs::Metadata) -> u32 {
-    if metadata.is_dir() { 0o755 } else { 0o644 }
+fn executable(_: &fs::Metadata) -> bool {
+    false
 }
 
 #[cfg(test)]
@@ -278,6 +288,14 @@ mod tests {
             .map(|(path, ..)| path.as_str())
             .collect();
         assert_eq!(dirs, ["opt/", "opt/env/", "opt/env/bin/"]);
+        // Directories and executables 0755, everything else 0644, whatever the modes on disk.
+        assert!(
+            read.iter()
+                .filter(|(_, kind, ..)| *kind == EntryType::Directory)
+                .all(|entry| entry.3 == 0o755)
+        );
+        let readme = read.iter().find(|(path, ..)| path == "opt/env/README").unwrap();
+        assert_eq!(readme.3, 0o644);
         if cfg!(unix) {
             let tool = read.iter().find(|(path, ..)| path == "opt/env/bin/tool").unwrap();
             assert_eq!(tool.3, 0o755);
@@ -285,6 +303,27 @@ mod tests {
             assert_eq!(alias.1, EntryType::Symlink);
             assert_eq!(alias.4.as_deref(), Some("tool"));
         }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn the_umask_does_not_reach_the_layer() {
+        use std::os::unix::fs::PermissionsExt;
+        let dir = tree();
+        let blobs = tempfile::tempdir().unwrap();
+        let open = write(&entries(dir.path(), &|_| false).unwrap(), blobs.path(), 0).unwrap();
+        // As a user with umask 077 would have created them: directories and files closed to everyone else.
+        for (path, mode) in [
+            ("opt", 0o700),
+            ("opt/env", 0o700),
+            ("opt/env/bin", 0o700),
+            ("opt/env/README", 0o600),
+            ("opt/env/bin/tool", 0o700),
+        ] {
+            fs::set_permissions(dir.path().join(path), fs::Permissions::from_mode(mode)).unwrap();
+        }
+        let closed = write(&entries(dir.path(), &|_| false).unwrap(), blobs.path(), 0).unwrap();
+        assert_eq!(open, closed);
     }
 
     #[test]

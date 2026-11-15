@@ -187,6 +187,8 @@ fn one_layer_is_too_few() {
         .stderr(predicate::str::contains("--max-layers must be at least 2"));
 }
 
+// Windows hosts are refused before the environment is looked at.
+#[cfg(unix)]
 #[test]
 fn build_refuses_pypi_packages_by_name() {
     let dir = tempfile::tempdir().unwrap();

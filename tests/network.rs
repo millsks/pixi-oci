@@ -37,10 +37,18 @@ fn unpack_image(archive: &Path, root: &Path) {
     for layer in manifest["layers"].as_array().unwrap() {
         let digest = layer["digest"].as_str().unwrap().trim_start_matches("sha256:");
         let blob = fs::File::open(layout.join("blobs/sha256").join(digest)).unwrap();
-        // The layers hold paths relative to `/`, and the prefix is an absolute path under `root`.
-        tar::Archive::new(flate2::read::GzDecoder::new(blob))
-            .unpack("/")
-            .unwrap();
+        // The layers hold paths relative to `/`, and the prefix is an absolute path under `root`. Directories that
+        // exist already (`/tmp` and the scratch directory above the prefix) belong to someone else: a container
+        // runtime would merge them, and this test leaves them alone.
+        let mut archive = tar::Archive::new(flate2::read::GzDecoder::new(blob));
+        for entry in archive.entries().unwrap() {
+            let mut entry = entry.unwrap();
+            let path = Path::new("/").join(entry.path().unwrap());
+            if entry.header().entry_type().is_dir() && path.is_dir() {
+                continue;
+            }
+            assert!(entry.unpack_in("/").unwrap(), "{} escapes the root", path.display());
+        }
     }
 }
 
