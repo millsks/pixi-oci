@@ -34,6 +34,7 @@ Builds an image of an environment. It takes `plan`'s `--lockfile`, `-e`, `-p`, `
 | `--entrypoint COMMAND` | | the entrypoint: a JSON array (`'["python", "-m", "http.server"]'`) or words (`python -m http.server`) |
 | `--cmd ARGS` | | the default arguments, in the same two forms |
 | `--workdir PATH` | | the working directory processes start in |
+| `--base IMAGE@DIGEST` | | an image to build on, pinned by digest, for glibc and a shell: its layers go under the environment's and its config is where the image's starts ([Base images](base-images.md)) |
 | `--max-memory SIZE` | `512M` | roughly how much memory the build's buffers may use, such as `128M` or `2G`; at least `16M`. Less means fewer layers at once and large files waiting on disk; the image is the same. |
 | `--cache-dir PATH` | see below | where downloaded package archives are kept, named by their sha256 |
 

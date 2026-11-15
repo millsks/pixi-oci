@@ -26,11 +26,11 @@ scope and acceptance criteria live and its pull requests are linked. Comment the
       stored documents ([#24](https://github.com/millsks/pixi-oci/issues/24))
 - [x] **`check`**: whether an image will run, without running it, on any OS: architecture, loader and glibc,
       libraries by the loader's own search, shebangs, placeholders, the entrypoint ([#11](https://github.com/millsks/pixi-oci/issues/11))
+- [x] **Base images**: `--base` builds on any image pinned by digest, pulled from any registry with docker's and
+      podman's credentials; UBI 9 minimal and Debian 12 slim documented and run in CI ([#12](https://github.com/millsks/pixi-oci/issues/12))
 
 ## Next
 
-- [ ] **Base images.** `--base` pulls a glibc base image (a distroless or UBI image) by digest, so python and the
-      rest of conda-forge run. ([#12](https://github.com/millsks/pixi-oci/issues/12))
 - [ ] **Push.** `pixi oci push` sends the image to any registry, with docker-style credentials.
       ([#13](https://github.com/millsks/pixi-oci/issues/13))
 - [ ] **`pixi oci run`.** Rootless containers on Linux through unprivileged user namespaces, with no Docker, Podman

@@ -99,6 +99,7 @@ and 15.9 s for the same two images.
 | `--env KEY=VALUE` | | an environment variable; repeatable |
 | `--entrypoint`, `--cmd` | | a JSON array (`["python", "-m", "http.server"]`) or words |
 | `--workdir PATH` | | the working directory |
+| `--base IMAGE@DIGEST` | | an image to build on, pinned by digest, such as `registry.access.redhat.com/ubi9/ubi-minimal@sha256:...` or `debian:bookworm-slim@sha256:...` |
 | `--max-memory SIZE` | `512M` | how much memory the build's buffers may use, such as `128M` or `2G`; at least `16M` |
 | `--cache-dir PATH` | `PIXI_OCI_CACHE_DIR`, else the platform's cache | downloaded package archives, named by their sha256 |
 
@@ -157,7 +158,7 @@ too.
 Checks that an image would run, without running it, on any OS: every ELF file is for the image's architecture, its
 loader and libraries are where the loader looks (`RPATH`, `RUNPATH`, `LD_LIBRARY_PATH`, the system directories),
 executable scripts' interpreters exist, no conda placeholder is left, and the entrypoint is on `PATH`. It runs
-`validate` first and exits `1` on any problem. Until base images land, every image reports a `glibc` problem.
+`validate` first and exits `1` on any problem. An image built without `--base` reports a `glibc` problem.
 
 ```console
 $ pixi oci check app.tar --format json
@@ -204,7 +205,7 @@ Every item has an issue labelled [`roadmap`](https://github.com/millsks/pixi-oci
 - [x] `validate`: an image checked against the OCI spec ([#25](https://github.com/millsks/pixi-oci/issues/25))
 - [x] `inspect`: an image's config, layers and packages ([#24](https://github.com/millsks/pixi-oci/issues/24))
 - [x] `check`: will the image run, checked without running it ([#11](https://github.com/millsks/pixi-oci/issues/11))
-- [ ] Base images with `--base` ([#12](https://github.com/millsks/pixi-oci/issues/12))
+- [x] Base images with `--base`, pinned by digest ([#12](https://github.com/millsks/pixi-oci/issues/12))
 - [ ] `push` to any registry ([#13](https://github.com/millsks/pixi-oci/issues/13))
 - [ ] `run`: rootless containers on Linux and in CI ([#14](https://github.com/millsks/pixi-oci/issues/14))
 - [ ] `diff`: two images compared layer by layer ([#26](https://github.com/millsks/pixi-oci/issues/26))

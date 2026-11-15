@@ -48,7 +48,7 @@ impl From<String> for Output {
 pub fn run(cli: Cli) -> miette::Result<Output> {
     match cli.command {
         Command::Plan(args) => run_plan(args).map(Output::from),
-        Command::Build(args) => run_build(args).map(Output::from),
+        Command::Build(args) => run_build(*args).map(Output::from),
         Command::Validate(args) => run_validate(args),
         Command::Inspect(args) => run_inspect(args).map(Output::from),
         Command::Check(args) => run_check(args),
@@ -97,6 +97,16 @@ pub enum UsageError {
     #[error("`{value}` is not an image name and tag")]
     #[diagnostic(help("use a lowercase name, optionally with a registry and a tag: quay.io/team/app:1.0"))]
     Reference { value: String },
+
+    #[error(
+        "the base image {base} has {base_layers} layers, which leaves too few of --max-layers {max_layers} for the environment"
+    )]
+    #[diagnostic(help("raise --max-layers, or pick a base with fewer layers"))]
+    TooManyBaseLayers {
+        base: String,
+        base_layers: usize,
+        max_layers: usize,
+    },
 }
 
 fn run_build(args: BuildArgs) -> miette::Result<String> {
@@ -108,7 +118,30 @@ fn run_build(args: BuildArgs) -> miette::Result<String> {
     let reference = image::Reference::parse(&tag).ok_or(UsageError::Reference { value: tag })?;
     let lock = lock::load(&selection.lockfile)?;
     let locked = lock::select(&lock, &selection.environment, &platform)?;
-    let plan = plan::plan(locked, args.layers.layers, args.layers.max_layers)?;
+    let cache = args.cache_dir.unwrap_or_else(fetch::Fetcher::default_root);
+    // The base first: it is pinned and small next to the environment, and its layers come out of the layer budget.
+    let base = match &args.base {
+        Some(value) => {
+            let reference = registry::ImageRef::parse(value)?;
+            let oci = platform::oci_platform(&platform).ok_or_else(|| plan::PlanError::NotLinux {
+                platform: platform.clone(),
+            })?;
+            eprintln!("base {reference}");
+            Some(registry::Registry::new(cache.clone()).pull(&reference, &oci)?)
+        }
+        None => None,
+    };
+    let base_layers = base.as_ref().map_or(0, |base| base.layers.len());
+    let max_layers = args.layers.max_layers.saturating_sub(base_layers);
+    if base_layers > 0 && max_layers < 2 && args.layers.layers != plan::Layering::Single {
+        return Err(UsageError::TooManyBaseLayers {
+            base: args.base.unwrap_or_default(),
+            base_layers,
+            max_layers: args.layers.max_layers,
+        }
+        .into());
+    }
+    let plan = plan::plan(locked, args.layers.layers, max_layers)?;
     let options = build::BuildOptions {
         prefix: args.prefix,
         output: args.output,
@@ -120,15 +153,16 @@ fn run_build(args: BuildArgs) -> miette::Result<String> {
         workdir: args.workdir,
         source_date_epoch: build::source_date_epoch(),
         max_memory: args.max_memory,
+        base,
     };
-    let fetcher = fetch::Fetcher::new(args.cache_dir.unwrap_or_else(fetch::Fetcher::default_root));
+    let fetcher = fetch::Fetcher::new(cache);
     let written = build::build(&plan, &options, &fetcher, &mut std::io::stderr())?;
     Ok(format!(
         "Wrote {} to {}\n  manifest {}\n  {}, {} for {}\n",
         written.reference,
         options.output.display(),
         written.manifest.digest,
-        report::plural(plan.layers.len(), "layer"),
+        report::plural(plan.layers.len() + base_layers, "layer"),
         report::size_text(Some(written.layers_size)),
         plan.oci_platform,
     ))

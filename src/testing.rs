@@ -363,7 +363,72 @@ pub fn build_image(dir: &Path, plan: &Plan, output: &Path) -> crate::image::Writ
         workdir: Some("/work".to_string()),
         source_date_epoch: 0,
         max_memory: 16 << 20,
+        base: None,
     };
     let fetcher = crate::fetch::Fetcher::new(dir.join("cache"));
     crate::build::build(plan, &options, &fetcher, &mut std::io::sink()).unwrap()
+}
+
+/// One file of a test base image: its path, contents and mode, or a symlink target.
+pub enum BaseEntry<'a> {
+    File(&'a str, Vec<u8>, u32),
+    Link(&'a str, &'a str),
+}
+
+/// A base image as `Registry::pull` returns one: one gzip layer of `entries`, cached under `dir`, and a docker-style
+/// config with a user, a command, labels, an empty-layer history entry and a docker build's leftovers.
+pub fn base_image(dir: &Path, entries: &[BaseEntry]) -> crate::registry::Pulled {
+    use std::io::Write as _;
+    let mut tar = tar::Builder::new(Vec::new());
+    for entry in entries {
+        let mut header = tar::Header::new_gnu();
+        match entry {
+            BaseEntry::File(path, content, mode) => {
+                header.set_size(content.len() as u64);
+                header.set_mode(*mode);
+                tar.append_data(&mut header, path, content.as_slice()).unwrap();
+            }
+            BaseEntry::Link(path, target) => {
+                header.set_entry_type(tar::EntryType::Symlink);
+                header.set_size(0);
+                tar.append_link(&mut header, path, target).unwrap();
+            }
+        }
+    }
+    let tar = tar.into_inner().unwrap();
+    let mut gz = flate2::write::GzEncoder::new(Vec::new(), flate2::Compression::default());
+    gz.write_all(&tar).unwrap();
+    let layer = gz.finish().unwrap();
+    let digest = format!("sha256:{}", crate::fetch::hex(&Sha256::digest(&layer)));
+    let path = dir.join("base-layer.tar.gz");
+    fs::write(&path, &layer).unwrap();
+    crate::registry::Pulled {
+        reference: crate::registry::ImageRef::parse(&format!("example.com/os/base:9@sha256:{}", "b".repeat(64)))
+            .unwrap(),
+        manifest_digest: format!("sha256:{}", "c".repeat(64)),
+        config: serde_json::json!({
+            "architecture": "amd64",
+            "os": "linux",
+            "container_config": {"Cmd": ["/bin/sh", "-c", "#(nop) build step"]},
+            "docker_version": "20.10",
+            "config": {
+                "Env": ["PATH=/usr/local/bin:/usr/bin:/bin", "LANG=C.UTF-8", "CONDA_PREFIX=/wrong"],
+                "Cmd": ["/bin/bash"],
+                "User": "1001",
+                "WorkingDir": "/home/base",
+                "Labels": {"vendor": "Example", "dev.pixi.environment": "overridden"},
+            },
+            "rootfs": {"type": "layers", "diff_ids": [format!("sha256:{}", crate::fetch::hex(&Sha256::digest(&tar)))]},
+            "history": [
+                {"created_by": "ADD rootfs.tar /"},
+                {"created_by": "ENV LANG=C.UTF-8", "empty_layer": true},
+            ],
+        }),
+        layers: vec![crate::registry::PulledLayer {
+            digest,
+            size: layer.len() as u64,
+            media_type: crate::image::LAYER_MEDIA_TYPE.to_string(),
+            path,
+        }],
+    }
 }

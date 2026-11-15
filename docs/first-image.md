@@ -72,6 +72,16 @@ every container tool can read.
 The output is a `.tar` archive here. Give `-o` a path that does not end in `.tar` (`-o hello-image`) for an OCI image
 layout directory instead.
 
+That image holds the environment alone. conda packages use the system's glibc, so to run one, build it on a base
+image that has glibc and a shell, pinned by its digest ([Base images](base-images.md)):
+
+```sh
+pixi oci build -p linux-64 --tag hello:1.0 -o hello.tar --entrypoint python \
+  --base registry.access.redhat.com/ubi9/ubi-minimal@sha256:baafce2d34783a28b4a472779f304e97e00f9d35c99553bc53b068b14344d9a9
+```
+
+`debian:bookworm-slim@sha256:734a72b3d6142a71993b4bc580ca01d8ca687f77a2c422d96a961d3376b179bc` works the same way.
+
 ## 4. Look inside
 
 Check it against the OCI image spec, with nothing else installed:
@@ -96,8 +106,9 @@ Check that it would run, without running it:
 pixi oci check hello.tar
 ```
 
-It reads every binary and script. Expect a `glibc` problem for now: conda packages use the system's glibc, and these
-images have no base image yet to provide it ([roadmap](roadmap.md)).
+It reads every binary and script. Built without a base, the image gets a `glibc` problem: nothing in it provides the
+loader every conda binary needs. Built with `--base`, it reports only what the environment itself lacks, if
+anything.
 
 It is a standard OCI image, so any OCI tool reads it as well, with no daemon:
 
