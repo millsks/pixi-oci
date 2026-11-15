@@ -32,32 +32,36 @@ installed into images yet, so keep this environment to conda packages for now.
 ```console
 $ pixi oci plan -p linux-64
 Environment default on linux-64 (image platform linux/amd64)
-23 conda packages, 0 PyPI packages, 23 layers, 44.9 MiB to download
+23 conda packages, 0 PyPI packages, 7 layers, 44.9 MiB to download
+4 conda packages in layers of their own, 19 sharing 3 layers
 
-   #  Layer                       Download
-   1  ca-certificates 2026.10.23  127.0 KiB
-   2  libgomp 16.2.0              625.6 KiB
-   ...
-  22  python 3.13.18              23.2 MiB
-  23  six 1.17.0                  18.0 KiB
+  #  Layer              Download
+  1  4 conda packages   1.8 MiB
+  2  libpython 3.13.18  9.3 MiB
+  3  12 conda packages  5.9 MiB
+  4  tk 8.6.13          3.4 MiB
+  5  3 conda packages   1.4 MiB
+  6  python 3.13.18     23.2 MiB
+  7  six 1.17.0         18.0 KiB
 ```
 
-One layer per package, the ones everything depends on first. `--format json` gives the same plan with every
-package's URL, sha256 and size.
+Packages of 4 MiB or more get a layer of their own, smaller ones share a few, and the ones everything depends on come
+first. `--packages` lists what each shared layer holds, and `--format json` gives the same plan with every package's
+URL, sha256 and size.
 
 ## 3. Build it
 
 ```console
 $ pixi oci build -p linux-64 --tag hello:1.0 -o hello.tar
-[1/23] ca-certificates 2026.10.23 (127.0 KiB)
+[1/7] 4 conda packages (1.8 MiB)
 ...
-[23/23] six 1.17.0 (18.0 KiB)
+[7/7] six 1.17.0 (18.0 KiB)
 Wrote hello:1.0 to hello.tar
-  manifest sha256:c41ba44878826e5db8f121aeaa113ff80aba1fac14283b5172491b08afa4c7a8
-  23 layers, 62.6 MiB for linux/amd64
+  manifest sha256:9ec8407e4f1860919cd8dd7af6027a9bdcb91a5a008b2c5ea657ed3f300044ef
+  7 layers, 62.6 MiB for linux/amd64
 ```
 
-Each package is downloaded once into the cache, checked against the lockfile's sha256, and written into its own
+Each package is downloaded once into the cache, checked against the lockfile's sha256, and written into its
 layer with its paths rewritten for `/opt/env`, where the environment lives in the image. Build again and you get
 the same manifest digest, on this machine or any other. (Your digest will differ from this one: it depends on
 exactly what your lockfile locks.)

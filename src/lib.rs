@@ -50,7 +50,7 @@ fn run_build(args: BuildArgs) -> miette::Result<String> {
     let reference = image::Reference::parse(&tag).ok_or(UsageError::Reference { value: tag })?;
     let lock = lock::load(&selection.lockfile)?;
     let locked = lock::select(&lock, &selection.environment, &platform)?;
-    let plan = plan::plan(locked, args.max_layers)?;
+    let plan = plan::plan(locked, args.layers.layers, args.layers.max_layers)?;
     let options = build::BuildOptions {
         prefix: args.prefix,
         output: args.output,
@@ -83,9 +83,9 @@ fn run_plan(args: PlanArgs) -> miette::Result<String> {
         .unwrap_or_else(|| platform::default_conda_platform().to_string());
     let lock = lock::load(&selection.lockfile)?;
     let locked = lock::select(&lock, &selection.environment, &platform)?;
-    let plan = plan::plan(locked, args.max_layers)?;
+    let plan = plan::plan(locked, args.layers.layers, args.layers.max_layers)?;
     Ok(match args.format {
-        Format::Text => report::text(&plan),
+        Format::Text => report::text(&plan, args.packages),
         Format::Json => report::json(&plan),
     })
 }

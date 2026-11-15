@@ -19,8 +19,9 @@ The lockfile already names every package, its exact URL and its hash. pixi-oci b
 
 - **Daemonless.** It writes the image layers itself, so it runs on a plain CI runner or an OpenShift build pod.
 - **Reproducible.** The same lockfile gives the same layers and the same image digest.
-- **Cache-friendly.** One layer per conda package, dependencies at the bottom, so changing one package re-uploads
-  one layer, and images built from the same packages share layers in the registry.
+- **Cache-friendly.** Large packages get layers of their own and small ones are grouped, dependencies at the bottom,
+  so changing one package re-uploads one small layer, and images built from the same packages share layers in the
+  registry.
 - **Private-channel ready.** Channels and registries are whatever your lockfile and your credentials point at.
 
 ## Install
@@ -43,12 +44,13 @@ Builds an image of an environment.
 
 ```console
 $ pixi oci build --environment app --platform linux-64 --tag app:1.0 --output app.tar
-[1/23] ca-certificates 2026.10.23 (127.0 KiB)
+[1/7] 4 conda packages (1.8 MiB)
+[2/7] libpython 3.13.18 (9.3 MiB)
 ...
-[23/23] six 1.17.0 (18.0 KiB)
+[7/7] six 1.17.0 (18.0 KiB)
 Wrote app:1.0 to app.tar
-  manifest sha256:ce390320328877109992d825498a8de2a17318e0d9bda96d3b21396f0e2fac50
-  23 layers, 61.5 MiB for linux/amd64
+  manifest sha256:9ec8407e4f1860919cd8dd7af6027a9bdcb91a5a008b2c5ea657ed3f300044ef
+  7 layers, 62.6 MiB for linux/amd64
 
 $ skopeo inspect oci-archive:app.tar
 $ podman load -i app.tar
@@ -106,16 +108,17 @@ Shows the layers an image of an environment would be built from, without downloa
 ```console
 $ pixi oci plan --environment default --platform linux-64
 Environment default on linux-64 (image platform linux/amd64)
-22 conda packages, 1 PyPI package, 23 layers, download size unknown
+22 conda packages, 1 PyPI package, 7 layers, download size unknown
+3 conda packages in layers of their own, 19 sharing 3 layers
 
-   #  Layer                       Download
-   1  ca-certificates 2026.10.23  127.0 KiB
-   2  libgomp 16.2.0              625.6 KiB
-   3  _openmp_mutex 4.5           28.3 KiB
-   4  libgcc 16.2.0               1.0 MiB
-   ...
-  22  python 3.13.18              23.2 MiB
-  23  1 PyPI package              unknown
+  #  Layer              Download
+  1  4 conda packages   1.8 MiB
+  2  libpython 3.13.18  9.3 MiB
+  3  12 conda packages  5.9 MiB
+  4  tk 8.6.13          3.4 MiB
+  5  3 conda packages   1.4 MiB
+  6  python 3.13.18     23.2 MiB
+  7  1 PyPI package     unknown
 ```
 
 | Option | Default | |
@@ -123,7 +126,9 @@ Environment default on linux-64 (image platform linux/amd64)
 | `--lockfile PATH` | `pixi.lock` | the lockfile to read |
 | `-e, --environment NAME` | `default` | the environment to put in the image |
 | `-p, --platform NAME` | Linux on the host's architecture | a `linux-*` conda platform |
-| `--max-layers N` | `100` | past it, the packages fewest others depend on share the last conda layer |
+| `--layers grouped\|per-package\|single` | `grouped` | large packages alone and small ones grouped, a layer per package, or one layer |
+| `--max-layers N` | `100` | past it, the layers of the packages fewest others depend on are merged into the last |
+| `--packages` | | list the packages of every layer that holds several |
 | `--format text\|json` | `text` | JSON carries every package's URL, hash and size |
 
 Sizes are of the compressed archives the lockfile records, which is what gets downloaded. The lockfile does not record
@@ -131,12 +136,14 @@ wheel sizes, so a plan with PyPI packages has no total.
 
 ## How layers are planned
 
-1. Each conda package gets its own layer.
+1. A conda package of 4 MiB or more gets its own layer; smaller ones are grouped, about 1 to 8 MiB a group. A group
+   ends after a package whose name hashes to a cut point, so adding or removing a package changes only its own group.
+   `--layers per-package` gives every package a layer, and `--layers single` puts the environment in one.
 2. Layers are ordered dependencies first, ties broken by name, so `libgcc` and `openssl` sit under `python` and the
    order is the same on every run. Dependency cycles (`python` and `pip`) are broken at their alphabetically first
    package.
 3. Overlay filesystems cap the layer count (Docker's overlay2 refuses more than 128), so past `--max-layers` the
-   packages at the top of the order share one layer.
+   layers at the top of the order are merged into one.
 4. All PyPI packages share the top layer: they install into the same site-packages and are usually what changes most.
 
 Conda packages pixi builds from source have no archive to extract yet, so environments with them are refused with

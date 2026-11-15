@@ -4,7 +4,7 @@ use std::path::PathBuf;
 
 use clap::{Args, Parser, Subcommand, ValueEnum};
 
-use crate::plan::DEFAULT_MAX_LAYERS;
+use crate::plan::{DEFAULT_MAX_LAYERS, Layering};
 
 /// Build OCI container images straight from pixi.lock.
 #[derive(Debug, Parser)]
@@ -38,14 +38,30 @@ pub struct Selection {
     pub platform: Option<String>,
 }
 
+/// How the environment is split into layers.
+#[derive(Debug, Args)]
+pub struct LayerArgs {
+    /// How to split the environment into layers.
+    #[arg(long, value_enum, default_value_t = Layering::Grouped)]
+    pub layers: Layering,
+
+    /// The most layers to use. Past it, the layers of the packages fewest others depend on are merged into the last
+    /// conda layer.
+    #[arg(long, default_value_t = DEFAULT_MAX_LAYERS, value_name = "N")]
+    pub max_layers: usize,
+}
+
 #[derive(Debug, Args)]
 pub struct PlanArgs {
     #[command(flatten)]
     pub selection: Selection,
 
-    /// The most layers to use. Past it, the packages fewest others depend on share the last conda layer.
-    #[arg(long, default_value_t = DEFAULT_MAX_LAYERS, value_name = "N")]
-    pub max_layers: usize,
+    #[command(flatten)]
+    pub layers: LayerArgs,
+
+    /// List the packages of every layer that holds several.
+    #[arg(long)]
+    pub packages: bool,
 
     /// How to print the plan.
     #[arg(long, value_enum, default_value_t = Format::Text)]
@@ -90,9 +106,8 @@ pub struct BuildArgs {
     #[arg(long, value_name = "PATH")]
     pub workdir: Option<String>,
 
-    /// The most layers to use, as for `plan`.
-    #[arg(long, default_value_t = DEFAULT_MAX_LAYERS, value_name = "N")]
-    pub max_layers: usize,
+    #[command(flatten)]
+    pub layers: LayerArgs,
 
     /// Roughly how much memory the build's buffers may use, such as 512M or 2G. Less means fewer layers written at
     /// once and large rewritten files waiting on disk; the image comes out the same.

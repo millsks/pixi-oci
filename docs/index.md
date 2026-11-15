@@ -30,8 +30,9 @@ pixi-oci builds from the lockfile instead:
   Linux modes or symlinks.
 - **Reproducible.** The same lockfile gives the same image digest on every machine; CI checks Linux, macOS and
   Windows against each other on every change.
-- **One layer per package.** Dependencies sit at the bottom, so changing one package re-uploads one layer, and images
-  built from the same packages share layers in the registry.
+- **Layers that cache well.** Large packages get layers of their own and small ones share a few, dependencies at the
+  bottom, so changing one package re-uploads one small layer, and images built from the same packages share layers
+  in the registry.
 - **Checked.** Every archive must match the sha256 the lockfile recorded before anything reads it.
 
 ## Where to go

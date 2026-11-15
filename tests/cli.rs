@@ -52,7 +52,15 @@ fn help_and_version_name_the_pixi_subcommand() {
 #[test]
 fn the_text_plan_lists_one_layer_per_package() {
     pixi_oci()
-        .args(["plan", "--lockfile", LOCKFILE, "--platform", "linux-64"])
+        .args([
+            "plan",
+            "--lockfile",
+            LOCKFILE,
+            "--platform",
+            "linux-64",
+            "--layers",
+            "per-package",
+        ])
         .assert()
         .success()
         .stdout(predicate::str::starts_with(
@@ -67,7 +75,7 @@ fn the_text_plan_lists_one_layer_per_package() {
 
 #[test]
 fn dependencies_sit_below_what_depends_on_them() {
-    let plan = plan_json(&["--platform", "linux-64"]);
+    let plan = plan_json(&["--platform", "linux-64", "--layers", "per-package"]);
     let layers = layer_names(&plan);
     let position = |name: &str| layers.iter().position(|layer| layer.iter().any(|n| n == name)).unwrap();
     assert!(position("libgcc") < position("openssl"));
@@ -76,6 +84,55 @@ fn dependencies_sit_below_what_depends_on_them() {
     // The PyPI layer is the top one.
     assert_eq!(layers.last().unwrap(), &["six"]);
     assert_eq!(plan["layers"].as_array().unwrap().last().unwrap()["kind"], "pypi");
+}
+
+fn kinds(plan: &serde_json::Value) -> Vec<&str> {
+    plan["layers"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|layer| layer["kind"].as_str().unwrap())
+        .collect()
+}
+
+#[test]
+fn layers_are_grouped_by_default() {
+    let plan = plan_json(&["--platform", "linux-64"]);
+    assert_eq!(plan["layering"], "grouped");
+    let kinds = kinds(&plan);
+    assert!(kinds.contains(&"conda-group"), "{kinds:?}");
+    assert_eq!(kinds.last(), Some(&"pypi"));
+    assert!(kinds.len() < 23, "{} layers", kinds.len());
+    // python is far over the size for a layer of its own.
+    assert!(layer_names(&plan).contains(&vec!["python".to_string()]));
+    let packages: usize = layer_names(&plan).iter().map(Vec::len).sum();
+    assert_eq!(packages, 23);
+}
+
+#[test]
+fn single_puts_everything_in_one_layer() {
+    let plan = plan_json(&["--platform", "linux-64", "--layers", "single", "--max-layers", "1"]);
+    assert_eq!(plan["layering"], "single");
+    assert_eq!(kinds(&plan), ["environment"]);
+    assert_eq!(layer_names(&plan)[0].len(), 23);
+}
+
+#[test]
+fn packages_lists_each_shared_layer() {
+    let plain = pixi_oci()
+        .args(["plan", "--lockfile", LOCKFILE, "--platform", "linux-64"])
+        .output()
+        .unwrap();
+    let listed = pixi_oci()
+        .args(["plan", "--lockfile", LOCKFILE, "--platform", "linux-64", "--packages"])
+        .output()
+        .unwrap();
+    let plain = String::from_utf8(plain.stdout).unwrap();
+    let listed = String::from_utf8(listed.stdout).unwrap();
+    assert!(plain.contains("in layers of their own"), "{plain}");
+    assert!(!plain.contains("       six "));
+    assert!(listed.contains("       six "), "{listed}");
+    assert!(listed.lines().count() > plain.lines().count());
 }
 
 #[test]
@@ -88,7 +145,14 @@ fn the_plan_is_the_same_on_every_run() {
 
 #[test]
 fn json_carries_what_a_build_needs() {
-    let plan = plan_json(&["--environment", "slim", "--platform", "linux-aarch64"]);
+    let plan = plan_json(&[
+        "--environment",
+        "slim",
+        "--platform",
+        "linux-aarch64",
+        "--layers",
+        "per-package",
+    ]);
     assert_eq!(plan["environment"], "slim");
     assert_eq!(
         plan["oci_platform"],
@@ -110,7 +174,7 @@ fn json_carries_what_a_build_needs() {
 
 #[test]
 fn max_layers_merges_the_top_of_the_order() {
-    let plan = plan_json(&["--platform", "linux-64", "--max-layers", "5"]);
+    let plan = plan_json(&["--platform", "linux-64", "--layers", "per-package", "--max-layers", "5"]);
     let kinds: Vec<&str> = plan["layers"]
         .as_array()
         .unwrap()

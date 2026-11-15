@@ -10,7 +10,7 @@ One crate, `pixi-oci`, a binary pixi runs as `pixi oci`: it builds OCI container
 |---|---|
 | `src/cli.rs` | the command line (clap) |
 | `src/lock.rs` | reads `pixi.lock` (rattler_lock) into the packages of one environment and platform |
-| `src/plan.rs` | splits those packages into image layers: one per conda package, dependencies first, capped |
+| `src/plan.rs` | splits those packages into image layers: large ones alone and small ones grouped (or one each, or one in all), dependencies first, capped |
 | `src/platform.rs` | conda platform to OCI platform |
 | `src/report.rs` | a plan as text or JSON |
 | `src/build.rs` | `build`: fetch every archive, then write the planned layers in parallel within `--max-memory` |
@@ -55,3 +55,6 @@ Everything runs through pixi.
   blobs and spill files (all named by hashes) touch the host's file system.
 - Reproducibility is a feature: anything that adds a time, a host path, a user name or an unordered collection to
   a layer or to the config changes image digests. `layer.rs` and `image.rs` tests check it.
+- The grouping constants in `plan.rs` (`OWN_LAYER`, `GROUP_MIN`, `GROUP_MAX`, `CUT_ONE_IN`) and `cut_point`'s hash
+  decide every grouped image's layers: changing any of them changes those images' layer digests, so every user
+  re-uploads everything once. Change them deliberately, and say so in the changelog.

@@ -11,7 +11,7 @@ use crate::build::{BuildOptions, DEFAULT_MAX_MEMORY, build};
 use crate::fetch::Fetcher;
 use crate::image::Reference;
 use crate::lock::Package;
-use crate::plan::Plan;
+use crate::plan::{Layering, Plan};
 use crate::target::Target;
 use crate::testing::{self, PLACEHOLDER, Spec};
 use crate::{install, layer};
@@ -154,6 +154,16 @@ fn a_merged_layer_matches_too() {
 }
 
 #[test]
+fn grouped_and_single_layers_match_too() {
+    for layering in [Layering::Grouped, Layering::Single] {
+        let dir = tempfile::tempdir().unwrap();
+        let plan = testing::plan_with(packages(dir.path()), layering, 100);
+        assert!(plan.layers.iter().any(|layer| layer.packages.len() > 1));
+        assert_parity(&plan, &Fetcher::new(dir.path().join("cache")), dir.path());
+    }
+}
+
+#[test]
 fn spilling_changes_nothing_in_the_image() {
     let dir = tempfile::tempdir().unwrap();
     // 6 MiB naming the placeholder over and over: past the 2 MiB limit a 16 MiB budget gives, and longer than one
@@ -196,15 +206,16 @@ fn conda_forge_packages_match_rattlers_install() {
     let lockfile = crate::lock::load(Path::new("tests/fixtures/workspace/pixi.lock")).unwrap();
     let cache = std::env::var_os("PIXI_OCI_CACHE_DIR").map_or_else(Fetcher::default_root, PathBuf::from);
     let fetcher = Fetcher::new(cache);
-    for (environment, platform, max_layers) in [
-        ("app", "linux-64", 100),
-        ("app", "linux-aarch64", 100),
-        ("app", "linux-64", 4),
-        ("slim", "linux-64", 100),
+    for (environment, platform, layering, max_layers) in [
+        ("app", "linux-64", Layering::PerPackage, 100),
+        ("app", "linux-aarch64", Layering::Grouped, 100),
+        ("app", "linux-64", Layering::PerPackage, 4),
+        ("app", "linux-64", Layering::Single, 100),
+        ("slim", "linux-64", Layering::Grouped, 100),
     ] {
         let dir = tempfile::tempdir().unwrap();
         let locked = crate::lock::select(&lockfile, environment, platform).unwrap();
-        let plan = crate::plan::plan(locked, max_layers).unwrap();
+        let plan = crate::plan::plan(locked, layering, max_layers).unwrap();
         assert_parity(&plan, &fetcher, dir.path());
     }
 }

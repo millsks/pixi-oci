@@ -18,7 +18,7 @@ pixi-oci is one Rust binary, organized as a short pipeline. Each stage has one m
 | `cli.rs` | The command line (clap). pixi runs `pixi-oci` for `pixi oci` and passes everything after `oci`. |
 | `lib.rs` | Runs a parsed command line and returns what to print. |
 | `lock.rs` | Reads `pixi.lock` (rattler_lock) into the packages of one environment and platform, each with its URL, sha256, size, dependencies and repodata record. |
-| `plan.rs` | Splits those packages into layers: one per conda package, dependencies first with ties by name, capped by `--max-layers`, PyPI on top. |
+| `plan.rs` | Splits those packages into layers as `--layers` says: large packages alone and small ones grouped at cut points their names fix (the default), one per package, or one for everything; dependencies first with ties by name, capped by `--max-layers`, PyPI on top. |
 | `platform.rs` | Maps `linux-*` conda platforms to OCI platforms (`linux-aarch64` to `linux/arm64/v8`), and picks the default. |
 | `report.rs` | A plan as a table or JSON. |
 | `build.rs` | `build`: checks the request, fetches every archive, writes the planned layers in parallel within `--max-memory`, then the image. |

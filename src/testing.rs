@@ -11,7 +11,7 @@ use rattler_conda_types::{PackageName, PackageRecord, RepoDataRecord, Version};
 use sha2::{Digest, Sha256};
 
 use crate::lock::{Kind, Locked, Package};
-use crate::plan::Plan;
+use crate::plan::{Layering, Plan};
 
 /// The prefix conda-build leaves in files for installation to replace.
 pub const PLACEHOLDER: &str = "/opt/conda-build-placeholder_placehold_placehold_placehold_placehold";
@@ -217,14 +217,19 @@ pub fn package(dir: &Path, spec: Spec) -> Package {
     }
 }
 
-/// The plan for `packages` as one linux-64 environment named `test`.
+/// The plan for `packages` as one linux-64 environment named `test`, a layer per package.
 pub fn plan_of(packages: Vec<Package>, max_layers: usize) -> Plan {
+    plan_with(packages, Layering::PerPackage, max_layers)
+}
+
+/// The plan for `packages` as one linux-64 environment named `test`, laid out as `layering` says.
+pub fn plan_with(packages: Vec<Package>, layering: Layering, max_layers: usize) -> Plan {
     let locked = Locked {
         environment: "test".to_string(),
         platform: "linux-64".to_string(),
         packages,
     };
-    crate::plan::plan(locked, max_layers).unwrap()
+    crate::plan::plan(locked, layering, max_layers).unwrap()
 }
 
 /// The layer blobs of the image in `layout`, bottom first.
