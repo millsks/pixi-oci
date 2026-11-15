@@ -246,10 +246,15 @@ impl CredentialSource for PixiCredentials {
             return Ok(None);
         };
         for host in config_keys(registry).iter().map(|key| key_host(key)) {
-            let found = storage.get(host).map_err(|err| RegistryError::Credentials {
-                registry: registry.to_string(),
-                message: err.to_string(),
-            })?;
+            // As pixi looks a host up: the host itself, then `*.host` and the wildcards above it, which is where
+            // `pixi auth login ghcr.io` keeps them (`*.ghcr.io`).
+            let (_, found) =
+                storage
+                    .get_by_url(format!("https://{host}/"))
+                    .map_err(|err| RegistryError::Credentials {
+                        registry: registry.to_string(),
+                        message: err.to_string(),
+                    })?;
             let credentials = match found {
                 Some(rattler_networking::Authentication::BasicHTTP { username, password }) => {
                     Credentials { username, password }
@@ -1376,8 +1381,9 @@ mod tests {
         let mut storage = rattler_networking::AuthenticationStorage::empty();
         storage.add_backend(std::sync::Arc::new(MemoryStorage::new()));
         let store = |host: &str, auth: Authentication| storage.store(host, &auth).unwrap();
+        // Where `pixi auth login ghcr.io` puts them.
         store(
-            "ghcr.io",
+            "*.ghcr.io",
             Authentication::BasicHTTP {
                 username: "kevin".to_string(),
                 password: "pat".to_string(),
