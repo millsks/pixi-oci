@@ -24,7 +24,7 @@ fixture = { cmd = "pixi lock", cwd = "tests/fixtures/workspace", description = "
 # The oldest toolchain the crate claims to build on. `pixi run -e msrv msrv-check` proves the number in Cargo.toml
 # rather than trusting it.
 [feature.msrv.dependencies]
-rust = "==1.89.0"
+rust = "==1.95.0"
 
 [feature.msrv.tasks]
 msrv-check = "cargo check --all-targets --locked"

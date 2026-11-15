@@ -148,7 +148,7 @@ fn an_unknown_environment_names_the_known_ones() {
         .assert()
         .failure()
         .stderr(predicate::str::contains("no environment named `prod`"))
-        .stderr(predicate::str::contains("default, slim"));
+        .stderr(predicate::str::contains("default, app, slim"));
 }
 
 #[test]
@@ -185,4 +185,56 @@ fn one_layer_is_too_few() {
         .assert()
         .failure()
         .stderr(predicate::str::contains("--max-layers must be at least 2"));
+}
+
+#[test]
+fn build_refuses_pypi_packages_by_name() {
+    let dir = tempfile::tempdir().unwrap();
+    let output = dir.path().join("image.tar");
+    pixi_oci()
+        .args(["build", "--lockfile", LOCKFILE, "--platform", "linux-64", "--output"])
+        .arg(&output)
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("has PyPI packages"))
+        .stderr(predicate::str::contains("six"));
+    assert!(!output.exists());
+}
+
+#[test]
+fn build_refuses_a_bad_tag_before_reading_anything() {
+    pixi_oci()
+        .args([
+            "build",
+            "--lockfile",
+            "tests/fixtures/missing/pixi.lock",
+            "--tag",
+            "Not/Valid:x",
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("is not an image name and tag"));
+}
+
+#[test]
+fn build_refuses_a_non_linux_platform() {
+    pixi_oci()
+        .args(["build", "--lockfile", LOCKFILE, "-e", "app", "--platform", "osx-arm64"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("osx-arm64 is not a Linux platform"));
+}
+
+#[test]
+fn build_checks_its_options() {
+    pixi_oci()
+        .args(["build", "--env", "NOT-VALID=1"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("expected KEY=VALUE"));
+    pixi_oci()
+        .args(["build", "--entrypoint", "[1, 2]"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("not a JSON array of strings"));
 }
