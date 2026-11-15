@@ -36,6 +36,7 @@ or a VM. Without those:
 | `pixi oci build`, for `linux-64` or `linux-aarch64` | Yes |
 | `pixi oci validate` | Yes |
 | `pixi oci inspect` | Yes |
+| Other OCI tools (`skopeo inspect`, `crane validate`) | Yes, with those tools installed |
 | Run the image | No: it needs a Linux kernel. CI runs it for you. |
 
 `pixi oci check`, a static check of an image that runs nothing and so works on Windows, is on the

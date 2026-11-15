@@ -90,7 +90,13 @@ pixi oci inspect hello.tar --packages   # every package of every shared layer
 pixi oci inspect hello.tar --raw config # the full image config, exactly as stored
 ```
 
-Any OCI tool reads it too, with no daemon: `skopeo inspect oci-archive:hello.tar` shows the same image.
+It is a standard OCI image, so any OCI tool reads it as well, with no daemon:
+
+```sh
+skopeo inspect oci-archive:hello.tar            # platform, layers, environment variables
+skopeo inspect --config oci-archive:hello.tar   # the full image config
+crane validate --tarball hello.tar              # every digest checked
+```
 
 The image sets `PATH` to `/opt/env/bin:...` and `CONDA_PREFIX` to `/opt/env`. Add your own settings with `--env`,
 `--entrypoint`, `--cmd` and `--workdir` ([reference](cli.md#pixi-oci-build)).

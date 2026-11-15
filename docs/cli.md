@@ -77,6 +77,9 @@ It checks:
 It reports every problem it finds, not just the first, and exits `1` if there is any. zstd layers are hashed but
 their `diff_id` is not checked.
 
+The image is a standard OCI image, so other tools check it the same way: `crane validate --tarball app.tar`, or
+`skopeo copy oci-archive:app.tar ...` as a smoke test.
+
 ## `pixi oci inspect`
 
 Shows what an image holds, read from its index, manifest and config, without opening a layer or needing skopeo or
@@ -116,6 +119,9 @@ Image app:1.0 (app.tar)
 
 Layer sizes are the compressed sizes the registry stores. The packages of each layer come from the history line
 pixi-oci writes for it; a layer another tool built shows its own history line instead.
+
+Other OCI tools read the same image: `skopeo inspect oci-archive:app.tar`, `skopeo inspect --config
+oci-archive:app.tar`, or `crane config` and `crane manifest` on a pushed image.
 
 ## Environment variables
 

@@ -56,6 +56,7 @@ $ pixi oci validate app.tar
 app.tar is a valid OCI image
   manifest sha256:9ec8407e4f18 for linux/amd64: 7 layers, 62.6 MiB
 
+$ skopeo inspect oci-archive:app.tar
 $ podman load -i app.tar
 ```
 
@@ -148,6 +149,9 @@ reports every problem it finds before exiting `1`.
 $ pixi oci validate app.tar --format json
 ```
 
+The images are standard, so `crane validate --tarball app.tar` and `skopeo copy oci-archive:app.tar ...` accept them
+too.
+
 ### `pixi oci inspect`
 
 Shows an image's platform, digests, entrypoint, env and labels, then a row per layer with its size, digest and the
@@ -157,6 +161,8 @@ exact stored document, and `--platform` to pick one image from several.
 ```console
 $ pixi oci inspect app.tar --packages
 ```
+
+`skopeo inspect oci-archive:app.tar` and `crane config` read the same image, if you already use them.
 
 ## How layers are planned
 
