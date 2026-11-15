@@ -3,8 +3,8 @@ name: CI
 on:
   push:
     branches: ["main"]
+  # Every pull request, whatever its base, so a PR stacked on another one is checked too.
   pull_request:
-    branches: ["main"]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -54,6 +54,9 @@ jobs:
         with:
           save-if: ${{ github.ref == 'refs/heads/main' }}
       - name: Unit + integration tests
+        # The network test builds a real image from conda-forge and runs its python; it needs a Linux host.
+        env:
+          PIXI_OCI_NETWORK_TESTS: ${{ matrix.os == 'ubuntu-latest' && '1' || '0' }}
         run: pixi run test
 
   coverage:

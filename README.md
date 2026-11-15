@@ -3,8 +3,9 @@
 A [pixi](https://pixi.sh) extension that builds OCI container images straight from `pixi.lock`: no Dockerfile, no
 Docker daemon, and no pixi inside the image.
 
-> **Status: early.** `pixi oci plan` works today. Building and pushing images is the next milestone; see the
-> [roadmap](#roadmap).
+> **Status: early.** `pixi oci plan` and `pixi oci build` work today for environments of conda packages. Images
+> have no base yet, so a dynamically linked program (python, most of conda-forge) needs the glibc a base image
+> provides; base images and pushing are the next milestone. See the [roadmap](#roadmap).
 
 ## Why
 
@@ -34,6 +35,47 @@ pixi oci --help
 pixi finds any `pixi-*` executable on `PATH` and runs it as a subcommand, so `pixi-oci` becomes `pixi oci`.
 
 ## Usage
+
+### `pixi oci build`
+
+Builds an image of an environment.
+
+```console
+$ pixi oci build --environment app --platform linux-64 --tag app:1.0 --output app.tar
+[1/23] ca-certificates 2026.10.23 (127.0 KiB)
+...
+[23/23] six 1.17.0 (18.0 KiB)
+Wrote app:1.0 to app.tar
+  manifest sha256:ce390320328877109992d825498a8de2a17318e0d9bda96d3b21396f0e2fac50
+  23 layers, 61.5 MiB for linux/amd64
+
+$ skopeo inspect oci-archive:app.tar
+$ podman load -i app.tar
+```
+
+Each package is downloaded once, checked against the sha256 the lockfile recorded, and installed into its own layer
+with its paths rewritten for where the environment lives in the image (`/opt/env` by default), with its
+`conda-meta` record beside it. The image sets `PATH` and `CONDA_PREFIX` to that prefix.
+
+Builds are reproducible: every file is owned by root and stamped with one time (`SOURCE_DATE_EPOCH`, or the Unix
+epoch), entries are in byte order, and gzip headers carry no time, so the same lockfile gives the same image digest
+on any machine.
+
+| Option | Default | |
+|---|---|---|
+| `--lockfile`, `-e`, `-p`, `--max-layers` | as for `plan` | which environment, and how it is layered |
+| `-o, --output PATH` | `image.tar` | a `.tar` archive (for `docker load`, `podman load`, `skopeo copy oci-archive:`), or any other path for an OCI image layout directory |
+| `--force` | | replace the output if it exists |
+| `-t, --tag NAME[:TAG]` | the environment's name, `:latest` | the image's name |
+| `--prefix PATH` | `/opt/env` | where the environment lives in the image |
+| `--env KEY=VALUE` | | an environment variable; repeatable |
+| `--entrypoint`, `--cmd` | | a JSON array (`["python", "-m", "http.server"]`) or words |
+| `--workdir PATH` | | the working directory |
+| `--cache-dir PATH` | `PIXI_OCI_CACHE_DIR`, else the platform's cache | downloaded and extracted packages |
+
+Not yet: PyPI packages (an environment with them is refused, by name), conda packages built from source, private
+channels that need credentials, and Windows as a build host. Building on macOS works, but its default
+case-insensitive file system can merge files that differ only in case.
 
 ### `pixi oci plan`
 
@@ -81,9 +123,10 @@ their names.
 ## Roadmap
 
 - [x] `plan`: read `pixi.lock`, map conda platforms to OCI platforms, order and cap layers
-- [ ] `build`: download and verify packages against the lockfile's hashes, extract each into a layer, and write an
-      OCI image layout
-- [ ] Image config from pixi's activation: environment variables, `PATH`, entrypoint from a pixi task
+- [x] `build`: download and verify packages against the lockfile's hashes, install each into a layer with prefix
+      replacement, and write a reproducible OCI image layout or archive
+- [ ] Credentials for private channels (pixi's own auth store)
+- [ ] Image config from pixi's activation: activation scripts' variables, entrypoint from a pixi task
 - [ ] PyPI packages: install wheels into the top layer
 - [ ] `push`: to any OCI registry, with the usual credential helpers
 - [ ] Base images (`--base`), and `scratch` by default
@@ -108,7 +151,7 @@ Everything runs through pixi:
 | | |
 |---|---|
 | `pixi run fmt`, `pixi run lint`, `pixi run check` | format, clippy with `-D warnings`, check |
-| `pixi run test` | unit and CLI tests |
+| `pixi run test` | unit and CLI tests; `PIXI_OCI_NETWORK_TESTS=1` adds a real build from conda-forge, run on Linux |
 | `pixi run cov` | coverage, failing under 90% of lines |
 | `pixi run -e lint deny` | cargo-deny: advisories, licenses, sources |
 | `pixi run -e msrv msrv-check` | builds on the minimum supported Rust |

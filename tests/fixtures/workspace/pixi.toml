@@ -13,5 +13,11 @@ six = "==1.17.0"
 [feature.slim.dependencies]
 zlib = "*"
 
+# python with a noarch: python package, and no PyPI: what `pixi oci build` can install today.
+[feature.app.dependencies]
+python = "3.13.*"
+six = "==1.17.0"
+
 [environments]
 slim = { features = ["slim"], no-default-feature = true }
+app = { features = ["app"], no-default-feature = true }

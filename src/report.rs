@@ -102,6 +102,7 @@ mod tests {
             location: String::new(),
             sha256: None,
             size,
+            record: None,
         }
     }
 

@@ -19,6 +19,9 @@ ignore = [
   # unsafe-libyaml is unmaintained (archived 2024-03-25), not vulnerable. It comes in through serde_yaml in
   # rattler_conda_types and rattler_lock; pixi-sbom tracks the same upstream move in aesir-oss/pixi-sbom#21.
   { id = "RUSTSEC-2024-0449", reason = "unmaintained, via serde_yaml in rattler" },
+  # astral-tokio-tar is unmaintained (deprecated 2026-11-03), not vulnerable. rattler_package_streaming uses it for
+  # async extraction, which pixi-oci does not call; every rattler_package_streaming release still depends on it.
+  { id = "RUSTSEC-2026-0440", reason = "unmaintained, via rattler_package_streaming; its async path is unused" },
 ]
 
 [licenses]
@@ -37,6 +40,10 @@ allow = [
   "MPL-2.0",
   "BSL-1.0",
   "Unlicense",
+  # libbz2-rs-sys, which reads conda's .tar.bz2 packages. BSD-like: attribution, no warranty, no obligation on us.
+  "bzip2-1.0.6",
+  # webpki-root-certs, the Mozilla root store rustls falls back to. CDLA-Permissive-2.0 is a permissive data license.
+  "CDLA-Permissive-2.0",
 ]
 confidence-threshold = 0.9
 

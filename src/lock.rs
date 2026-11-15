@@ -2,6 +2,7 @@
 
 use std::path::{Path, PathBuf};
 
+use rattler_conda_types::RepoDataRecord;
 use rattler_lock::{CondaPackageData, LockFile, LockedPackage, UrlOrPath};
 use serde::Serialize;
 
@@ -72,6 +73,9 @@ pub struct Package {
     /// Archive size in bytes, where the lockfile records it.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub size: Option<u64>,
+    /// The repodata record of a built conda package, which its `conda-meta` record in the image is written from.
+    #[serde(skip)]
+    pub record: Option<Box<RepoDataRecord>>,
 }
 
 /// The packages of one environment on one platform, in the lockfile's order.
@@ -145,15 +149,20 @@ fn package(locked: &LockedPackage) -> Package {
                 .and_then(|hash| hash.sha256())
                 .map(hex),
             size: None,
+            record: None,
         },
     }
 }
 
 fn conda_package(conda: &CondaPackageData) -> Package {
     let record = conda.record();
-    let kind = match conda {
-        CondaPackageData::Binary(_) => Kind::Conda,
-        CondaPackageData::Source(_) => Kind::CondaSource,
+    let (kind, repodata) = match conda {
+        // A binary package whose location is not a URL (a relative path) has no repodata record; building refuses it.
+        CondaPackageData::Binary(binary) => (
+            Kind::Conda,
+            RepoDataRecord::try_from(binary.as_ref()).ok().map(Box::new),
+        ),
+        CondaPackageData::Source(_) => (Kind::CondaSource, None),
     };
     Package {
         name: conda.name().as_normalized().to_string(),
@@ -162,7 +171,7 @@ fn conda_package(conda: &CondaPackageData) -> Package {
             .unwrap_or_default(),
         kind,
         build: record
-            .map(|record| record.build.clone())
+            .map(|record| record.build.as_str().to_string())
             .filter(|build| !build.is_empty()),
         depends: record
             .map(|record| record.depends.iter().map(|spec| spec_name(spec)).collect())
@@ -170,6 +179,7 @@ fn conda_package(conda: &CondaPackageData) -> Package {
         location: location_string(conda.location()),
         sha256: record.and_then(|record| record.sha256.as_ref()).map(hex),
         size: record.and_then(|record| record.size),
+        record: repodata,
     }
 }
 

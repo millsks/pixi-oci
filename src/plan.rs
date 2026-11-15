@@ -217,6 +217,7 @@ mod tests {
             location: format!("https://conda.anaconda.org/conda-forge/linux-64/{name}-1.0-h0_0.conda"),
             sha256: None,
             size,
+            record: None,
         }
     }
 
@@ -230,6 +231,7 @@ mod tests {
             location: format!("https://files.pythonhosted.org/{name}-2.0-py3-none-any.whl"),
             sha256: None,
             size: None,
+            record: None,
         }
     }
 
