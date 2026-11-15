@@ -27,6 +27,7 @@ pub mod target;
 #[cfg(test)]
 mod testing;
 pub mod validate;
+pub mod wheel;
 
 use cli::{BuildArgs, CheckArgs, Cli, Command, Format, InspectArgs, PlanArgs, ValidateArgs};
 

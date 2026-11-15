@@ -65,6 +65,10 @@ pub enum StreamError {
 
     #[error("could not write the layer")]
     Write(#[source] io::Error),
+
+    #[error(transparent)]
+    #[diagnostic(transparent)]
+    Wheel(#[from] crate::wheel::WheelError),
 }
 
 /// One package of a layer and the archive it is read from.
@@ -92,11 +96,18 @@ struct Meta {
     link: Option<LinkJson>,
 }
 
-/// Write one layer holding `inputs`, in order, into `blobs_dir`.
+/// Write one layer holding `inputs`, in order, into `blobs_dir`: the conda packages, then the PyPI wheels on top.
 pub fn write_layer(inputs: &[Input<'_>], options: &Options<'_>, blobs_dir: &Path) -> Result<Blob, StreamError> {
+    let (wheel_inputs, inputs): (Vec<&Input<'_>>, Vec<&Input<'_>>) = inputs
+        .iter()
+        .partition(|input| input.package.kind == crate::lock::Kind::Pypi);
     let metas = inputs
         .iter()
         .map(|input| read_meta(input, options.target))
+        .collect::<Result<Vec<_>, _>>()?;
+    let wheels = wheel_inputs
+        .iter()
+        .map(|input| crate::wheel::read(&input.package.name, &input.archive, options.target))
         .collect::<Result<Vec<_>, _>>()?;
 
     // Where a later package of the layer installs the same path, it wins, as it would if they were installed one
@@ -136,6 +147,12 @@ pub fn write_layer(inputs: &[Input<'_>], options: &Options<'_>, blobs_dir: &Path
             );
         }
     }
+    // A wheel installed after the conda packages replaces a file one of them installed at the same path.
+    for (w, wheel) in wheels.iter().enumerate() {
+        for path in wheel.paths() {
+            owner.insert(image_path(options.target, &path), metas.len() + w);
+        }
+    }
 
     let mut writer = Writer::new(blobs_dir, options.mtime).map_err(StreamError::Write)?;
     if options.first {
@@ -147,6 +164,11 @@ pub fn write_layer(inputs: &[Input<'_>], options: &Options<'_>, blobs_dir: &Path
     for (i, (input, meta)) in inputs.iter().zip(&metas).enumerate() {
         let writes = |path: &str| owner.get(path) == Some(&i);
         install_package(input, meta, options, &mut writer, &writes)?;
+    }
+    for (w, wheel) in wheels.iter().enumerate() {
+        let writes = |path: &str| owner.get(path) == Some(&(metas.len() + w));
+        let image = |path: &Path| image_path(options.target, path);
+        crate::wheel::write(wheel, options.target, &mut writer, &image, &writes)?;
     }
     writer.finish().map_err(StreamError::Write)
 }
@@ -192,7 +214,7 @@ fn install_path(meta: &Meta, entry: &PathsEntry, target: &Target) -> PathBuf {
 }
 
 /// Whether a path relative to the prefix stays inside it: only plain names, no `..`, no root, no drive.
-fn inside_prefix(path: &Path) -> bool {
+pub(crate) fn inside_prefix(path: &Path) -> bool {
     !path.as_os_str().is_empty()
         && path
             .to_string_lossy()

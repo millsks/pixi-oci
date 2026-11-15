@@ -17,9 +17,14 @@ pixi-oci prints them, with the variable parts in angle brackets.
     ARM ones. Without `-p`, pixi-oci picks Linux on your machine's architecture, so this appears only when `-p` named
     `osx-*` or `win-*`.
 
-**`environment <name> has PyPI packages, which pixi-oci does not install yet: <names>`**
-:   PyPI packages are not installed into images yet. Build an environment without PyPI dependencies, for example one
-    made with a feature: `[environments] image = { features = ["image"], no-default-feature = true }`.
+**`environment <name> has PyPI packages that are not wheels: <names>`**
+:   pixi-oci installs wheels and builds nothing. These were locked as an sdist, a git checkout or a local path. Lock a
+    version that publishes wheels for the platform (most do), get the package from conda-forge instead, or build the
+    wheel and depend on it.
+
+**`<name>'s wheel holds <path>, which its RECORD ...`**
+:   The wheel's files do not match the list of hashes inside it. The wheel matched the lockfile's hash, so it was
+    published this way: report it to the package.
 
 **`environment <name> builds <n> packages from source: <names>`**
 :   pixi-oci installs built conda packages. Build those with `pixi build`, publish them to a channel, and lock the

@@ -257,3 +257,215 @@ fn an_image_on_each_base_runs_its_python() {
         }
     }
 }
+
+/// Every file under `dir`, relative to it, with its sha256, leaving out what an installer writes about itself and
+/// what python writes when it runs. The environment's own path, `prefix`, is read as `<prefix>` in every file, since
+/// two installs into two places write their own place into files such as conda's `conda-site.pth`.
+fn tree(dir: &Path, prefix: &Path) -> std::collections::BTreeMap<String, String> {
+    fn walk(root: &Path, dir: &Path, prefix: &[u8], out: &mut std::collections::BTreeMap<String, String>) {
+        for entry in fs::read_dir(dir).unwrap() {
+            let path = entry.unwrap().path();
+            let relative = path.strip_prefix(root).unwrap().to_string_lossy().replace('\\', "/");
+            let name = relative.rsplit('/').next().unwrap_or_default().to_string();
+            if name == "__pycache__"
+                || ["INSTALLER", "REQUESTED", "RECORD", "direct_url.json", "uv_cache.json"].contains(&name.as_str())
+            {
+                continue;
+            }
+            if path.is_dir() {
+                walk(root, &path, prefix, out);
+            } else {
+                let bytes = replace(&fs::read(&path).unwrap(), prefix, b"<prefix>");
+                out.insert(
+                    relative,
+                    pixi_oci::fetch::hex(&<sha2::Sha256 as sha2::Digest>::digest(&bytes)),
+                );
+            }
+        }
+    }
+    let mut out = std::collections::BTreeMap::new();
+    walk(dir, dir, prefix.to_string_lossy().as_bytes(), &mut out);
+    out
+}
+
+/// `bytes` with every `from` replaced by `to`.
+fn replace(bytes: &[u8], from: &[u8], to: &[u8]) -> Vec<u8> {
+    let mut out = Vec::with_capacity(bytes.len());
+    let mut i = 0;
+    while i < bytes.len() {
+        if !from.is_empty() && bytes[i..].starts_with(from) {
+            out.extend_from_slice(to);
+            i += from.len();
+        } else {
+            out.push(bytes[i]);
+            i += 1;
+        }
+    }
+    out
+}
+
+/// The paths a RECORD lists, leaving out the ones the installer writes about itself.
+fn record_paths(record: &Path) -> std::collections::BTreeSet<String> {
+    fs::read_to_string(record)
+        .unwrap()
+        .lines()
+        .filter_map(|line| line.split(',').next())
+        .filter(|path| !path.is_empty() && !path.contains("__pycache__"))
+        .filter(|path| {
+            !["INSTALLER", "REQUESTED", "RECORD", "direct_url.json", "uv_cache.json"]
+                .iter()
+                .any(|name| path.ends_with(name))
+        })
+        .map(str::to_string)
+        .collect()
+}
+
+/// The fixture's PyPI wheels, installed by pixi-oci into an image and by pixi itself (through uv) into an environment:
+/// site-packages must hold the same files with the same bytes, each RECORD must list the same paths, and the
+/// launchers and the binary from `.data/scripts` must run.
+#[test]
+fn wheels_install_as_pixi_installs_them() {
+    let Some(platform) = enabled() else {
+        return;
+    };
+    if Command::new("pixi").arg("--version").output().is_err() {
+        return;
+    }
+    let dir = tempfile::tempdir().unwrap();
+    let workspace = dir.path().join("workspace");
+    fs::create_dir_all(&workspace).unwrap();
+    for file in ["pixi.toml", "pixi.lock"] {
+        fs::copy(Path::new("tests/fixtures/workspace").join(file), workspace.join(file)).unwrap();
+    }
+    let installed = Command::new("pixi")
+        .args(["install", "--frozen", "-e", "pypi", "--manifest-path"])
+        .arg(workspace.join("pixi.toml"))
+        .status()
+        .unwrap();
+    assert!(installed.success());
+    let reference = workspace.join(".pixi/envs/pypi");
+
+    let prefix = dir.path().join("env");
+    let archive = dir.path().join("pypi.tar");
+    let built = Command::cargo_bin("pixi-oci")
+        .unwrap()
+        .args([
+            "build",
+            "--lockfile",
+            "tests/fixtures/workspace/pixi.lock",
+            "-e",
+            "pypi",
+        ])
+        .args(["--platform", platform, "--tag", "pypi:test", "--prefix"])
+        .arg(&prefix)
+        .arg("--output")
+        .arg(&archive)
+        .status()
+        .unwrap();
+    assert!(built.success());
+    unpack_image(&archive, dir.path());
+
+    let site = "lib/python3.13/site-packages";
+    let ours = tree(&prefix.join(site), &prefix);
+    let theirs = tree(&reference.join(site), &reference);
+    let only_ours: Vec<&String> = ours.keys().filter(|path| !theirs.contains_key(*path)).collect();
+    let only_theirs: Vec<&String> = theirs.keys().filter(|path| !ours.contains_key(*path)).collect();
+    assert!(
+        only_ours.is_empty() && only_theirs.is_empty(),
+        "only pixi-oci: {only_ours:?}\nonly pixi: {only_theirs:?}"
+    );
+    let differ: Vec<&String> = ours.keys().filter(|path| ours[*path] != theirs[*path]).collect();
+    assert!(differ.is_empty(), "different bytes: {differ:?}");
+
+    for dist_info in fs::read_dir(prefix.join(site)).unwrap() {
+        let dist_info = dist_info.unwrap().path();
+        if !dist_info.to_string_lossy().ends_with(".dist-info") {
+            continue;
+        }
+        let name = dist_info.file_name().unwrap().to_owned();
+        let record = dist_info.join("RECORD");
+        if !reference.join(site).join(&name).join("RECORD").is_file() {
+            continue;
+        }
+        assert_eq!(
+            record_paths(&record),
+            record_paths(&reference.join(site).join(&name).join("RECORD")),
+            "{}",
+            name.to_string_lossy()
+        );
+        assert_eq!(fs::read_to_string(dist_info.join("INSTALLER")).unwrap(), "pixi-oci\n");
+    }
+
+    for (program, expected) in [("black", "black, 25.11.0"), ("ruff", "ruff 0.14.5")] {
+        let output = Command::new(prefix.join("bin").join(program))
+            .arg("--version")
+            .output()
+            .unwrap();
+        assert!(
+            output.status.success(),
+            "{program}: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(
+            String::from_utf8_lossy(&output.stdout).starts_with(expected),
+            "{program}"
+        );
+    }
+}
+
+/// A PyPI-only command line tool as the image's entrypoint, on a base, run by docker where it is installed.
+#[test]
+fn a_wheel_entrypoint_runs_in_a_container() {
+    let Some(platform) = enabled() else {
+        return;
+    };
+    let docker = Command::new("docker")
+        .arg("info")
+        .output()
+        .is_ok_and(|output| output.status.success());
+    if !docker {
+        return;
+    }
+    let dir = tempfile::tempdir().unwrap();
+    let archive = dir.path().join("black.tar");
+    let tag = "pixi-oci-test-black:latest";
+    let built = Command::cargo_bin("pixi-oci")
+        .unwrap()
+        .args([
+            "build",
+            "--lockfile",
+            "tests/fixtures/workspace/pixi.lock",
+            "-e",
+            "pypi",
+        ])
+        .args([
+            "--platform",
+            platform,
+            "--tag",
+            tag,
+            "--base",
+            BASES[1].1,
+            "--entrypoint",
+            "black",
+            "--output",
+        ])
+        .arg(&archive)
+        .status()
+        .unwrap();
+    assert!(built.success());
+    assert!(
+        Command::new("docker")
+            .args(["load", "-i"])
+            .arg(&archive)
+            .status()
+            .unwrap()
+            .success()
+    );
+    let output = Command::new("docker")
+        .args(["run", "--rm", tag, "--version"])
+        .output()
+        .unwrap();
+    assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
+    assert!(String::from_utf8_lossy(&output.stdout).starts_with("black, 25.11.0"));
+    let _ = Command::new("docker").args(["rmi", tag]).status();
+}

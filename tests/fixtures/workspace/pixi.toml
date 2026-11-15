@@ -13,11 +13,21 @@ six = "==1.17.0"
 [feature.slim.dependencies]
 zlib = "*"
 
-# python with a noarch: python package, and no PyPI: what `pixi oci build` can install today.
+# python with a noarch: python package, and no PyPI.
 [feature.app.dependencies]
 python = "3.13.*"
 six = "==1.17.0"
 
+# PyPI wheels of every shape: black's are compiled (platlib) with console scripts, ruff's is a binary under
+# .data/scripts, and click and the rest are pure python.
+[feature.pypi.dependencies]
+python = "3.13.*"
+
+[feature.pypi.pypi-dependencies]
+black = "==25.11.0"
+ruff = "==0.14.5"
+
 [environments]
 slim = { features = ["slim"], no-default-feature = true }
 app = { features = ["app"], no-default-feature = true }
+pypi = { features = ["pypi"], no-default-feature = true }
