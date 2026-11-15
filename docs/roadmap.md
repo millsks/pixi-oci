@@ -23,10 +23,15 @@ scope and acceptance criteria live and its pull requests are linked. Comment the
 
 ## Next
 
+- [ ] **`pixi oci validate`.** Check an image against the OCI spec: media types, every blob present with its digest
+      and size, diff_ids matching the uncompressed layers. Cheap, for any image, and run by `push` before uploading.
+      ([#25](https://github.com/millsks/pixi-oci/issues/25))
+- [ ] **`pixi oci inspect`.** An image's platform, config and layers, with the packages each layer holds, as text or
+      JSON, with no skopeo or crane. ([#24](https://github.com/millsks/pixi-oci/issues/24))
 - [ ] **`pixi oci check`.** Static tests on any OS, nothing executed: every binary is a Linux ELF for the image's
       architecture, its loader and libraries are in the image, shebangs name interpreters that exist, no placeholder
-      is left, and the entrypoint and `PATH` are right. It would flag today's missing-glibc failure.
-      ([#11](https://github.com/millsks/pixi-oci/issues/11))
+      is left, and the entrypoint and `PATH` are right. It runs `validate` first, and would flag today's missing-glibc
+      failure. ([#11](https://github.com/millsks/pixi-oci/issues/11))
 - [ ] **Base images.** `--base` pulls a glibc base image (a distroless or UBI image) by digest, so python and the
       rest of conda-forge run. ([#12](https://github.com/millsks/pixi-oci/issues/12))
 - [ ] **Push.** `pixi oci push` sends the image to any registry, with docker-style credentials.
@@ -37,11 +42,16 @@ scope and acceptance criteria live and its pull requests are linked. Comment the
 | | Windows laptop (no admin, no VM) | macOS | Linux | CI on Linux |
 |---|---|---|---|---|
 | `build` | yes | yes | yes | yes |
+| `validate`, `inspect` | yes | yes | yes | yes |
 | `check` | yes | yes | yes | yes |
 | `run` | no: needs a Linux kernel | no: needs a Linux kernel | where user namespaces are allowed | yes |
 
 ## After that
 
+- [ ] `pixi oci diff`: two images compared layer by layer, with the packages behind each change and what a rebuild
+      re-uploads ([#26](https://github.com/millsks/pixi-oci/issues/26))
+- [ ] An `examples/` directory of real pixi workspaces, small to a few hundred packages, planned in CI and measured
+      ([#22](https://github.com/millsks/pixi-oci/issues/22))
 - [ ] Multi-platform image indexes: `linux-64` and `linux-aarch64` under one tag
       ([#15](https://github.com/millsks/pixi-oci/issues/15))
 - [ ] pixi's activation variables, and an entrypoint from a pixi task
