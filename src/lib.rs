@@ -19,6 +19,7 @@ pub mod lock;
 mod parity;
 pub mod plan;
 pub mod platform;
+pub mod push;
 pub mod read;
 pub mod registry;
 pub mod report;
@@ -29,7 +30,7 @@ mod testing;
 pub mod validate;
 pub mod wheel;
 
-use cli::{BuildArgs, CheckArgs, Cli, Command, Format, InspectArgs, PlanArgs, ValidateArgs};
+use cli::{BuildArgs, CheckArgs, Cli, Command, Format, InspectArgs, PlanArgs, PushArgs, ValidateArgs};
 
 /// What a command prints, and whether it succeeded: a command can print a full report and still fail, as
 /// `validate` does for an invalid image.
@@ -53,7 +54,24 @@ pub fn run(cli: Cli) -> miette::Result<Output> {
         Command::Validate(args) => run_validate(args),
         Command::Inspect(args) => run_inspect(args).map(Output::from),
         Command::Check(args) => run_check(args),
+        Command::Push(args) => run_push(args).map(Output::from),
     }
+}
+
+fn run_push(args: PushArgs) -> miette::Result<String> {
+    let destination = registry::ImageRef::parse(&args.destination)?;
+    let registry = registry::Registry::for_registry(fetch::Fetcher::default_root(), Some(&destination.registry));
+    let pushed = push::push(
+        &args.image,
+        args.platform.as_deref(),
+        &destination,
+        &registry,
+        &mut std::io::stderr(),
+    )?;
+    Ok(match args.format {
+        Format::Text => pushed.text(),
+        Format::Json => pushed.json() + "\n",
+    })
 }
 
 fn run_check(args: CheckArgs) -> miette::Result<Output> {

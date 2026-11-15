@@ -165,6 +165,16 @@ executable scripts' interpreters exist, no conda placeholder is left, and the en
 $ pixi oci check app.tar --format json
 ```
 
+### `pixi oci push`
+
+Sends an image to any registry with no Docker: only the blobs the registry lacks, then the manifest under the tag.
+Credentials come from `docker login` and `podman login`, or `PIXI_OCI_REGISTRY_USERNAME` and
+`PIXI_OCI_REGISTRY_PASSWORD` in CI.
+
+```console
+$ pixi oci push app.tar ghcr.io/team/app:1.0
+```
+
 ### `pixi oci inspect`
 
 Shows an image's platform, digests, entrypoint, env and labels, then a row per layer with its size, digest and the
@@ -210,7 +220,7 @@ Every item has an issue labelled [`roadmap`](https://github.com/millsks/pixi-oci
 - [x] Base images with `--base`, pinned by digest ([#12](https://github.com/millsks/pixi-oci/issues/12))
 - [x] PyPI wheels in the top layer ([#17](https://github.com/millsks/pixi-oci/issues/17))
 - [x] [Examples](examples/README.md) of real pixi workspaces, small to large ([#22](https://github.com/millsks/pixi-oci/issues/22))
-- [ ] `push` to any registry ([#13](https://github.com/millsks/pixi-oci/issues/13))
+- [x] `push` to any registry ([#13](https://github.com/millsks/pixi-oci/issues/13))
 - [ ] `run`: rootless containers on Linux and in CI ([#14](https://github.com/millsks/pixi-oci/issues/14))
 - [ ] `diff`: two images compared layer by layer ([#26](https://github.com/millsks/pixi-oci/issues/26))
 - [ ] Multi-platform image indexes ([#15](https://github.com/millsks/pixi-oci/issues/15))

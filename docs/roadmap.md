@@ -32,11 +32,11 @@ scope and acceptance criteria live and its pull requests are linked. Comment the
       ([#17](https://github.com/millsks/pixi-oci/issues/17))
 - [x] **Examples**: 14 real pixi workspaces, from python alone to a few hundred packages, planned on every pull
       request and built and checked in CI ([#22](https://github.com/millsks/pixi-oci/issues/22))
+- [x] **Push**: `pixi oci push` sends only the blobs a registry lacks, with docker's and podman's credentials or
+      scoped ones for CI; tested against `registry:2` and GHCR ([#13](https://github.com/millsks/pixi-oci/issues/13))
 
 ## Next
 
-- [ ] **Push.** `pixi oci push` sends the image to any registry, with docker-style credentials.
-      ([#13](https://github.com/millsks/pixi-oci/issues/13))
 - [ ] **`pixi oci run`.** Rootless containers on Linux through unprivileged user namespaces, with no Docker, Podman
       or root, so CI runs the built image as a normal user. ([#14](https://github.com/millsks/pixi-oci/issues/14))
 

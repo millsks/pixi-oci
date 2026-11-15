@@ -122,6 +122,49 @@ It applies the layers in order, whiteouts included, and then:
 Symlinks are followed as the kernel follows them. It exits `1` if there is any problem; a note, such as an image
 with no entrypoint, does not fail it. ELF files are parsed in memory up to 64 MiB, and from a temporary file beyond.
 
+## `pixi oci push`
+
+Sends an image to a registry, with no Docker or Podman. It runs [`validate`](#pixi-oci-validate) first, then asks the
+registry for each blob the image needs (its config, then its layers) and sends only the ones it lacks; the manifest
+goes last, under the tag, and the digest the registry reports must be the image's.
+
+```console
+$ pixi oci push app.tar ghcr.io/team/app:1.0
+[1/9] sha256:3f2c09a1b4de already there
+[2/9] sha256:9c1e77a0e5f2 uploading (2.1 MiB)
+...
+Pushed ghcr.io/team/app:1.0
+  digest sha256:e79ba52d8f3013771e01802686c9e7ff54726be037a96e9b0e7d7424165273dc
+  9 blobs: 1 uploaded (2.1 MiB), 0 mounted, 8 already there
+```
+
+| Argument or option | Default | |
+|---|---|---|
+| `IMAGE` | | an OCI image layout directory, or a `.tar` archive of one |
+| `DESTINATION` | | `[registry/]repository[:tag]`, `latest` when no tag is given; or `repository@sha256:...` to push by digest, which must be the image's |
+| `-p, --platform NAME` | the only one | for an image of several platforms, which one to push |
+| `--format text\|json` | `text` | `json` gives the reference, digest, and how many blobs were uploaded, mounted and already there |
+
+Because layers are named by their digest, pushing a rebuilt image sends only the layers that changed: change one
+package and a push sends its layer and the config, nothing else. When the image was built on a base that lives on
+the same registry, the base's layers are mounted from its repository rather than uploaded.
+
+**Credentials.** pixi-oci uses what `docker login` and `podman login` store (`REGISTRY_AUTH_FILE`, podman's
+`auth.json`, docker's `config.json` and its credential helpers). In CI, set `PIXI_OCI_REGISTRY_USERNAME` and
+`PIXI_OCI_REGISTRY_PASSWORD`: they are given only to the push's destination, or to `PIXI_OCI_REGISTRY` when that is
+set, never to another registry, such as a base image's. In GitHub Actions:
+
+```yaml
+permissions:
+  contents: read
+  packages: write
+steps:
+  - run: pixi oci push app.tar ghcr.io/${{ github.repository }}:${{ github.sha }}
+    env:
+      PIXI_OCI_REGISTRY_USERNAME: ${{ github.actor }}
+      PIXI_OCI_REGISTRY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+```
+
 ## `pixi oci inspect`
 
 Shows what an image holds, read from its index, manifest and config, without opening a layer or needing skopeo or
@@ -172,6 +215,8 @@ oci-archive:app.tar`, or `crane config` and `crane manifest` on a pushed image.
 | `PIXI_OCI_CACHE_DIR` | the package cache, when `--cache-dir` is not given. Otherwise `$XDG_CACHE_HOME/pixi-oci`, `~/.cache/pixi-oci` on Linux, `~/Library/Caches/pixi-oci` on macOS, `%LOCALAPPDATA%\pixi-oci` on Windows |
 | `SOURCE_DATE_EPOCH` | seconds since the Unix epoch, stamped on every file and on the image's `created` time; `0` when unset. The [reproducible-builds](https://reproducible-builds.org/docs/source-date-epoch/) convention. |
 | `HTTPS_PROXY`, `HTTP_PROXY`, `NO_PROXY` | the proxy for downloads |
+| `PIXI_OCI_REGISTRY_USERNAME`, `PIXI_OCI_REGISTRY_PASSWORD` | credentials for one registry, for CI: `push`'s destination, or `PIXI_OCI_REGISTRY` |
+| `PIXI_OCI_REGISTRY` | the registry those credentials are for, such as `ghcr.io`; set it when a build should also use them to pull its base |
 | `PIXI_OCI_NETWORK_TESTS` | for development only: `1` adds the tests that download from conda-forge |
 
 ## Exit codes

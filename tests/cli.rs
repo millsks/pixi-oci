@@ -417,3 +417,23 @@ fn build_refuses_a_base_that_is_not_pinned_before_downloading() {
     assert!(bad.contains("is not an image reference"), "{bad}");
     assert!(!dir.path().join("cache").exists());
 }
+
+#[test]
+fn push_refuses_a_bad_destination_or_an_invalid_image_before_connecting() {
+    let dir = tempfile::tempdir().unwrap();
+    let stderr = |args: &[&str]| {
+        let output = pixi_oci().args(args).output().unwrap();
+        assert!(!output.status.success());
+        // Without miette's line wrapping and frame, which depend on the path's length.
+        String::from_utf8_lossy(&output.stderr)
+            .split(|c: char| c.is_whitespace() || "│╰─▶×".contains(c))
+            .filter(|word| !word.is_empty())
+            .collect::<Vec<_>>()
+            .join(" ")
+    };
+    let image = dir.path().to_str().unwrap();
+    assert!(stderr(&["push", image, "Not A Reference"]).contains("is not an image reference"));
+    // Nothing listens on port 9: an attempt to connect would fail differently.
+    let invalid = stderr(&["push", image, "127.0.0.1:9/team/app:1"]);
+    assert!(invalid.contains("is not a valid OCI image: 2 problems"), "{invalid}");
+}
