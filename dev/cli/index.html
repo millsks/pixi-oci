@@ -553,6 +553,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#pixi-oci-check" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        pixi oci check
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#pixi-oci-inspect" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -876,6 +887,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#pixi-oci-check" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        pixi oci check
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#pixi-oci-inspect" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1098,30 +1120,116 @@ everywhere else.</p>
 their <code>diff_id</code> is not checked.</p>
 <p>The image is a standard OCI image, so other tools check it the same way: <code>crane validate --tarball app.tar</code>, or
 <code>skopeo copy oci-archive:app.tar ...</code> as a smoke test.</p>
+<h2 id="pixi-oci-check"><code>pixi oci check</code><a class="headerlink" href="#pixi-oci-check" title="Permanent link">&para;</a></h2>
+<p>Checks that an image will run, by Linux's rules, without running it, so it works on Windows and macOS too. It runs
+<a href="#pixi-oci-validate"><code>validate</code></a> first, and looks at the files only if the image is valid.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="gp">$ </span>pixi<span class="w"> </span>oci<span class="w"> </span>check<span class="w"> </span>app.tar
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="go">app.tar: 4 problems in 5195 files (134 ELF files, 56 scripts)</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="go">  glibc: glibc is not in the image: 129 ELF files need /lib64/ld-linux-x86-64.so.2, ld-linux-x86-64.so.2, libc.so.6, libdl.so.2, libm.so.6, libpthread.so.0, librt.so.1, libutil.so.1</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="go">    /opt/env/bin/bunzip2, /opt/env/bin/bzcat, /opt/env/bin/bzip2, and 126 more</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="go">    help: conda packages use the system's glibc: build on a base image that has it (`--base`, #12), or add the loader and libraries in a layer below the environment</span>
+<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="go">  library: libX11.so.6 is needed by 1 ELF file, but the loader would not find it</span>
+<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="go">    /opt/env/lib/libtk8.6.so</span>
+<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="go">  shebang: 20 scripts start with #!/bin/sh, which is not in the image</span>
+<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="go">    /opt/env/bin/bzdiff, /opt/env/bin/bzgrep, /opt/env/bin/bzmore, and 17 more</span>
+<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="go">  ...</span>
+<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a><span class="go">  note: entrypoint: the image sets no entrypoint or cmd, so a container needs a command</span>
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Argument or option</th>
+<th>Default</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>IMAGE</code></td>
+<td></td>
+<td>an OCI image layout directory, or a <code>.tar</code> archive of one, read in place</td>
+</tr>
+<tr>
+<td><code>-p, --platform NAME</code></td>
+<td>the only one</td>
+<td>for an image of several platforms, which one: <code>linux/arm64/v8</code>, or <code>linux-aarch64</code></td>
+</tr>
+<tr>
+<td><code>--format text\|json</code></td>
+<td><code>text</code></td>
+<td><code>json</code> gives <code>ok</code>, what was checked, and each problem and note with every path it affects</td>
+</tr>
+</tbody>
+</table>
+<p>It applies the layers in order, whiteouts included, and then:</p>
+<table>
+<thead>
+<tr>
+<th>Problem</th>
+<th>What it means</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>architecture</code></td>
+<td>an ELF file is for another machine than the image's platform</td>
+</tr>
+<tr>
+<td><code>glibc</code></td>
+<td>ELF files need a loader or glibc libraries no layer provides: an image without a base has none</td>
+</tr>
+<tr>
+<td><code>library</code></td>
+<td>a library an ELF file needs (<code>DT_NEEDED</code>) is not where the loader would look: its <code>RPATH</code> or <code>RUNPATH</code> (with <code>$ORIGIN</code>), the image's <code>LD_LIBRARY_PATH</code>, then <code>/lib</code>, <code>/usr/lib</code>, <code>/lib64</code>, <code>/usr/lib64</code> and the multiarch directories</td>
+</tr>
+<tr>
+<td><code>shebang</code></td>
+<td>an executable script's <code>#!</code> interpreter is not in the image; for <code>#!/usr/bin/env prog</code>, <code>prog</code> is looked for on the image's <code>PATH</code></td>
+</tr>
+<tr>
+<td><code>placeholder</code></td>
+<td>a file still holds a conda build placeholder, so it was not rewritten for the image's prefix (<code>conda-meta</code> records and <code>__pycache__</code> caches excepted)</td>
+</tr>
+<tr>
+<td><code>entrypoint</code></td>
+<td>the entrypoint, or cmd when there is none, is not on the image's <code>PATH</code>, or is not executable</td>
+</tr>
+<tr>
+<td><code>elf</code></td>
+<td>a file starts like an ELF file but cannot be read as one</td>
+</tr>
+<tr>
+<td><code>spec</code></td>
+<td><code>validate</code> found a problem; the files were not looked at</td>
+</tr>
+</tbody>
+</table>
+<p>Symlinks are followed as the kernel follows them. It exits <code>1</code> if there is any problem; a note, such as an image
+with no entrypoint, does not fail it. ELF files are parsed in memory up to 64 MiB, and from a temporary file beyond.</p>
 <h2 id="pixi-oci-inspect"><code>pixi oci inspect</code><a class="headerlink" href="#pixi-oci-inspect" title="Permanent link">&para;</a></h2>
 <p>Shows what an image holds, read from its index, manifest and config, without opening a layer or needing skopeo or
 crane.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="gp">$ </span>pixi<span class="w"> </span>oci<span class="w"> </span>inspect<span class="w"> </span>app.tar
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="go">Image app:1.0 (app.tar)</span>
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="go">  platform    linux/amd64</span>
-<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="go">  manifest    sha256:9ec8407e4f1860919cd8dd7af6027a9bdcb91a5a008b2c5ea657ed3f300044ef</span>
-<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="go">  config      sha256:6ca92a53b6bf0bf0fc05e09b3e22b662af269f9136ff892344073894a1ad1312</span>
-<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="go">  created     1970-01-01T00:00:00Z</span>
-<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="go">  env         PATH=/opt/env/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin</span>
-<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="go">              CONDA_PREFIX=/opt/env</span>
-<a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="go">  labels      dev.pixi.environment=app</span>
-<a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="go">              dev.pixi.platform=linux-64</span>
-<a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a>
-<a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a><span class="go">7 layers, 62.6 MiB</span>
-<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a>
-<a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a><span class="gp">  #  </span>Layer<span class="w">              </span>Size<span class="w">      </span>Digest
-<a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a><span class="go">  1  4 packages         2.1 MiB   sha256:960cbb64893f</span>
-<a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a><span class="go">  2  libpython 3.13.18  13.9 MiB  sha256:12f0c952f0ec</span>
-<a id="__codelineno-2-17" name="__codelineno-2-17" href="#__codelineno-2-17"></a><span class="go">  3  12 packages        8.3 MiB   sha256:cbef1ccd8e85</span>
-<a id="__codelineno-2-18" name="__codelineno-2-18" href="#__codelineno-2-18"></a><span class="go">  4  tk 8.6.13          4.0 MiB   sha256:74ddf65a7bef</span>
-<a id="__codelineno-2-19" name="__codelineno-2-19" href="#__codelineno-2-19"></a><span class="go">  5  3 packages         1.7 MiB   sha256:a8fb83f0c699</span>
-<a id="__codelineno-2-20" name="__codelineno-2-20" href="#__codelineno-2-20"></a><span class="go">  6  python 3.13.18     32.6 MiB  sha256:a6cd4f82fa1e</span>
-<a id="__codelineno-2-21" name="__codelineno-2-21" href="#__codelineno-2-21"></a><span class="go">  7  six 1.17.0         11.5 KiB  sha256:f0d9c9d4dea1</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="gp">$ </span>pixi<span class="w"> </span>oci<span class="w"> </span>inspect<span class="w"> </span>app.tar
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="go">Image app:1.0 (app.tar)</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="go">  platform    linux/amd64</span>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="go">  manifest    sha256:9ec8407e4f1860919cd8dd7af6027a9bdcb91a5a008b2c5ea657ed3f300044ef</span>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="go">  config      sha256:6ca92a53b6bf0bf0fc05e09b3e22b662af269f9136ff892344073894a1ad1312</span>
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="go">  created     1970-01-01T00:00:00Z</span>
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="go">  env         PATH=/opt/env/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin</span>
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a><span class="go">              CONDA_PREFIX=/opt/env</span>
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a><span class="go">  labels      dev.pixi.environment=app</span>
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a><span class="go">              dev.pixi.platform=linux-64</span>
+<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>
+<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a><span class="go">7 layers, 62.6 MiB</span>
+<a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a>
+<a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a><span class="gp">  #  </span>Layer<span class="w">              </span>Size<span class="w">      </span>Digest
+<a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a><span class="go">  1  4 packages         2.1 MiB   sha256:960cbb64893f</span>
+<a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a><span class="go">  2  libpython 3.13.18  13.9 MiB  sha256:12f0c952f0ec</span>
+<a id="__codelineno-3-17" name="__codelineno-3-17" href="#__codelineno-3-17"></a><span class="go">  3  12 packages        8.3 MiB   sha256:cbef1ccd8e85</span>
+<a id="__codelineno-3-18" name="__codelineno-3-18" href="#__codelineno-3-18"></a><span class="go">  4  tk 8.6.13          4.0 MiB   sha256:74ddf65a7bef</span>
+<a id="__codelineno-3-19" name="__codelineno-3-19" href="#__codelineno-3-19"></a><span class="go">  5  3 packages         1.7 MiB   sha256:a8fb83f0c699</span>
+<a id="__codelineno-3-20" name="__codelineno-3-20" href="#__codelineno-3-20"></a><span class="go">  6  python 3.13.18     32.6 MiB  sha256:a6cd4f82fa1e</span>
+<a id="__codelineno-3-21" name="__codelineno-3-21" href="#__codelineno-3-21"></a><span class="go">  7  six 1.17.0         11.5 KiB  sha256:f0d9c9d4dea1</span>
 </code></pre></div>
 <table>
 <thead>

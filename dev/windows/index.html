@@ -957,6 +957,10 @@ or a VM. Without those:</p>
 <td>Yes</td>
 </tr>
 <tr>
+<td><code>pixi oci check</code>: will it run?</td>
+<td>Yes: it reads the binaries and scripts, and runs nothing</td>
+</tr>
+<tr>
 <td>Other OCI tools (<code>skopeo inspect</code>, <code>crane validate</code>)</td>
 <td>Yes, with those tools installed</td>
 </tr>
@@ -966,8 +970,9 @@ or a VM. Without those:</p>
 </tr>
 </tbody>
 </table>
-<p><code>pixi oci check</code>, a static check of an image that runs nothing and so works on Windows, is on the
-<a href="../roadmap/">roadmap</a>, as is a rootless <code>pixi oci run</code> for Linux and CI.</p>
+<p><code>pixi oci check</code> tells you, on Windows, whether the image would run: a missing loader or library, a script whose
+interpreter is not there, an entrypoint not on <code>PATH</code>. A rootless <code>pixi oci run</code> for Linux and CI is on the
+<a href="../roadmap/">roadmap</a>.</p>
 <h2 id="paths">Paths<a class="headerlink" href="#paths" title="Permanent link">&para;</a></h2>
 <ul>
 <li><strong>Output</strong>: <code>-o C:\work\app.tar</code> or <code>-o .\app.tar</code>; either kind of slash works.</li>

@@ -912,13 +912,11 @@ scope and acceptance criteria live and its pull requests are linked. Comment the
       (<a href="https://github.com/millsks/pixi-oci/issues/25">#25</a>)</li>
 <li>[x] <strong><code>inspect</code></strong>: an image's settings and layers, with the packages each layer holds, as text, JSON or the exact
       stored documents (<a href="https://github.com/millsks/pixi-oci/issues/24">#24</a>)</li>
+<li>[x] <strong><code>check</code></strong>: whether an image will run, without running it, on any OS: architecture, loader and glibc,
+      libraries by the loader's own search, shebangs, placeholders, the entrypoint (<a href="https://github.com/millsks/pixi-oci/issues/11">#11</a>)</li>
 </ul>
 <h2 id="next">Next<a class="headerlink" href="#next" title="Permanent link">&para;</a></h2>
 <ul>
-<li>[ ] <strong><code>pixi oci check</code>.</strong> Static tests on any OS, nothing executed: every binary is a Linux ELF for the image's
-      architecture, its loader and libraries are in the image, shebangs name interpreters that exist, no placeholder
-      is left, and the entrypoint and <code>PATH</code> are right. It runs <code>validate</code> first, and would flag today's missing-glibc
-      failure. (<a href="https://github.com/millsks/pixi-oci/issues/11">#11</a>)</li>
 <li>[ ] <strong>Base images.</strong> <code>--base</code> pulls a glibc base image (a distroless or UBI image) by digest, so python and the
       rest of conda-forge run. (<a href="https://github.com/millsks/pixi-oci/issues/12">#12</a>)</li>
 <li>[ ] <strong>Push.</strong> <code>pixi oci push</code> sends the image to any registry, with docker-style credentials.
