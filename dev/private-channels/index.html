@@ -569,10 +569,21 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#not-yet" class="md-nav__link">
+  <a href="#mirrors" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Not yet
+        Mirrors
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#s3-and-gcs-channels" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        S3 and GCS channels
       
     </span>
   </a>
@@ -913,10 +924,21 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#not-yet" class="md-nav__link">
+  <a href="#mirrors" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Not yet
+        Mirrors
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#s3-and-gcs-channels" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        S3 and GCS channels
       
     </span>
   </a>
@@ -980,10 +1002,43 @@ reads there too.</p>
 <li>errors name the lockfile's URL; anything a credential would be in is replaced by <code>&lt;credential&gt;</code></li>
 </ul>
 <p>The tests build from a channel that needs a token and check every blob of the image, unpacked, for it.</p>
-<h2 id="not-yet">Not yet<a class="headerlink" href="#not-yet" title="Permanent link">&para;</a></h2>
-<p>pixi's <code>mirrors</code> setting, and <code>s3://</code> and <code>gcs://</code> channels, are
-<a href="https://github.com/millsks/pixi-oci/issues/51">#51</a>. A build whose lockfile names an <code>s3://</code> or <code>gcs://</code> package
-stops before downloading anything else and says so; an https mirror of the same channel works today, locked as such.</p>
+<h2 id="mirrors">Mirrors<a class="headerlink" href="#mirrors" title="Permanent link">&para;</a></h2>
+<p>pixi's <code>mirrors</code> setting is used as pixi uses it, so a lockfile that names <code>https://conda.anaconda.org/conda-forge</code>
+downloads from your mirror instead:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="c1"># ~/.pixi/config.toml, or the workspace's .pixi/config.toml</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="k">[mirrors]</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="s2">"https://conda.anaconda.org/conda-forge"</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="w">    </span><span class="s2">"https://artifactory.example.com/api/conda/conda-forge"</span><span class="p">,</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="w">    </span><span class="s2">"oci://ghcr.io/channel-mirrors/conda-forge"</span><span class="p">,</span>
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="p">]</span>
+</code></pre></div>
+<p>pixi-oci reads the files pixi reads, later ones winning: <code>/etc/pixi/config.toml</code> (<code>C:\ProgramData\pixi</code> on Windows),
+the user config directory's <code>pixi/config.toml</code>, <code>$PIXI_HOME/config.toml</code> or <code>~/.pixi/config.toml</code>, rattler's shared
+<code>rattler/config.toml</code> under each, and then the workspace's <code>.pixi/config.toml</code> beside the lockfile.</p>
+<p>The longest channel URL a mirror stands in for is matched first, as rattler matches them. A package is downloaded from
+the first of its mirrors that serves it: one that fails is passed over for the next, and when all fail the error names
+the last one tried. Credentials are those pixi has for the mirror's host. Mirrors can be <code>https://</code>, <code>s3://</code>, <code>gcs://</code>
+or <code>oci://</code>.</p>
+<p>The lockfile's sha256 is checked whichever mirror served the file, and the image is the same: layers record the
+lockfile's URLs, not the mirror's.</p>
+<h2 id="s3-and-gcs-channels">S3 and GCS channels<a class="headerlink" href="#s3-and-gcs-channels" title="Permanent link">&para;</a></h2>
+<p><code>s3://bucket/channel</code> and <code>gcs://bucket/channel</code> locations, in a lockfile or as a mirror, are downloaded through
+rattler's own S3 and GCS support, as pixi downloads them:</p>
+<ul>
+<li><strong>S3</strong> requests are presigned with the keys <code>pixi auth login s3://&lt;bucket&gt; --s3-access-key-id &lt;id&gt;
+  --s3-secret-access-key &lt;key&gt;</code> stored, or else the AWS SDK's usual chain (<code>AWS_*</code> variables, <code>~/.aws</code>, SSO, an
+  instance role). A bucket somewhere other than AWS, such as MinIO, takes its endpoint from pixi's <code>s3-options</code>:</li>
+</ul>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="k">[s3-options.my-bucket]</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="n">endpoint-url</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"https://minio.example.com"</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="n">region</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"us-east-1"</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="n">addressing-style</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"path"</span>
+</code></pre></div>
+<ul>
+<li><strong>GCS</strong> requests use Google's application default credentials (<code>gcloud auth application-default login</code>, or
+  <code>GOOGLE_APPLICATION_CREDENTIALS</code>).</li>
+</ul>
+<p>Presigned URLs carry a key id and a signature, so pixi-oci never prints one: an error names the <code>s3://</code> location.</p>
 
 
 

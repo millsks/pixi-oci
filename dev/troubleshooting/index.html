@@ -1025,9 +1025,17 @@ pixi-oci prints them, with the variable parts in angle brackets.</p>
 <p><strong><code>&lt;url&gt; refused the download (401)</code></strong> or <strong><code>(403)</code></strong>
 :   The channel needs credentials, or refused the ones pixi has. Log in as for pixi, with <code>pixi auth login &lt;host&gt;
     --token &lt;token&gt;</code> (or <code>--username</code> and <code>--password</code>), and build again (<a href="../private-channels/">Private channels</a>).</p>
-<p><strong><code>&lt;location&gt; is in a s3:// channel, which pixi-oci cannot download from yet</code></strong>
-:   S3 and GCS channels are <a href="https://github.com/millsks/pixi-oci/issues/51">#51</a>. Lock against an https mirror of
-    the channel meanwhile.</p>
+<p><strong><code>could not download s3://...</code></strong>, <strong><code>gcs://...</code></strong> or <strong><code>oci://...</code></strong> with the reason after it
+:   For S3, the keys come from <code>pixi auth login s3://&lt;bucket&gt; ...</code> or the AWS environment, and a bucket outside AWS
+    needs its <code>endpoint-url</code> in pixi's <code>s3-options</code>. For GCS, log in with <code>gcloud auth application-default login</code>.
+    For an <code>oci://</code> mirror, the repository must exist; pixi's credentials for the registry are used if it is private
+    (<a href="../private-channels/#s3-and-gcs-channels">Private channels</a>).</p>
+<p><strong>A download names a mirror rather than the lockfile's channel</strong>
+:   pixi's <code>mirrors</code> setting sent it there, and every mirror listed for the channel failed; the error is the last
+    one's. <code>pixi config list mirrors</code> shows the setting, and the workspace's <code>.pixi/config.toml</code> can override it
+    (<a href="../private-channels/#mirrors">Mirrors</a>).</p>
+<p><strong><code>could not read pixi's config</code></strong>
+:   One of pixi's config files is not valid: the message says which key. <code>pixi config list</code> reads the same files.</p>
 <p><strong><code>could not read pixi's credentials</code></strong>
 :   pixi's credential store could not be opened: a <code>RATTLER_AUTH_FILE</code> that is not JSON, or a credentials file that
     is not readable. <code>pixi auth logout &lt;host&gt;</code> and log in again, or fix the file the message names.</p>

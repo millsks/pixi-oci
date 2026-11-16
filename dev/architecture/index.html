@@ -976,6 +976,10 @@
 <td><code>build</code>: checks the request, fetches every archive, writes the planned layers in parallel within <code>--max-memory</code>, puts a pulled base's layers underneath, merges its config, then writes the image.</td>
 </tr>
 <tr>
+<td><code>sources.rs</code></td>
+<td>pixi's config as pixi reads it (<code>mirrors</code>, <code>s3-options</code>, through rattler_config), each location's mirrors longest match first, and a reqwest client with rattler's S3, GCS and OCI middleware for those schemes.</td>
+</tr>
+<tr>
 <td><code>fetch.rs</code></td>
 <td>Downloads conda archives and wheels (ureq) with pixi's credentials for each host, applied as rattler applies them and kept out of errors; checks each against the lockfile's sha256, and keeps it in a cache named by that hash.</td>
 </tr>
