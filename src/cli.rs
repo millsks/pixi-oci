@@ -153,7 +153,8 @@ pub struct PushArgs {
 
 #[derive(Debug, Args)]
 pub struct CheckArgs {
-    /// The image: an OCI image layout directory or a `.tar` archive of one.
+    /// The image: an OCI image layout directory, a `.tar` archive of one, or an image in a registry
+    /// (ghcr.io/team/app:1.0, debian:bookworm-slim, or docker://REFERENCE).
     #[arg(value_name = "IMAGE")]
     pub image: PathBuf,
 
@@ -169,7 +170,8 @@ pub struct CheckArgs {
 
 #[derive(Debug, Args)]
 pub struct InspectArgs {
-    /// The image: an OCI image layout directory or a `.tar` archive of one.
+    /// The image: an OCI image layout directory, a `.tar` archive of one, or an image in a registry
+    /// (ghcr.io/team/app:1.0, debian:bookworm-slim, or docker://REFERENCE).
     #[arg(value_name = "IMAGE")]
     pub image: PathBuf,
 
@@ -193,9 +195,15 @@ pub struct InspectArgs {
 
 #[derive(Debug, Args)]
 pub struct ValidateArgs {
-    /// The image: an OCI image layout directory or a `.tar` archive of one.
+    /// The image: an OCI image layout directory, a `.tar` archive of one, or an image in a registry
+    /// (ghcr.io/team/app:1.0, debian:bookworm-slim, or docker://REFERENCE).
     #[arg(value_name = "IMAGE")]
     pub image: PathBuf,
+
+    /// From a registry, the platform to validate when the image has several: a conda platform (linux-aarch64) or an
+    /// OCI one (linux/arm64/v8). Defaults to Linux on the host's architecture. A file is validated whole.
+    #[arg(short, long)]
+    pub platform: Option<String>,
 
     /// How to print the result.
     #[arg(long, value_enum, default_value_t = Format::Text)]

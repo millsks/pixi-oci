@@ -49,6 +49,41 @@ pub fn oci_platform(conda_platform: &str) -> Option<OciPlatform> {
     })
 }
 
+/// The conda platforms images are built for.
+const LINUX: [&str; 8] = [
+    "linux-64",
+    "linux-aarch64",
+    "linux-ppc64le",
+    "linux-s390x",
+    "linux-armv7l",
+    "linux-armv6l",
+    "linux-32",
+    "linux-riscv64",
+];
+
+/// The OCI platform an image config or a descriptor names (`os`, `architecture`, `variant`), when it is one of the
+/// Linux platforms above. An arm64 image that leaves out its variant is v8, the only one there is.
+pub fn from_oci(os: &str, architecture: &str, variant: Option<&str>) -> Option<OciPlatform> {
+    LINUX.iter().filter_map(|name| oci_platform(name)).find(|platform| {
+        platform.os == os
+            && platform.architecture == architecture
+            && (platform.variant == variant || (architecture == "arm64" && variant.is_none()))
+    })
+}
+
+/// A platform as a person gives one: a conda platform (`linux-aarch64`) or an OCI one (`linux/arm64/v8`).
+pub fn parse(text: &str) -> Option<OciPlatform> {
+    oci_platform(text).or_else(|| {
+        let mut parts = text.split('/');
+        let (os, architecture) = (parts.next()?, parts.next()?);
+        let variant = parts.next();
+        if parts.next().is_some() {
+            return None;
+        }
+        from_oci(os, architecture, variant)
+    })
+}
+
 /// The Linux platform a build defaults to: the host's architecture, so an image built on an Apple Silicon Mac runs
 /// natively there, and `linux-64` anywhere else.
 pub fn default_conda_platform() -> &'static str {
@@ -100,5 +135,18 @@ mod tests {
         assert_eq!(default_for_arch("s390x"), "linux-s390x");
         assert_eq!(default_for_arch("riscv64"), "linux-64");
         assert!(oci_platform(default_conda_platform()).is_some());
+    }
+
+    #[test]
+    fn platforms_are_read_in_either_spelling() {
+        assert_eq!(parse("linux-aarch64").unwrap().to_string(), "linux/arm64/v8");
+        assert_eq!(parse("linux/arm64/v8").unwrap().to_string(), "linux/arm64/v8");
+        assert_eq!(parse("linux/arm64").unwrap().to_string(), "linux/arm64/v8");
+        assert_eq!(parse("linux/amd64").unwrap().to_string(), "linux/amd64");
+        assert_eq!(parse("linux/arm/v7").unwrap().to_string(), "linux/arm/v7");
+        for unknown in ["linux/arm", "windows/amd64", "linux/amd64/v2/x", "osx-arm64", "linux"] {
+            assert!(parse(unknown).is_none(), "{unknown}");
+        }
+        assert_eq!(from_oci("linux", "s390x", None).unwrap().to_string(), "linux/s390x");
     }
 }
