@@ -40,6 +40,8 @@ scope and acceptance criteria live and its pull requests are linked. Comment the
 - [x] **Digest**: `pixi oci digest` prints a tag's digest to pin a base with ([#43](https://github.com/millsks/pixi-oci/issues/43))
 - [x] **Private channels**: builds download with pixi's own credentials (keychain, credentials file, `.netrc`),
       kept out of the image ([#18](https://github.com/millsks/pixi-oci/issues/18))
+- [x] **Mirrors, S3 and GCS**: pixi's `mirrors` and `s3-options`, and `s3://`, `gcs://` and `oci://` downloads
+      through rattler's own middleware ([#51](https://github.com/millsks/pixi-oci/issues/51))
 
 ## Next
 
@@ -55,7 +57,6 @@ scope and acceptance criteria live and its pull requests are linked. Comment the
 
 ## After that
 
-- [ ] Mirrors, and S3 and GCS channels ([#51](https://github.com/millsks/pixi-oci/issues/51))
 - [ ] `inspect`, `validate` and `check` straight from a registry ([#44](https://github.com/millsks/pixi-oci/issues/44))
 - [ ] `pixi oci tag`: a new tag in a registry without moving blobs ([#45](https://github.com/millsks/pixi-oci/issues/45))
 - [ ] `pixi oci copy`: between registries and files, only what is missing ([#46](https://github.com/millsks/pixi-oci/issues/46))

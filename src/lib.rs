@@ -25,6 +25,7 @@ pub mod push;
 pub mod read;
 pub mod registry;
 pub mod report;
+pub mod sources;
 pub mod stream;
 pub mod target;
 #[cfg(test)]
@@ -220,7 +221,10 @@ fn run_build(args: BuildArgs) -> miette::Result<String> {
         expose: args.expose,
         stop_signal: args.stop_signal,
     };
-    let fetcher = fetch::Fetcher::new(cache).with_pixi_credentials()?;
+    let workspace = selection.lockfile.parent().map(std::path::Path::to_path_buf);
+    let fetcher = fetch::Fetcher::new(cache)
+        .with_pixi_credentials()?
+        .with_pixi_config(workspace.as_deref())?;
     let written = build::build(&plan, &options, &fetcher, &mut std::io::stderr())?;
     Ok(format!(
         "Wrote {} to {}\n  manifest {}\n  {}, {} for {}\n",

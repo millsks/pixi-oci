@@ -40,8 +40,49 @@ The credential is used for the download and nowhere else:
 
 The tests build from a channel that needs a token and check every blob of the image, unpacked, for it.
 
-## Not yet
+## Mirrors
 
-pixi's `mirrors` setting, and `s3://` and `gcs://` channels, are
-[#51](https://github.com/millsks/pixi-oci/issues/51). A build whose lockfile names an `s3://` or `gcs://` package
-stops before downloading anything else and says so; an https mirror of the same channel works today, locked as such.
+pixi's `mirrors` setting is used as pixi uses it, so a lockfile that names `https://conda.anaconda.org/conda-forge`
+downloads from your mirror instead:
+
+```toml
+# ~/.pixi/config.toml, or the workspace's .pixi/config.toml
+[mirrors]
+"https://conda.anaconda.org/conda-forge" = [
+    "https://artifactory.example.com/api/conda/conda-forge",
+    "oci://ghcr.io/channel-mirrors/conda-forge",
+]
+```
+
+pixi-oci reads the files pixi reads, later ones winning: `/etc/pixi/config.toml` (`C:\ProgramData\pixi` on Windows),
+the user config directory's `pixi/config.toml`, `$PIXI_HOME/config.toml` or `~/.pixi/config.toml`, rattler's shared
+`rattler/config.toml` under each, and then the workspace's `.pixi/config.toml` beside the lockfile.
+
+The longest channel URL a mirror stands in for is matched first, as rattler matches them. A package is downloaded from
+the first of its mirrors that serves it: one that fails is passed over for the next, and when all fail the error names
+the last one tried. Credentials are those pixi has for the mirror's host. Mirrors can be `https://`, `s3://`, `gcs://`
+or `oci://`.
+
+The lockfile's sha256 is checked whichever mirror served the file, and the image is the same: layers record the
+lockfile's URLs, not the mirror's.
+
+## S3 and GCS channels
+
+`s3://bucket/channel` and `gcs://bucket/channel` locations, in a lockfile or as a mirror, are downloaded through
+rattler's own S3 and GCS support, as pixi downloads them:
+
+- **S3** requests are presigned with the keys `pixi auth login s3://<bucket> --s3-access-key-id <id>
+  --s3-secret-access-key <key>` stored, or else the AWS SDK's usual chain (`AWS_*` variables, `~/.aws`, SSO, an
+  instance role). A bucket somewhere other than AWS, such as MinIO, takes its endpoint from pixi's `s3-options`:
+
+  ```toml
+  [s3-options.my-bucket]
+  endpoint-url = "https://minio.example.com"
+  region = "us-east-1"
+  addressing-style = "path"
+  ```
+
+- **GCS** requests use Google's application default credentials (`gcloud auth application-default login`, or
+  `GOOGLE_APPLICATION_CREDENTIALS`).
+
+Presigned URLs carry a key id and a signature, so pixi-oci never prints one: an error names the `s3://` location.

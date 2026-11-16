@@ -14,7 +14,8 @@ One crate, `pixi-oci`, a binary pixi runs as `pixi oci`: it builds OCI container
 | `src/platform.rs` | conda platform to OCI platform |
 | `src/report.rs` | a plan as text or JSON |
 | `src/build.rs` | `build`: fetch every archive, then write the planned layers in parallel within `--max-memory` |
-| `src/fetch.rs` | downloads conda archives and wheels with pixi's credentials, checks the lockfile's sha256, keeps them in a cache keyed by it |
+| `src/sources.rs` | pixi's `mirrors` and `s3-options` (rattler_config), and `s3://`, `gcs://`, `oci://` downloads through rattler's middleware |
+| `src/fetch.rs` | downloads conda archives and wheels with pixi's credentials and mirrors, checks the lockfile's sha256, keeps them in a cache keyed by it |
 | `src/stream.rs` | a layer written straight from package archives: prefix replacement, noarch python, conda-meta |
 | `src/target.rs` | the install target: prefix in the image, platform, python |
 | `src/layer.rs` | the reproducible tar+gzip layer writer, with its digest and diff_id |
@@ -60,7 +61,11 @@ Everything runs through pixi.
 - The four rattler crates (`rattler`, `rattler_conda_types`, `rattler_lock`, `rattler_package_streaming`) are pinned
   exactly (`=`) to one release set, because each pins the others exactly; bump all four together. They are on the
   `rattler_conda_types` 0.58 line, ahead of aesir-oss/pixi-sbom's 0.53, because `rattler_package_streaming` 0.27
-  pulls `zip` 8 with open advisories.
+  pulls `zip` 8 with open advisories. `rattler_networking` and `rattler_config` are pinned with them: `rattler_config`
+  to the version `rattler_networking` pins, which reads pixi's config through it.
+- S3, GCS and `oci://` downloads go through rattler_networking's reqwest middleware on a tokio runtime of its own
+  (`sources.rs`); everything else stays on ureq. Errors from that path drop the URL (`without_url`): an S3 URL is
+  presigned, with a key id and signature in it.
 - `stream.rs` follows `rattler::install::link_package_sync`; when rattler changes how it installs, the parity
   tests fail first. Match rattler rather than editing the tests, and keep the reference install in `install.rs`.
 - Nothing in a build may create a layer's files on the host: that is what makes Windows work. Only archives,
