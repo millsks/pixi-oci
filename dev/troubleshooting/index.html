@@ -1033,8 +1033,8 @@ pixi-oci prints them, with the variable parts in angle brackets.</p>
 :   The program exists; its loader does not: the image has no glibc. Build it on a base image with <code>--base</code>
     (<a href="../base-images/">Base images</a>). <code>pixi oci check</code> reports this, on any OS, before you load the image.</p>
 <p><strong><code>... is not pinned to a digest</code></strong>
-:   <code>--base</code> takes an image with its digest, so the build stays reproducible. <code>crane digest &lt;image&gt;</code> or
-    <code>skopeo inspect docker://&lt;image&gt;</code> prints it (<a href="../base-images/#pinned-by-digest">Base images</a>).</p>
+:   <code>--base</code> takes an image with its digest, so the build stays reproducible. <code>pixi oci digest &lt;image&gt; --pinned</code>
+    prints it, as do <code>crane digest</code> and <code>skopeo inspect</code> (<a href="../base-images/#pinned-by-digest">Base images</a>).</p>
 <p><strong><code>... refused access to ...</code></strong> when pulling a base
 :   The registry wants credentials. Log in with <code>pixi auth login &lt;registry&gt; --username &lt;user&gt; --password &lt;token&gt;</code>:
     pixi-oci reads pixi's credentials.</p>
