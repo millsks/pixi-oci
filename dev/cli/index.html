@@ -631,6 +631,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="pixi oci validate">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#images-in-a-registry" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Images in a registry
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -998,6 +1015,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="pixi oci validate">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#images-in-a-registry" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Images in a registry
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1329,7 +1363,12 @@ lockfile describes (<a href="https://github.com/millsks/pixi-oci/issues/40">#40<
 <tr>
 <td><code>IMAGE</code></td>
 <td></td>
-<td>an OCI image layout directory, or a <code>.tar</code> archive of one, read in place</td>
+<td>an OCI image layout directory, a <code>.tar</code> archive of one read in place, or an image in a registry (see <a href="#images-in-a-registry">Images in a registry</a>)</td>
+</tr>
+<tr>
+<td><code>-p, --platform NAME</code></td>
+<td>Linux on the host's architecture</td>
+<td>from a registry, which image of an index to validate; a file is validated whole</td>
 </tr>
 <tr>
 <td><code>--format text\|json</code></td>
@@ -1353,20 +1392,38 @@ lockfile describes (<a href="https://github.com/millsks/pixi-oci/issues/40">#40<
 their <code>diff_id</code> is not checked.</p>
 <p>The image is a standard OCI image, so other tools check it the same way: <code>crane validate --tarball app.tar</code>, or
 <code>skopeo copy oci-archive:app.tar ...</code> as a smoke test.</p>
+<h3 id="images-in-a-registry">Images in a registry<a class="headerlink" href="#images-in-a-registry" title="Permanent link">&para;</a></h3>
+<p><code>validate</code>, <code>check</code> and <code>inspect</code> read an image straight from a registry, too: give a reference instead of a path.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="gp">$ </span>pixi<span class="w"> </span>oci<span class="w"> </span>inspect<span class="w"> </span>ghcr.io/team/app:1.0
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="gp">$ </span>pixi<span class="w"> </span>oci<span class="w"> </span>check<span class="w"> </span>debian:bookworm-slim<span class="w"> </span>--platform<span class="w"> </span>linux-64
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="gp">$ </span>pixi<span class="w"> </span>oci<span class="w"> </span>validate<span class="w"> </span>docker://registry.example.com/app
+</code></pre></div>
+<p>An argument is a reference when no such file or directory exists and it has a tag, a digest or a repository path
+(<code>debian:bookworm-slim</code>, <code>ghcr.io/team/app</code>), and does not look like a path (<code>app.tar</code>, <code>./layout</code>, <code>/images/app</code>).
+<code>docker://</code> makes any argument a reference, as skopeo writes one.</p>
+<ul>
+<li><code>inspect</code> downloads only the manifest and config, never a layer. <code>--raw index</code> prints the document the registry
+  serves for the reference: its index, or the image's manifest.</li>
+<li><code>validate</code> and <code>check</code> download the layers, through the same cache as <code>pull</code> and <code>--base</code>, so a <code>pull</code> after them
+  downloads nothing.</li>
+<li>From an index, <code>--platform</code> picks the image, and defaults to Linux on the host's architecture. An image of one
+  platform is read for that platform.</li>
+<li>The report names the reference pinned to the digest its tag resolved to. Credentials are as for <code>push</code>.</li>
+</ul>
 <h2 id="pixi-oci-check"><code>pixi oci check</code><a class="headerlink" href="#pixi-oci-check" title="Permanent link">&para;</a></h2>
 <p>Checks that an image will run, by Linux's rules, without running it, so it works on Windows and macOS too. It runs
 <a href="#pixi-oci-validate"><code>validate</code></a> first, and looks at the files only if the image is valid.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="gp">$ </span>pixi<span class="w"> </span>oci<span class="w"> </span>check<span class="w"> </span>app.tar
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="go">app.tar: 4 problems in 5195 files (134 ELF files, 56 scripts)</span>
-<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="go">  glibc: glibc is not in the image: 129 ELF files need /lib64/ld-linux-x86-64.so.2, ld-linux-x86-64.so.2, libc.so.6, libdl.so.2, libm.so.6, libpthread.so.0, librt.so.1, libutil.so.1</span>
-<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="go">    /opt/env/bin/bunzip2, /opt/env/bin/bzcat, /opt/env/bin/bzip2, and 126 more</span>
-<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="go">    help: conda packages use the system's glibc: build on a base image that has it (`--base`, #12), or add the loader and libraries in a layer below the environment</span>
-<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="go">  library: libX11.so.6 is needed by 1 ELF file, but the loader would not find it</span>
-<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="go">    /opt/env/lib/libtk8.6.so</span>
-<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a><span class="go">  shebang: 20 scripts start with #!/bin/sh, which is not in the image</span>
-<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a><span class="go">    /opt/env/bin/bzdiff, /opt/env/bin/bzgrep, /opt/env/bin/bzmore, and 17 more</span>
-<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a><span class="go">  ...</span>
-<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a><span class="go">  note: entrypoint: the image sets no entrypoint or cmd, so a container needs a command</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="gp">$ </span>pixi<span class="w"> </span>oci<span class="w"> </span>check<span class="w"> </span>app.tar
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="go">app.tar: 4 problems in 5195 files (134 ELF files, 56 scripts)</span>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="go">  glibc: glibc is not in the image: 129 ELF files need /lib64/ld-linux-x86-64.so.2, ld-linux-x86-64.so.2, libc.so.6, libdl.so.2, libm.so.6, libpthread.so.0, librt.so.1, libutil.so.1</span>
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="go">    /opt/env/bin/bunzip2, /opt/env/bin/bzcat, /opt/env/bin/bzip2, and 126 more</span>
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="go">    help: conda packages use the system's glibc: build on a base image that has it (`--base`, #12), or add the loader and libraries in a layer below the environment</span>
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="go">  library: libX11.so.6 is needed by 1 ELF file, but the loader would not find it</span>
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="go">    /opt/env/lib/libtk8.6.so</span>
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a><span class="go">  shebang: 20 scripts start with #!/bin/sh, which is not in the image</span>
+<a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a><span class="go">    /opt/env/bin/bzdiff, /opt/env/bin/bzgrep, /opt/env/bin/bzmore, and 17 more</span>
+<a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a><span class="go">  ...</span>
+<a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a><span class="go">  note: entrypoint: the image sets no entrypoint or cmd, so a container needs a command</span>
 </code></pre></div>
 <table>
 <thead>
@@ -1380,11 +1437,11 @@ their <code>diff_id</code> is not checked.</p>
 <tr>
 <td><code>IMAGE</code></td>
 <td></td>
-<td>an OCI image layout directory, or a <code>.tar</code> archive of one, read in place</td>
+<td>an OCI image layout directory, a <code>.tar</code> archive of one read in place, or an image in a registry (see <a href="#images-in-a-registry">Images in a registry</a>)</td>
 </tr>
 <tr>
 <td><code>-p, --platform NAME</code></td>
-<td>the only one</td>
+<td>the only one (from a registry's index, the host's Linux)</td>
 <td>for an image of several platforms, which one: <code>linux/arm64/v8</code>, or <code>linux-aarch64</code></td>
 </tr>
 <tr>
@@ -1441,10 +1498,10 @@ their <code>diff_id</code> is not checked.</p>
 with no entrypoint, does not fail it. ELF files are parsed in memory up to 64 MiB, and from a temporary file beyond.</p>
 <h2 id="pixi-oci-digest"><code>pixi oci digest</code><a class="headerlink" href="#pixi-oci-digest" title="Permanent link">&para;</a></h2>
 <p>Prints the digest a registry serves for a tag, to pin <code>--base</code> with. Only manifests are fetched, never layers.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="gp">$ </span>pixi<span class="w"> </span>oci<span class="w"> </span>digest<span class="w"> </span>debian:bookworm-slim
-<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="go">sha256:734a72b3d6142a71993b4bc580ca01d8ca687f77a2c422d96a961d3376b179bc</span>
-<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="gp">$ </span>pixi<span class="w"> </span>oci<span class="w"> </span>digest<span class="w"> </span>debian:bookworm-slim<span class="w"> </span>--platform<span class="w"> </span>linux-64<span class="w"> </span>--pinned
-<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="go">debian:bookworm-slim@sha256:c67e92c8099ba22853ab4cfda7cfb494d253d6012ca82dee98ba8976772af018</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="gp">$ </span>pixi<span class="w"> </span>oci<span class="w"> </span>digest<span class="w"> </span>debian:bookworm-slim
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="go">sha256:734a72b3d6142a71993b4bc580ca01d8ca687f77a2c422d96a961d3376b179bc</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="gp">$ </span>pixi<span class="w"> </span>oci<span class="w"> </span>digest<span class="w"> </span>debian:bookworm-slim<span class="w"> </span>--platform<span class="w"> </span>linux-64<span class="w"> </span>--pinned
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="go">debian:bookworm-slim@sha256:c67e92c8099ba22853ab4cfda7cfb494d253d6012ca82dee98ba8976772af018</span>
 </code></pre></div>
 <table>
 <thead>
@@ -1482,10 +1539,10 @@ to pin. It is what <code>crane digest</code> prints; <code>skopeo inspect docker
 <h2 id="pixi-oci-pull"><code>pixi oci pull</code><a class="headerlink" href="#pixi-oci-pull" title="Permanent link">&para;</a></h2>
 <p>Downloads an image from a registry into a <code>.tar</code> archive or an OCI image layout directory, with no Docker, Podman
 or local registry: pixi-oci keeps no image store, so a pulled image is a file, like a built one.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="gp">$ </span>pixi<span class="w"> </span>oci<span class="w"> </span>pull<span class="w"> </span>debian:bookworm-slim
-<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="go">Pulled docker.io/library/debian:bookworm-slim@sha256:734a72b3d6142a71993b4bc580ca01d8ca687f77a2c422d96a961d3376b179bc to debian.tar</span>
-<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="go">  manifest sha256:ec8534cda2cb30f29f44f23e135297af7a1496f2990fd8e4e84aa36b081a757a</span>
-<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="go">  1 layer, 26.8 MiB for linux/arm64/v8</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="gp">$ </span>pixi<span class="w"> </span>oci<span class="w"> </span>pull<span class="w"> </span>debian:bookworm-slim
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="go">Pulled docker.io/library/debian:bookworm-slim@sha256:734a72b3d6142a71993b4bc580ca01d8ca687f77a2c422d96a961d3376b179bc to debian.tar</span>
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="go">  manifest sha256:ec8534cda2cb30f29f44f23e135297af7a1496f2990fd8e4e84aa36b081a757a</span>
+<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="go">  1 layer, 26.8 MiB for linux/arm64/v8</span>
 </code></pre></div>
 <table>
 <thead>
@@ -1536,13 +1593,13 @@ oci-archive:...</code> and <code>crane pull</code> do the same, where installed.
 <p>Sends an image to a registry, with no Docker or Podman. It runs <a href="#pixi-oci-validate"><code>validate</code></a> first, then asks the
 registry for each blob the image needs (its config, then its layers) and sends only the ones it lacks; the manifest
 goes last, under the tag, and the digest the registry reports must be the image's.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="gp">$ </span>pixi<span class="w"> </span>oci<span class="w"> </span>push<span class="w"> </span>app.tar<span class="w"> </span>ghcr.io/team/app:1.0
-<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="go">[1/9] sha256:3f2c09a1b4de already there</span>
-<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="go">[2/9] sha256:9c1e77a0e5f2 uploading (2.1 MiB)</span>
-<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="go">...</span>
-<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="go">Pushed ghcr.io/team/app:1.0</span>
-<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="go">  digest sha256:e79ba52d8f3013771e01802686c9e7ff54726be037a96e9b0e7d7424165273dc</span>
-<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="go">  9 blobs: 1 uploaded (2.1 MiB), 0 mounted, 8 already there</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="gp">$ </span>pixi<span class="w"> </span>oci<span class="w"> </span>push<span class="w"> </span>app.tar<span class="w"> </span>ghcr.io/team/app:1.0
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="go">[1/9] sha256:3f2c09a1b4de already there</span>
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="go">[2/9] sha256:9c1e77a0e5f2 uploading (2.1 MiB)</span>
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="go">...</span>
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="go">Pushed ghcr.io/team/app:1.0</span>
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a><span class="go">  digest sha256:e79ba52d8f3013771e01802686c9e7ff54726be037a96e9b0e7d7424165273dc</span>
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a><span class="go">  9 blobs: 1 uploaded (2.1 MiB), 0 mounted, 8 already there</span>
 </code></pre></div>
 <table>
 <thead>
@@ -1581,46 +1638,46 @@ the same registry, the base's layers are mounted from its repository rather than
 <p><strong>Credentials.</strong> pixi-oci uses pixi's own: log in once with <code>pixi auth login</code>, which stores them in the operating
 system's keychain (or <code>~/.rattler/credentials.json</code>), on Windows, macOS and Linux alike. No Docker or Podman is needed
 or read.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a>pixi<span class="w"> </span>auth<span class="w"> </span>login<span class="w"> </span>ghcr.io<span class="w"> </span>--username<span class="w"> </span>&lt;your-user&gt;<span class="w"> </span>--password<span class="w"> </span>&lt;token&gt;
-<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>pixi<span class="w"> </span>oci<span class="w"> </span>push<span class="w"> </span>app.tar<span class="w"> </span>ghcr.io/&lt;your-user&gt;/app:1.0
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a>pixi<span class="w"> </span>auth<span class="w"> </span>login<span class="w"> </span>ghcr.io<span class="w"> </span>--username<span class="w"> </span>&lt;your-user&gt;<span class="w"> </span>--password<span class="w"> </span>&lt;token&gt;
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>pixi<span class="w"> </span>oci<span class="w"> </span>push<span class="w"> </span>app.tar<span class="w"> </span>ghcr.io/&lt;your-user&gt;/app:1.0
 </code></pre></div>
 <p>For GHCR the token is a GitHub personal access token with <code>write:packages</code>; <code>pixi auth login ghcr.io --token &lt;token&gt;</code>
 works as well. In CI, set <code>PIXI_OCI_REGISTRY_USERNAME</code> and <code>PIXI_OCI_REGISTRY_PASSWORD</code> instead: they are given only
 to the push's destination, or to <code>PIXI_OCI_REGISTRY</code> when that is set, never to another registry, such as a base
 image's. In GitHub Actions:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="nt">permissions</span><span class="p">:</span>
-<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="w">  </span><span class="nt">contents</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">read</span>
-<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="w">  </span><span class="nt">packages</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">write</span>
-<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="nt">steps</span><span class="p">:</span>
-<a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">run</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pixi oci push app.tar ghcr.io/${{ github.repository }}:${{ github.sha }}</span>
-<a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a><span class="w">    </span><span class="nt">env</span><span class="p">:</span>
-<a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a><span class="w">      </span><span class="nt">PIXI_OCI_REGISTRY_USERNAME</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${{ github.actor }}</span>
-<a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a><span class="w">      </span><span class="nt">PIXI_OCI_REGISTRY_PASSWORD</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${{ secrets.GITHUB_TOKEN }}</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="nt">permissions</span><span class="p">:</span>
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="w">  </span><span class="nt">contents</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">read</span>
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="w">  </span><span class="nt">packages</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">write</span>
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="nt">steps</span><span class="p">:</span>
+<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">run</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pixi oci push app.tar ghcr.io/${{ github.repository }}:${{ github.sha }}</span>
+<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a><span class="w">    </span><span class="nt">env</span><span class="p">:</span>
+<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a><span class="w">      </span><span class="nt">PIXI_OCI_REGISTRY_USERNAME</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${{ github.actor }}</span>
+<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a><span class="w">      </span><span class="nt">PIXI_OCI_REGISTRY_PASSWORD</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${{ secrets.GITHUB_TOKEN }}</span>
 </code></pre></div>
 <h2 id="pixi-oci-inspect"><code>pixi oci inspect</code><a class="headerlink" href="#pixi-oci-inspect" title="Permanent link">&para;</a></h2>
 <p>Shows what an image holds, read from its index, manifest and config, without opening a layer or needing skopeo or
 crane.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="gp">$ </span>pixi<span class="w"> </span>oci<span class="w"> </span>inspect<span class="w"> </span>app.tar
-<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="go">Image app:1.0 (app.tar)</span>
-<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="go">  platform    linux/amd64</span>
-<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="go">  manifest    sha256:9ec8407e4f1860919cd8dd7af6027a9bdcb91a5a008b2c5ea657ed3f300044ef</span>
-<a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="go">  config      sha256:6ca92a53b6bf0bf0fc05e09b3e22b662af269f9136ff892344073894a1ad1312</span>
-<a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a><span class="go">  created     1970-01-01T00:00:00Z</span>
-<a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a><span class="go">  env         PATH=/opt/env/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin</span>
-<a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a><span class="go">              CONDA_PREFIX=/opt/env</span>
-<a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a><span class="go">  labels      dev.pixi.environment=app</span>
-<a id="__codelineno-9-10" name="__codelineno-9-10" href="#__codelineno-9-10"></a><span class="go">              dev.pixi.platform=linux-64</span>
-<a id="__codelineno-9-11" name="__codelineno-9-11" href="#__codelineno-9-11"></a>
-<a id="__codelineno-9-12" name="__codelineno-9-12" href="#__codelineno-9-12"></a><span class="go">7 layers, 62.6 MiB</span>
-<a id="__codelineno-9-13" name="__codelineno-9-13" href="#__codelineno-9-13"></a>
-<a id="__codelineno-9-14" name="__codelineno-9-14" href="#__codelineno-9-14"></a><span class="gp">  #  </span>Layer<span class="w">              </span>Size<span class="w">      </span>Digest
-<a id="__codelineno-9-15" name="__codelineno-9-15" href="#__codelineno-9-15"></a><span class="go">  1  4 packages         2.1 MiB   sha256:960cbb64893f</span>
-<a id="__codelineno-9-16" name="__codelineno-9-16" href="#__codelineno-9-16"></a><span class="go">  2  libpython 3.13.18  13.9 MiB  sha256:12f0c952f0ec</span>
-<a id="__codelineno-9-17" name="__codelineno-9-17" href="#__codelineno-9-17"></a><span class="go">  3  12 packages        8.3 MiB   sha256:cbef1ccd8e85</span>
-<a id="__codelineno-9-18" name="__codelineno-9-18" href="#__codelineno-9-18"></a><span class="go">  4  tk 8.6.13          4.0 MiB   sha256:74ddf65a7bef</span>
-<a id="__codelineno-9-19" name="__codelineno-9-19" href="#__codelineno-9-19"></a><span class="go">  5  3 packages         1.7 MiB   sha256:a8fb83f0c699</span>
-<a id="__codelineno-9-20" name="__codelineno-9-20" href="#__codelineno-9-20"></a><span class="go">  6  python 3.13.18     32.6 MiB  sha256:a6cd4f82fa1e</span>
-<a id="__codelineno-9-21" name="__codelineno-9-21" href="#__codelineno-9-21"></a><span class="go">  7  six 1.17.0         11.5 KiB  sha256:f0d9c9d4dea1</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="gp">$ </span>pixi<span class="w"> </span>oci<span class="w"> </span>inspect<span class="w"> </span>app.tar
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="go">Image app:1.0 (app.tar)</span>
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="go">  platform    linux/amd64</span>
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a><span class="go">  manifest    sha256:9ec8407e4f1860919cd8dd7af6027a9bdcb91a5a008b2c5ea657ed3f300044ef</span>
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a><span class="go">  config      sha256:6ca92a53b6bf0bf0fc05e09b3e22b662af269f9136ff892344073894a1ad1312</span>
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a><span class="go">  created     1970-01-01T00:00:00Z</span>
+<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a><span class="go">  env         PATH=/opt/env/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin</span>
+<a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a><span class="go">              CONDA_PREFIX=/opt/env</span>
+<a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a><span class="go">  labels      dev.pixi.environment=app</span>
+<a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a><span class="go">              dev.pixi.platform=linux-64</span>
+<a id="__codelineno-10-11" name="__codelineno-10-11" href="#__codelineno-10-11"></a>
+<a id="__codelineno-10-12" name="__codelineno-10-12" href="#__codelineno-10-12"></a><span class="go">7 layers, 62.6 MiB</span>
+<a id="__codelineno-10-13" name="__codelineno-10-13" href="#__codelineno-10-13"></a>
+<a id="__codelineno-10-14" name="__codelineno-10-14" href="#__codelineno-10-14"></a><span class="gp">  #  </span>Layer<span class="w">              </span>Size<span class="w">      </span>Digest
+<a id="__codelineno-10-15" name="__codelineno-10-15" href="#__codelineno-10-15"></a><span class="go">  1  4 packages         2.1 MiB   sha256:960cbb64893f</span>
+<a id="__codelineno-10-16" name="__codelineno-10-16" href="#__codelineno-10-16"></a><span class="go">  2  libpython 3.13.18  13.9 MiB  sha256:12f0c952f0ec</span>
+<a id="__codelineno-10-17" name="__codelineno-10-17" href="#__codelineno-10-17"></a><span class="go">  3  12 packages        8.3 MiB   sha256:cbef1ccd8e85</span>
+<a id="__codelineno-10-18" name="__codelineno-10-18" href="#__codelineno-10-18"></a><span class="go">  4  tk 8.6.13          4.0 MiB   sha256:74ddf65a7bef</span>
+<a id="__codelineno-10-19" name="__codelineno-10-19" href="#__codelineno-10-19"></a><span class="go">  5  3 packages         1.7 MiB   sha256:a8fb83f0c699</span>
+<a id="__codelineno-10-20" name="__codelineno-10-20" href="#__codelineno-10-20"></a><span class="go">  6  python 3.13.18     32.6 MiB  sha256:a6cd4f82fa1e</span>
+<a id="__codelineno-10-21" name="__codelineno-10-21" href="#__codelineno-10-21"></a><span class="go">  7  six 1.17.0         11.5 KiB  sha256:f0d9c9d4dea1</span>
 </code></pre></div>
 <table>
 <thead>
@@ -1634,11 +1691,11 @@ crane.</p>
 <tr>
 <td><code>IMAGE</code></td>
 <td></td>
-<td>an OCI image layout directory, or a <code>.tar</code> archive of one, read in place</td>
+<td>an OCI image layout directory, a <code>.tar</code> archive of one read in place, or an image in a registry (see <a href="#images-in-a-registry">Images in a registry</a>)</td>
 </tr>
 <tr>
 <td><code>-p, --platform NAME</code></td>
-<td>the only one</td>
+<td>the only one (from a registry's index, the host's Linux)</td>
 <td>for an image of several platforms, which one: <code>linux/arm64/v8</code>, or the conda name <code>linux-aarch64</code></td>
 </tr>
 <tr>
@@ -1661,7 +1718,7 @@ crane.</p>
 <p>Layer sizes are the compressed sizes the registry stores. The packages of each layer come from the history line
 pixi-oci writes for it; a layer another tool built shows its own history line instead.</p>
 <p>Other OCI tools read the same image: <code>skopeo inspect oci-archive:app.tar</code>, <code>skopeo inspect --config
-oci-archive:app.tar</code>, or <code>crane config</code> and <code>crane manifest</code> on a pushed image.</p>
+oci-archive:app.tar</code>, or <code>crane config</code> and <code>crane manifest</code> on a pushed image (which <code>pixi oci inspect REF</code> reads too).</p>
 <h2 id="environment-variables">Environment variables<a class="headerlink" href="#environment-variables" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
