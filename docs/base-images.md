@@ -33,13 +33,15 @@ standard; Debian slim is the common base for Python images. Both have a newer gl
 ## Pinned by digest
 
 A base is always given with its digest, so the same lockfile and the same base build the same image, today and in a
-year. A tag alone is refused. Find a tag's digest with any of:
+year. A tag alone is refused. `pixi oci digest` prints a tag's digest, fetching only its manifest:
 
-```sh
-crane digest debian:bookworm-slim
-skopeo inspect docker://debian:bookworm-slim --format '{{.Digest}}'
-docker buildx imagetools inspect debian:bookworm-slim
+```console
+$ pixi oci digest debian:bookworm-slim --pinned
+debian:bookworm-slim@sha256:734a72b3d6142a71993b4bc580ca01d8ca687f77a2c422d96a961d3376b179bc
 ```
+
+`crane digest debian:bookworm-slim` and `skopeo inspect docker://debian:bookworm-slim --format '{{.Digest}}'` print
+the same, if you have them.
 
 The digest can be an index's, covering several platforms, or one platform's manifest. pixi-oci follows an index to
 the manifest for the platform being built, and refuses a base that has none for it.

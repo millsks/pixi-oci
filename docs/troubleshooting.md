@@ -93,8 +93,8 @@ pixi-oci prints them, with the variable parts in angle brackets.
     ([Base images](base-images.md)). `pixi oci check` reports this, on any OS, before you load the image.
 
 **`... is not pinned to a digest`**
-:   `--base` takes an image with its digest, so the build stays reproducible. `crane digest <image>` or
-    `skopeo inspect docker://<image>` prints it ([Base images](base-images.md#pinned-by-digest)).
+:   `--base` takes an image with its digest, so the build stays reproducible. `pixi oci digest <image> --pinned`
+    prints it, as do `crane digest` and `skopeo inspect` ([Base images](base-images.md#pinned-by-digest)).
 
 **`... refused access to ...`** when pulling a base
 :   The registry wants credentials. Log in with `pixi auth login <registry> --username <user> --password <token>`:

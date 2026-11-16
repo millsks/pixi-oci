@@ -37,7 +37,7 @@ pub enum RegistryError {
     #[error("{reference} is not pinned to a digest")]
     #[diagnostic(help(
         "a base image is pinned so the same lockfile builds the same image: add @sha256:<digest>, \
-        which `crane digest {reference}` or `skopeo inspect docker://{reference}` prints"
+        which `pixi oci digest {reference}` prints (as do `crane digest` and `skopeo inspect`)"
     ))]
     NotPinned { reference: String },
 
@@ -473,8 +473,13 @@ impl Registry {
         Ok(digest)
     }
 
-    /// Pull `reference`, which must be pinned by digest, for `platform`.
-    pub fn pull(&self, reference: &ImageRef, platform: &OciPlatform) -> Result<Pulled, RegistryError> {
+    /// The image manifest `reference` (pinned by digest) names for `platform`, and its digest: the manifest itself,
+    /// or the platform's entry of an index followed. Only manifests are fetched.
+    pub fn platform_manifest(
+        &self,
+        reference: &ImageRef,
+        platform: &OciPlatform,
+    ) -> Result<(String, Value), RegistryError> {
         let pinned = reference.digest.clone().ok_or_else(|| RegistryError::NotPinned {
             reference: reference.to_string(),
         })?;
@@ -516,6 +521,16 @@ impl Registry {
             manifest = serde_json::from_slice(&bytes).map_err(|err| bad(format!("its manifest is not JSON: {err}")))?;
             manifest_digest = digest;
         }
+        Ok((manifest_digest, manifest))
+    }
+
+    /// Pull `reference`, which must be pinned by digest, for `platform`.
+    pub fn pull(&self, reference: &ImageRef, platform: &OciPlatform) -> Result<Pulled, RegistryError> {
+        let bad = |message: String| RegistryError::Manifest {
+            reference: reference.to_string(),
+            message,
+        };
+        let (manifest_digest, manifest) = self.platform_manifest(reference, platform)?;
         if manifest["schemaVersion"] != 2 || !manifest["layers"].is_array() {
             return Err(bad("its manifest is not an OCI or docker v2 image manifest".to_string()));
         }
@@ -574,7 +589,7 @@ impl Registry {
     }
 
     /// A manifest or config by digest: from the cache, or fetched, checked and cached.
-    fn document(
+    pub(crate) fn document(
         &self,
         reference: &ImageRef,
         kind: &str,

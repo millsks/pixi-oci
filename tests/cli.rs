@@ -468,3 +468,17 @@ fn pull_refuses_a_bad_reference_or_platform_before_connecting() {
         .failure()
         .stderr(predicate::str::contains("osx-arm64 is not a Linux platform"));
 }
+
+#[test]
+fn digest_refuses_a_bad_reference_or_platform_before_connecting() {
+    pixi_oci()
+        .args(["digest", "Not A Reference"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("is not an image reference"));
+    pixi_oci()
+        .args(["digest", "127.0.0.1:9/team/app:1", "--platform", "osx-arm64"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("osx-arm64 is not a Linux platform"));
+}

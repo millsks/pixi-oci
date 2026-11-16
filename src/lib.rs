@@ -8,6 +8,7 @@
 pub mod build;
 pub mod check;
 pub mod cli;
+pub mod digest;
 pub mod fetch;
 pub mod image;
 pub mod inspect;
@@ -31,7 +32,9 @@ mod testing;
 pub mod validate;
 pub mod wheel;
 
-use cli::{BuildArgs, CheckArgs, Cli, Command, Format, InspectArgs, PlanArgs, PullArgs, PushArgs, ValidateArgs};
+use cli::{
+    BuildArgs, CheckArgs, Cli, Command, DigestArgs, Format, InspectArgs, PlanArgs, PullArgs, PushArgs, ValidateArgs,
+};
 
 /// What a command prints, and whether it succeeded: a command can print a full report and still fail, as
 /// `validate` does for an invalid image.
@@ -57,7 +60,22 @@ pub fn run(cli: Cli) -> miette::Result<Output> {
         Command::Check(args) => run_check(args),
         Command::Push(args) => run_push(args).map(Output::from),
         Command::Pull(args) => run_pull(args).map(Output::from),
+        Command::Digest(args) => run_digest(args).map(Output::from),
     }
+}
+
+fn run_digest(args: DigestArgs) -> miette::Result<String> {
+    let reference = registry::ImageRef::parse(&args.reference)?;
+    let platform = match &args.platform {
+        Some(name) => {
+            Some(platform::oci_platform(name).ok_or_else(|| plan::PlanError::NotLinux { platform: name.clone() })?)
+        }
+        None => None,
+    };
+    let cache = args.cache_dir.unwrap_or_else(fetch::Fetcher::default_root);
+    let registry = registry::Registry::new(cache);
+    let digest = digest::digest(&args.reference, &reference, platform.as_ref(), args.pinned, &registry)?;
+    Ok(digest + "\n")
 }
 
 fn run_pull(args: PullArgs) -> miette::Result<String> {

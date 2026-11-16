@@ -154,6 +154,27 @@ It applies the layers in order, whiteouts included, and then:
 Symlinks are followed as the kernel follows them. It exits `1` if there is any problem; a note, such as an image
 with no entrypoint, does not fail it. ELF files are parsed in memory up to 64 MiB, and from a temporary file beyond.
 
+## `pixi oci digest`
+
+Prints the digest a registry serves for a tag, to pin `--base` with. Only manifests are fetched, never layers.
+
+```console
+$ pixi oci digest debian:bookworm-slim
+sha256:734a72b3d6142a71993b4bc580ca01d8ca687f77a2c422d96a961d3376b179bc
+$ pixi oci digest debian:bookworm-slim --platform linux-64 --pinned
+debian:bookworm-slim@sha256:c67e92c8099ba22853ab4cfda7cfb494d253d6012ca82dee98ba8976772af018
+```
+
+| Argument or option | Default | |
+|---|---|---|
+| `REFERENCE` | | `[registry/]repository[:tag]`; `latest` when there is no tag |
+| `-p, --platform NAME` | | the digest of that platform's manifest, rather than the tag's (often an index of several) |
+| `--pinned` | | print the reference as given, with `@<digest>` added, ready for `build --base` |
+| `--cache-dir PATH` | as for `build` | where fetched manifests are kept |
+
+A base pinned to an index's digest works for every platform the index has, so the plain digest is usually the one
+to pin. It is what `crane digest` prints; `skopeo inspect docker://...` prints the platform's.
+
 ## `pixi oci pull`
 
 Downloads an image from a registry into a `.tar` archive or an OCI image layout directory, with no Docker, Podman
