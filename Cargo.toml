@@ -30,7 +30,20 @@ object = { version = "0.40.0", default-features = false, features = ["read_core"
 rattler = { version = "=0.55.8", default-features = false }
 rattler_conda_types = { version = "=0.58.4", default-features = false }
 rattler_digest = { version = "=2.1.0", default-features = false }
-rattler_networking = { version = "=0.34.9", default-features = false, features = ["system-integration"] }
+# pixi's config (mirrors, s3-options) is read with rattler_config, pinned to the version rattler_networking pins; S3
+# and GCS downloads are signed by rattler_networking's own middleware, as pixi signs them.
+rattler_config = { version = "=0.12.3", default-features = false }
+rattler_networking = { version = "=0.34.9", default-features = false, features = [
+  "system-integration",
+  "rattler_config",
+  "rustls",
+  "s3",
+  "gcs",
+] }
+# The client rattler_networking's S3, GCS and OCI middleware run in, for those downloads only; both are already in the
+# build through rattler_networking, at these versions.
+reqwest = { version = "0.13.5", default-features = false, features = ["rustls"] }
+reqwest-middleware = { package = "astral-reqwest-middleware", version = "0.5.1" }
 rattler_lock = { version = "=0.34.15", default-features = false }
 rattler_package_streaming = { version = "=0.28.6", default-features = false }
 serde = { version = "1.0.229", features = ["derive"] }
@@ -39,6 +52,8 @@ sha2 = "0.11"
 tar = "0.4.46"
 tempfile = "3.27.0"
 thiserror = "2.0.20"
+# Only to run rattler's async S3 and GCS middleware for those downloads; already in the build through rattler.
+tokio = { version = "1.54.1", default-features = false, features = ["rt", "rt-multi-thread"] }
 url = "2"
 # Wheels are zip archives; already in the build through rattler_package_streaming, which reads .conda files with it.
 zip = { version = "9.5.1", default-features = false, features = ["deflate"] }

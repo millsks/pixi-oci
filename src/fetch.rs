@@ -58,11 +58,17 @@ pub enum FetchError {
         had_credentials: bool,
     },
 
-    #[error("{location} is in a {scheme}:// channel, which pixi-oci cannot download from yet")]
+    #[error("could not download {url}: {message}")]
     #[diagnostic(help(
-        "S3 and GCS channels are https://github.com/millsks/pixi-oci/issues/51; an https mirror of the channel works today"
+        "s3:// downloads are signed with pixi's S3 credentials (`pixi auth login s3://<bucket> --s3-access-key-id ...`) \
+        or the AWS environment, gcs:// with Google's application default credentials, and oci:// with pixi's \
+        credentials for the registry"
     ))]
-    UnsupportedScheme { location: String, scheme: String },
+    Remote { url: String, message: String },
+
+    #[error(transparent)]
+    #[diagnostic(transparent)]
+    Config(#[from] crate::sources::ConfigError),
 
     #[error("could not read pixi's credentials: {message}")]
     Credentials { message: String },
@@ -84,6 +90,10 @@ pub struct Fetcher {
     agent: ureq::Agent,
     /// pixi's credentials, looked up for each download's host; none in tests unless given.
     credentials: Option<rattler_networking::AuthenticationStorage>,
+    /// pixi's mirrors and S3 settings; none in tests unless given.
+    sources: crate::sources::Sources,
+    /// The client for s3://, gcs:// and oci:// downloads, made when one is first needed.
+    remote: std::sync::OnceLock<crate::sources::Remote>,
 }
 
 impl Fetcher {
@@ -104,7 +114,32 @@ impl Fetcher {
             root,
             agent,
             credentials: None,
+            sources: crate::sources::Sources::default(),
+            remote: std::sync::OnceLock::new(),
         }
+    }
+
+    /// The fetcher with pixi's mirrors and S3 settings, from pixi's config files and the workspace's
+    /// `.pixi/config.toml` in `workspace`.
+    pub fn with_pixi_config(self, workspace: Option<&Path>) -> Result<Self, FetchError> {
+        Ok(self.with_sources(crate::sources::Sources::from_pixi_config(workspace)?))
+    }
+
+    pub fn with_sources(mut self, sources: crate::sources::Sources) -> Self {
+        self.sources = sources;
+        self.remote = std::sync::OnceLock::new();
+        self
+    }
+
+    fn remote(&self) -> &crate::sources::Remote {
+        self.remote.get_or_init(|| {
+            crate::sources::Remote::new(
+                self.sources.clone(),
+                self.credentials
+                    .clone()
+                    .unwrap_or_else(rattler_networking::AuthenticationStorage::empty),
+            )
+        })
     }
 
     /// The fetcher with pixi's credentials, as `pixi auth login` keeps them: the keyring, `RATTLER_AUTH_FILE`,
@@ -120,6 +155,7 @@ impl Fetcher {
 
     pub fn with_credentials(mut self, storage: rattler_networking::AuthenticationStorage) -> Self {
         self.credentials = Some(storage);
+        self.remote = std::sync::OnceLock::new();
         self
     }
 
@@ -278,14 +314,40 @@ impl Fetcher {
         Ok(path)
     }
 
-    /// Stream `url` into `out`, returning the sha256 of what was written.
-    fn download(&self, url: &str, out: &mut File) -> Result<String, FetchError> {
-        if let Some((scheme, _)) = url.split_once("://")
-            && matches!(scheme, "s3" | "gcs")
-        {
-            return Err(FetchError::UnsupportedScheme {
-                location: url.to_string(),
-                scheme: scheme.to_string(),
+    /// Stream `location` into `out` from the first of its mirrors that serves it (or from itself, when no mirror
+    /// stands in for its channel), returning the sha256 of what was written.
+    fn download(&self, location: &str, out: &mut File) -> Result<String, FetchError> {
+        let mut failed = None;
+        for url in self.sources.candidates(location) {
+            let restart = out.set_len(0).and_then(|()| io::Seek::rewind(out));
+            restart.map_err(|source| FetchError::Cache {
+                path: self.root.clone(),
+                source,
+            })?;
+            match self.download_from(&url, out) {
+                Ok(sha256) => return Ok(sha256),
+                Err(err) => failed = Some(err),
+            }
+        }
+        Err(failed.expect("a location has at least one place to download it from"))
+    }
+
+    fn download_from(&self, url: &str, out: &mut File) -> Result<String, FetchError> {
+        if crate::sources::is_remote_scheme(url) {
+            return self.remote().download(url, out).map_err(|err| match err {
+                crate::sources::RemoteError::Status(status @ (401 | 403)) => FetchError::Unauthorized {
+                    url: url.to_string(),
+                    host: url::Url::parse(url)
+                        .ok()
+                        .map(|parsed| format!("{}://{}", parsed.scheme(), parsed.host_str().unwrap_or_default()))
+                        .unwrap_or_default(),
+                    status,
+                    had_credentials: true,
+                },
+                other => FetchError::Remote {
+                    url: url.to_string(),
+                    message: other.to_string(),
+                },
             });
         }
         let auth = self.authenticate(url)?;
@@ -633,8 +695,16 @@ mod tests {
 
     /// pixi's credentials as `pixi auth login` writes them to a credentials file, for the host 127.0.0.1.
     fn stored(dir: &Path, authentication: serde_json::Value) -> rattler_networking::AuthenticationStorage {
+        stored_for(dir, "127.0.0.1", authentication)
+    }
+
+    fn stored_for(
+        dir: &Path,
+        key: &str,
+        authentication: serde_json::Value,
+    ) -> rattler_networking::AuthenticationStorage {
         let file = dir.join("credentials.json");
-        fs::write(&file, serde_json::json!({ "127.0.0.1": authentication }).to_string()).unwrap();
+        fs::write(&file, serde_json::json!({ key: authentication }).to_string()).unwrap();
         let mut storage = rattler_networking::AuthenticationStorage::empty();
         storage.add_backend(std::sync::Arc::new(
             rattler_networking::authentication_storage::backends::file::FileStorage::from_path(file).unwrap(),
@@ -695,7 +765,7 @@ mod tests {
     }
 
     #[test]
-    fn refused_credentials_and_storage_schemes_say_what_to_do() {
+    fn refused_credentials_say_what_to_do() {
         let body = archive_bytes();
         let sha = hex(&Sha256::digest(&body));
         let dir = tempfile::tempdir().unwrap();
@@ -718,13 +788,6 @@ mod tests {
             message.contains("were refused") && !message.contains("wrong-token"),
             "{message}"
         );
-
-        for scheme in ["s3", "gcs"] {
-            let location = format!("{scheme}://bucket/channel/noarch/pkg-1-0.conda");
-            let err = fetcher.archive_for(&package(&location, Some(&sha))).unwrap_err();
-            assert!(matches!(err, FetchError::UnsupportedScheme { .. }), "{err}");
-            assert!(err.to_string().contains(&format!("{scheme}://")), "{err}");
-        }
     }
 
     #[test]
@@ -823,5 +886,162 @@ mod tests {
             }
         }
         files
+    }
+
+    /// A server that answers `fail` to its first `failures` requests and serves `body` after, keeping each request.
+    fn flaky(
+        body: Vec<u8>,
+        failures: usize,
+        fail: &'static str,
+    ) -> (u16, std::sync::Arc<std::sync::Mutex<Vec<String>>>) {
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let seen = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
+        let kept = seen.clone();
+        std::thread::spawn(move || {
+            for (n, stream) in listener.incoming().enumerate() {
+                let mut stream = stream.unwrap();
+                let mut request = [0u8; 8192];
+                let read = stream.read(&mut request).unwrap_or(0);
+                kept.lock()
+                    .unwrap()
+                    .push(String::from_utf8_lossy(&request[..read]).to_string());
+                let (status, payload): (&str, &[u8]) = if n < failures { (fail, b"") } else { ("200 OK", &body) };
+                let head = format!(
+                    "HTTP/1.1 {status}\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+                    payload.len()
+                );
+                stream.write_all(head.as_bytes()).unwrap();
+                stream.write_all(payload).unwrap();
+            }
+        });
+        (port, seen)
+    }
+
+    #[test]
+    fn a_mirror_stands_in_for_its_channel_and_the_next_one_for_a_mirror_that_fails() {
+        let body = archive_bytes();
+        let sha = hex(&Sha256::digest(&body));
+        let (down, down_seen) = flaky(Vec::new(), usize::MAX, "503 Service Unavailable");
+        // The second mirror wants a token, which pixi has for its host: credentials go with the mirror's URL.
+        let (url, up_seen) = guarded(body.clone(), Wants::Header("Bearer mirror-token".into()));
+        let up = url::Url::parse(&url).unwrap().port().unwrap();
+        let sources = crate::sources::Sources::from_toml(&format!(
+            "[mirrors]\n\"https://conda.anaconda.org/conda-forge\" = [\"http://127.0.0.1:{down}/broken\", \"http://127.0.0.1:{up}/private\"]\n"
+        ));
+        let dir = tempfile::tempdir().unwrap();
+        let fetcher = Fetcher::with_proxy(dir.path().join("cache"), None)
+            .with_credentials(stored(dir.path(), serde_json::json!({"BearerToken": "mirror-token"})))
+            .with_sources(sources);
+        let locked = package(
+            "https://conda.anaconda.org/conda-forge/noarch/pkg-1-0.tar.bz2",
+            Some(&sha),
+        );
+        let archive = fetcher.archive_for(&locked).unwrap();
+        assert_eq!(fs::read(archive).unwrap(), body);
+        assert!(down_seen.lock().unwrap()[0].starts_with("GET /broken/noarch/pkg-1-0.tar.bz2 "));
+        assert!(up_seen.lock().unwrap()[0].starts_with("GET /private/noarch/pkg-1-0.tar.bz2 "));
+
+        // When every mirror fails, the error names the last one tried, not the channel.
+        let other = package(
+            "https://conda.anaconda.org/conda-forge/noarch/other-1-0.tar.bz2",
+            Some(&"0".repeat(64)),
+        );
+        let only_down = crate::sources::Sources::from_toml(&format!(
+            "[mirrors]\n\"https://conda.anaconda.org/conda-forge\" = [\"http://127.0.0.1:{down}/broken\"]\n"
+        ));
+        let err = Fetcher::with_proxy(dir.path().join("cache2"), None)
+            .with_sources(only_down)
+            .archive_for(&other)
+            .unwrap_err();
+        assert!(
+            err.to_string()
+                .contains(&format!("127.0.0.1:{down}/broken/noarch/other-1-0.tar.bz2")),
+            "{err}"
+        );
+    }
+
+    #[test]
+    fn an_s3_package_is_downloaded_presigned_with_pixis_s3_credentials() {
+        let body = archive_bytes();
+        let sha = hex(&Sha256::digest(&body));
+        let (port, seen) = flaky(body.clone(), 0, "");
+        let sources = crate::sources::Sources::from_toml(&format!(
+            "[s3-options.channels]\nendpoint-url = \"http://127.0.0.1:{port}\"\nregion = \"eu-west-1\"\naddressing-style = \"path\"\n"
+        ));
+        let dir = tempfile::tempdir().unwrap();
+        let secret = "s3-secret-key-not-in-any-error";
+        let storage = stored_for(
+            dir.path(),
+            "s3://channels",
+            serde_json::json!({"S3Credentials": {"access_key_id": "AKIATESTKEY", "secret_access_key": secret, "session_token": null}}),
+        );
+        let fetcher = Fetcher::with_proxy(dir.path().join("cache"), None)
+            .with_credentials(storage)
+            .with_sources(sources);
+        let locked = package("s3://channels/private/noarch/pkg-1-0.tar.bz2", Some(&sha));
+        let archive = fetcher.archive_for(&locked).unwrap();
+        assert_eq!(fs::read(archive).unwrap(), body);
+        let request = seen.lock().unwrap()[0].clone();
+        let line = request.lines().next().unwrap();
+        assert!(
+            line.starts_with("GET /channels/private/noarch/pkg-1-0.tar.bz2?"),
+            "{line}"
+        );
+        assert!(
+            line.contains("X-Amz-Signature=") && line.contains("AKIATESTKEY"),
+            "{line}"
+        );
+        assert!(!request.contains(secret));
+
+        // A refusal says to log in, and what it says has no signature or key in it.
+        let (port, _) = flaky(Vec::new(), usize::MAX, "403 Forbidden");
+        let sources = crate::sources::Sources::from_toml(&format!(
+            "[s3-options.channels]\nendpoint-url = \"http://127.0.0.1:{port}\"\nregion = \"eu-west-1\"\naddressing-style = \"path\"\n"
+        ));
+        let storage = stored_for(
+            dir.path(),
+            "s3://channels",
+            serde_json::json!({"S3Credentials": {"access_key_id": "AKIATESTKEY", "secret_access_key": secret, "session_token": null}}),
+        );
+        let err = Fetcher::with_proxy(dir.path().join("cache2"), None)
+            .with_credentials(storage)
+            .with_sources(sources)
+            .archive_for(&package("s3://channels/private/noarch/other-1-0.tar.bz2", Some(&sha)))
+            .unwrap_err();
+        assert!(matches!(err, FetchError::Unauthorized { status: 403, .. }), "{err}");
+        let message = format!("{err} {}", miette::Diagnostic::help(&err).unwrap());
+        assert!(message.contains("pixi auth login s3://channels"), "{message}");
+        assert!(!message.contains("X-Amz") && !message.contains(secret), "{message}");
+
+        // Nothing listening: the error names the s3:// location and says why, still without the signature.
+        let closed = std::net::TcpListener::bind("127.0.0.1:0")
+            .unwrap()
+            .local_addr()
+            .unwrap()
+            .port();
+        let sources = crate::sources::Sources::from_toml(&format!(
+            "[s3-options.channels]\nendpoint-url = \"http://127.0.0.1:{closed}\"\nregion = \"eu-west-1\"\naddressing-style = \"path\"\n"
+        ));
+        let storage = stored_for(
+            dir.path(),
+            "s3://channels",
+            serde_json::json!({"S3Credentials": {"access_key_id": "AKIATESTKEY", "secret_access_key": secret, "session_token": null}}),
+        );
+        let err = Fetcher::with_proxy(dir.path().join("cache3"), None)
+            .with_credentials(storage)
+            .with_sources(sources)
+            .archive_for(&package("s3://channels/private/noarch/third-1-0.tar.bz2", Some(&sha)))
+            .unwrap_err();
+        assert!(matches!(err, FetchError::Remote { .. }), "{err}");
+        assert!(
+            err.to_string()
+                .contains("s3://channels/private/noarch/third-1-0.tar.bz2"),
+            "{err}"
+        );
+        assert!(
+            !err.to_string().contains("X-Amz") && !err.to_string().contains("AKIATESTKEY"),
+            "{err}"
+        );
     }
 }

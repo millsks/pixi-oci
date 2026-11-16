@@ -45,9 +45,19 @@ pixi-oci prints them, with the variable parts in angle brackets.
 :   The channel needs credentials, or refused the ones pixi has. Log in as for pixi, with `pixi auth login <host>
     --token <token>` (or `--username` and `--password`), and build again ([Private channels](private-channels.md)).
 
-**`<location> is in a s3:// channel, which pixi-oci cannot download from yet`**
-:   S3 and GCS channels are [#51](https://github.com/millsks/pixi-oci/issues/51). Lock against an https mirror of
-    the channel meanwhile.
+**`could not download s3://...`**, **`gcs://...`** or **`oci://...`** with the reason after it
+:   For S3, the keys come from `pixi auth login s3://<bucket> ...` or the AWS environment, and a bucket outside AWS
+    needs its `endpoint-url` in pixi's `s3-options`. For GCS, log in with `gcloud auth application-default login`.
+    For an `oci://` mirror, the repository must exist; pixi's credentials for the registry are used if it is private
+    ([Private channels](private-channels.md#s3-and-gcs-channels)).
+
+**A download names a mirror rather than the lockfile's channel**
+:   pixi's `mirrors` setting sent it there, and every mirror listed for the channel failed; the error is the last
+    one's. `pixi config list mirrors` shows the setting, and the workspace's `.pixi/config.toml` can override it
+    ([Mirrors](private-channels.md#mirrors)).
+
+**`could not read pixi's config`**
+:   One of pixi's config files is not valid: the message says which key. `pixi config list` reads the same files.
 
 **`could not read pixi's credentials`**
 :   pixi's credential store could not be opened: a `RATTLER_AUTH_FILE` that is not JSON, or a credentials file that
