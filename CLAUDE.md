@@ -26,6 +26,7 @@ One crate, `pixi-oci`, a binary pixi runs as `pixi oci`: it builds OCI container
 | `src/inspect.rs` | `inspect`: an image's settings and layers, each layer's packages from its history line |
 | `src/registry.rs` | pulls a base image pinned by digest, for one platform, into the cache; pixi's credentials (`pixi auth login`), never docker's or podman's |
 | `src/wheel.rs` | PyPI wheels written into a layer, as pip and uv install them; checked against `pixi install` in the network tests |
+| `src/pull.rs` | `pull`: a registry image into a layout or `.tar`, keeping its digest |
 | `src/push.rs` | `push`: only the blobs a registry lacks, then the manifest; credentials scoped to the destination |
 | `src/read.rs` | an image read back: a layout directory, or a `.tar` read in place by offset |
 | `src/validate.rs` | `validate`: an image checked against the OCI image spec, every problem collected |

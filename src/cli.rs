@@ -29,6 +29,8 @@ pub enum Command {
     Check(CheckArgs),
     /// Send an image to a registry: only the blobs it lacks, then the manifest under the tag. Runs `validate` first.
     Push(PushArgs),
+    /// Download an image from a registry into a `.tar` archive or an OCI image layout directory.
+    Pull(PullArgs),
 }
 
 /// Which environment of which lockfile, and for which platform.
@@ -73,6 +75,35 @@ pub struct PlanArgs {
     pub packages: bool,
 
     /// How to print the plan.
+    #[arg(long, value_enum, default_value_t = Format::Text)]
+    pub format: Format,
+}
+
+#[derive(Debug, Args)]
+pub struct PullArgs {
+    /// The image: [registry/]repository[:tag][@digest], such as debian:bookworm-slim or ghcr.io/team/app:1.0.
+    #[arg(value_name = "REFERENCE")]
+    pub reference: String,
+
+    /// Where to write it: a `.tar` archive, or any other path for an OCI image layout directory. Defaults to the
+    /// repository's last part, as `<name>.tar`.
+    #[arg(short, long, value_name = "PATH")]
+    pub output: Option<PathBuf>,
+
+    /// Replace the output if it exists.
+    #[arg(long)]
+    pub force: bool,
+
+    /// The platform to pull from an image of several: a conda platform (linux-64, linux-aarch64). Defaults to Linux
+    /// on the host's architecture.
+    #[arg(short, long)]
+    pub platform: Option<String>,
+
+    /// Where downloaded blobs are kept, as for `build`.
+    #[arg(long, value_name = "PATH")]
+    pub cache_dir: Option<PathBuf>,
+
+    /// How to print the result.
     #[arg(long, value_enum, default_value_t = Format::Text)]
     pub format: Format,
 }

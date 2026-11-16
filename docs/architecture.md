@@ -31,6 +31,7 @@ pixi-oci is one Rust binary, organized as a short pipeline. Each stage has one m
 | `inspect.rs` | `inspect`: an image's settings and layers, with each layer's packages read from its history line. |
 | `registry.rs` | A base image pulled from a registry, pinned by digest: the platform's manifest from an index, its config and layers, each checked against its digest and cached by it. Anonymous or with docker's and podman's credentials, through bearer tokens or basic auth. |
 | `wheel.rs` | A PyPI wheel installed into a layer as pip and uv install one: site-packages, scripts, headers, data, entry point launchers, every file checked against the wheel's RECORD and a new RECORD written. |
+| `pull.rs` | `pull`: a tag resolved to its digest, the platform's image fetched through the blob cache, written as a layout or `.tar` with the registry's digest. |
 | `push.rs` | `push`: validate, then each blob the registry lacks uploaded (or mounted from the base's repository), the manifest last, its digest checked. |
 | `read.rs` | An image read back: a layout directory, or a `.tar` read in place by each file's offset, never unpacked. |
 | `validate.rs` | `validate`: every blob, digest, size, media type and `diff_id` of an image checked against the OCI image spec, with every problem collected. |

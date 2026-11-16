@@ -411,6 +411,8 @@ pub fn base_image(dir: &Path, entries: &[BaseEntry]) -> crate::registry::Pulled 
         reference: crate::registry::ImageRef::parse(&format!("example.com/os/base:9@sha256:{}", "b".repeat(64)))
             .unwrap(),
         manifest_digest: format!("sha256:{}", "c".repeat(64)),
+        manifest_media_type: crate::image::MANIFEST_MEDIA_TYPE.to_string(),
+        config_digest: format!("sha256:{}", "d".repeat(64)),
         config: serde_json::json!({
             "architecture": "amd64",
             "os": "linux",
@@ -435,5 +437,216 @@ pub fn base_image(dir: &Path, entries: &[BaseEntry]) -> crate::registry::Pulled 
             media_type: crate::image::LAYER_MEDIA_TYPE.to_string(),
             path,
         }],
+    }
+}
+
+/// A registry on a local port that keeps what is pushed to it and serves it back: blobs, uploads with relative
+/// locations, mounts, manifests by tag and by digest, and a token service that gives push tokens only for push scope.
+pub mod registry {
+    use std::collections::HashMap;
+    use std::io::{BufRead, BufReader, Read, Write};
+    use std::net::TcpListener;
+    use std::sync::{Arc, Mutex};
+
+    use sha2::{Digest, Sha256};
+
+    pub fn sha(bytes: &[u8]) -> String {
+        format!("sha256:{}", crate::fetch::hex(&Sha256::digest(bytes)))
+    }
+
+    #[derive(Default)]
+    pub struct Store {
+        pub blobs: HashMap<(String, String), Vec<u8>>,
+        pub manifests: HashMap<(String, String), Vec<u8>>,
+        /// `METHOD path` of every request.
+        pub requests: Vec<String>,
+        /// The scope of every token asked for.
+        pub scopes: Vec<String>,
+        pub uploads: usize,
+    }
+
+    #[derive(Clone, Copy, Default)]
+    pub struct Behaviour {
+        /// Demand a bearer token: any for reads, a push token for writes.
+        pub tokens: bool,
+        /// Answer manifest PUTs with another digest.
+        pub lie: bool,
+    }
+
+    pub struct Fake {
+        pub host: String,
+        pub store: Arc<Mutex<Store>>,
+    }
+
+    /// A registry on a local port that keeps what is pushed to it.
+    pub fn fake(behaviour: Behaviour) -> Fake {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let host = format!("127.0.0.1:{}", listener.local_addr().unwrap().port());
+        let store = Arc::new(Mutex::new(Store::default()));
+        let shared = store.clone();
+        let realm = format!("http://{host}/token");
+        std::thread::spawn(move || {
+            for stream in listener.incoming() {
+                let Ok(stream) = stream else { continue };
+                let mut reader = BufReader::new(stream.try_clone().unwrap());
+                let mut first = String::new();
+                if reader.read_line(&mut first).is_err() {
+                    continue;
+                }
+                let mut parts = first.split_whitespace();
+                let (method, target) = (
+                    parts.next().unwrap_or_default().to_string(),
+                    parts.next().unwrap_or_default().to_string(),
+                );
+                let mut headers = HashMap::new();
+                loop {
+                    let mut line = String::new();
+                    if reader.read_line(&mut line).unwrap_or(0) == 0 || line == "\r\n" {
+                        break;
+                    }
+                    if let Some((key, value)) = line.trim_end().split_once(':') {
+                        headers.insert(key.trim().to_ascii_lowercase(), value.trim().to_string());
+                    }
+                }
+                let mut body = Vec::new();
+                if let Some(length) = headers.get("content-length").and_then(|l| l.parse::<usize>().ok()) {
+                    body.resize(length, 0);
+                    reader.read_exact(&mut body).unwrap();
+                } else if headers.get("transfer-encoding").is_some_and(|t| t.contains("chunked")) {
+                    loop {
+                        let mut size = String::new();
+                        reader.read_line(&mut size).unwrap();
+                        let size = usize::from_str_radix(size.trim(), 16).unwrap_or(0);
+                        let mut chunk = vec![0; size + 2];
+                        reader.read_exact(&mut chunk).unwrap();
+                        if size == 0 {
+                            break;
+                        }
+                        body.extend_from_slice(&chunk[..size]);
+                    }
+                }
+                let reply = handle(&shared, behaviour, &realm, &method, &target, &headers, &body);
+                let mut stream = stream;
+                let _ = stream.write_all(&reply);
+            }
+        });
+        Fake { host, store }
+    }
+
+    pub fn reply(status: &str, headers: &[String], body: &[u8]) -> Vec<u8> {
+        let mut head = format!(
+            "HTTP/1.1 {status}\r\nContent-Length: {}\r\nConnection: close\r\n",
+            body.len()
+        );
+        for header in headers {
+            head.push_str(header);
+            head.push_str("\r\n");
+        }
+        head.push_str("\r\n");
+        let mut out = head.into_bytes();
+        out.extend_from_slice(body);
+        out
+    }
+
+    pub fn handle(
+        store: &Mutex<Store>,
+        behaviour: Behaviour,
+        realm: &str,
+        method: &str,
+        target: &str,
+        headers: &HashMap<String, String>,
+        body: &[u8],
+    ) -> Vec<u8> {
+        let mut store = store.lock().unwrap();
+        store.requests.push(format!("{method} {target}"));
+        let (path, query) = target.split_once('?').unwrap_or((target, ""));
+        let params: HashMap<&str, String> = query
+            .split('&')
+            .filter_map(|pair| pair.split_once('='))
+            .map(|(k, v)| (k, v.replace("%3A", ":").replace("%2F", "/").replace("%2C", ",")))
+            .collect();
+        if path == "/token" {
+            let scope = params.get("scope").cloned().unwrap_or_default();
+            store.scopes.push(scope.clone());
+            let token = if scope.ends_with("push") { "push" } else { "pull" };
+            return reply(
+                "200 OK",
+                &["Content-Type: application/json".into()],
+                format!("{{\"token\":\"{token}\"}}").as_bytes(),
+            );
+        }
+        let Some(rest) = path.strip_prefix("/v2/") else {
+            return reply("404 Not Found", &[], b"");
+        };
+        let (repo, kind, tail) = if let Some((repo, tail)) = rest.split_once("/blobs/uploads/") {
+            (repo.to_string(), "uploads", tail.to_string())
+        } else if let Some((repo, tail)) = rest.split_once("/blobs/") {
+            (repo.to_string(), "blobs", tail.to_string())
+        } else if let Some((repo, tail)) = rest.split_once("/manifests/") {
+            (repo.to_string(), "manifests", tail.to_string())
+        } else {
+            return reply("404 Not Found", &[], b"");
+        };
+        if behaviour.tokens {
+            let token = headers.get("authorization").cloned().unwrap_or_default();
+            let writes = method == "POST" || method == "PUT";
+            let allowed = if writes {
+                token == "Bearer push"
+            } else {
+                token.starts_with("Bearer ")
+            };
+            if !allowed {
+                let challenge = format!(
+                    "WWW-Authenticate: Bearer realm=\"{realm}\",service=\"fake\",scope=\"repository:{repo}:pull\""
+                );
+                return reply("401 Unauthorized", &[challenge], b"");
+            }
+        }
+        match (method, kind) {
+            ("HEAD", "blobs") | ("GET", "blobs") => match store.blobs.get(&(repo.clone(), tail.clone())) {
+                Some(blob) => reply("200 OK", &[], if method == "GET" { blob } else { b"" }),
+                None => reply("404 Not Found", &[], b""),
+            },
+            ("POST", "uploads") => {
+                if let (Some(digest), Some(from)) = (params.get("mount"), params.get("from"))
+                    && let Some(blob) = store.blobs.get(&(from.clone(), digest.clone())).cloned()
+                {
+                    store.blobs.insert((repo.clone(), digest.clone()), blob);
+                    return reply("201 Created", &[], b"");
+                }
+                store.uploads += 1;
+                let location = format!("Location: /v2/{repo}/blobs/uploads/{}?_state=s", store.uploads);
+                reply("202 Accepted", &[location], b"")
+            }
+            ("PUT", "uploads") => {
+                let digest = params.get("digest").cloned().unwrap_or_default();
+                if sha(body) != digest || !params.contains_key("_state") {
+                    return reply("400 Bad Request", &[], b"{\"errors\":[{\"code\":\"DIGEST_INVALID\"}]}");
+                }
+                store.blobs.insert((repo, digest), body.to_vec());
+                reply("201 Created", &[], b"")
+            }
+            ("PUT", "manifests") => {
+                let digest = if behaviour.lie { sha(b"other") } else { sha(body) };
+                store.manifests.insert((repo.clone(), sha(body)), body.to_vec());
+                store.manifests.insert((repo, tail), body.to_vec());
+                reply("201 Created", &[format!("Docker-Content-Digest: {digest}")], b"")
+            }
+            ("GET", "manifests") | ("HEAD", "manifests") => match store.manifests.get(&(repo, tail)) {
+                Some(manifest) => {
+                    let media_type = serde_json::from_slice::<serde_json::Value>(manifest)
+                        .ok()
+                        .and_then(|value| value["mediaType"].as_str().map(str::to_string))
+                        .unwrap_or_default();
+                    let headers = [
+                        format!("Content-Type: {media_type}"),
+                        format!("Docker-Content-Digest: {}", sha(manifest)),
+                    ];
+                    reply("200 OK", &headers, if method == "GET" { manifest } else { b"" })
+                }
+                None => reply("404 Not Found", &[], b"{\"errors\":[{\"code\":\"MANIFEST_UNKNOWN\"}]}"),
+            },
+            _ => reply("405 Method Not Allowed", &[], b""),
+        }
     }
 }

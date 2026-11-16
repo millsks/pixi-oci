@@ -382,6 +382,9 @@ pub struct Pulled {
     pub reference: ImageRef,
     /// The digest of the image manifest for the platform, which is the one pinned unless that is an index.
     pub manifest_digest: String,
+    /// The manifest's media type, OCI or docker, as the registry serves it.
+    pub manifest_media_type: String,
+    pub config_digest: String,
     pub config: Value,
     pub layers: Vec<PulledLayer>,
 }
@@ -433,10 +436,41 @@ impl Registry {
         }
     }
 
-    fn blob_file(&self, digest: &str) -> Option<PathBuf> {
+    /// Where the cache keeps the blob or document `digest`, once fetched.
+    pub(crate) fn blob_file(&self, digest: &str) -> Option<PathBuf> {
         let hex = digest.strip_prefix("sha256:")?;
         crate::read::blob_path(digest)?;
         Some(self.root.join("blobs").join("sha256").join(hex))
+    }
+
+    /// The digest of what `reference` names: its own digest when it is pinned, else what the registry serves for its
+    /// tag (`latest` when it has none), an index or a manifest, which is then cached by that digest.
+    pub fn resolve(&self, reference: &ImageRef) -> Result<String, RegistryError> {
+        if let Some(digest) = &reference.digest {
+            return Ok(digest.clone());
+        }
+        let tag = reference.tag.as_deref().unwrap_or("latest");
+        let url = format!("{}/manifests/{tag}", reference.base_url());
+        let answer = self.send(reference, &url)?;
+        let mut bytes = Vec::new();
+        answer
+            .body
+            .take(DOCUMENT_LIMIT + 1)
+            .read_to_end(&mut bytes)
+            .map_err(|err| http_err(&url, ureq::Error::Io(err)))?;
+        if bytes.len() as u64 > DOCUMENT_LIMIT {
+            return Err(RegistryError::Manifest {
+                reference: reference.to_string(),
+                message: format!("the manifest is larger than {DOCUMENT_LIMIT} bytes"),
+            });
+        }
+        let digest = format!("sha256:{}", crate::fetch::hex(&Sha256::digest(&bytes)));
+        if let Some(file) = self.blob_file(&digest)
+            && !file.is_file()
+        {
+            self.keep(&file, |out| out.write_all(&bytes))?;
+        }
+        Ok(digest)
     }
 
     /// Pull `reference`, which must be pinned by digest, for `platform`.
@@ -528,9 +562,12 @@ impl Registry {
         if config["rootfs"]["diff_ids"].as_array().map(Vec::len) != Some(layers.len()) {
             return Err(bad("its config does not list a diff_id for each layer".to_string()));
         }
+        let manifest_media_type = manifest["mediaType"].as_str().unwrap_or(OCI_MANIFEST).to_string();
         Ok(Pulled {
             reference: reference.clone(),
             manifest_digest,
+            manifest_media_type,
+            config_digest,
             config,
             layers,
         })

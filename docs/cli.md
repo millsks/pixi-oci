@@ -154,6 +154,32 @@ It applies the layers in order, whiteouts included, and then:
 Symlinks are followed as the kernel follows them. It exits `1` if there is any problem; a note, such as an image
 with no entrypoint, does not fail it. ELF files are parsed in memory up to 64 MiB, and from a temporary file beyond.
 
+## `pixi oci pull`
+
+Downloads an image from a registry into a `.tar` archive or an OCI image layout directory, with no Docker, Podman
+or local registry: pixi-oci keeps no image store, so a pulled image is a file, like a built one.
+
+```console
+$ pixi oci pull debian:bookworm-slim
+Pulled docker.io/library/debian:bookworm-slim@sha256:734a72b3d6142a71993b4bc580ca01d8ca687f77a2c422d96a961d3376b179bc to debian.tar
+  manifest sha256:ec8534cda2cb30f29f44f23e135297af7a1496f2990fd8e4e84aa36b081a757a
+  1 layer, 26.8 MiB for linux/arm64/v8
+```
+
+| Argument or option | Default | |
+|---|---|---|
+| `REFERENCE` | | `[registry/]repository[:tag][@digest]`; a tag is resolved to the digest the registry serves |
+| `-o, --output PATH` | `<repository>.tar` | a `.tar` archive, or any other path for an OCI image layout directory |
+| `--force` | | replace the output if it exists |
+| `-p, --platform NAME` | Linux on the host's architecture | which image of an index to pull: `linux-64`, `linux-aarch64`, ... |
+| `--cache-dir PATH` | as for `build` | where downloaded blobs are kept |
+| `--format text\|json` | `text` | `json` gives the pinned reference, digest, platform, layers and size |
+
+Every manifest, config and layer is checked against its digest, and the manifest and config are written as they
+were served, so the pulled image keeps the registry's digest. Blobs come through the same cache as `--base`, so a
+base already used for a build is not downloaded again. Credentials are as for `push`. `skopeo copy docker://...
+oci-archive:...` and `crane pull` do the same, where installed.
+
 ## `pixi oci push`
 
 Sends an image to a registry, with no Docker or Podman. It runs [`validate`](#pixi-oci-validate) first, then asks the

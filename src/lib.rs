@@ -19,6 +19,7 @@ pub mod lock;
 mod parity;
 pub mod plan;
 pub mod platform;
+pub mod pull;
 pub mod push;
 pub mod read;
 pub mod registry;
@@ -30,7 +31,7 @@ mod testing;
 pub mod validate;
 pub mod wheel;
 
-use cli::{BuildArgs, CheckArgs, Cli, Command, Format, InspectArgs, PlanArgs, PushArgs, ValidateArgs};
+use cli::{BuildArgs, CheckArgs, Cli, Command, Format, InspectArgs, PlanArgs, PullArgs, PushArgs, ValidateArgs};
 
 /// What a command prints, and whether it succeeded: a command can print a full report and still fail, as
 /// `validate` does for an invalid image.
@@ -55,7 +56,29 @@ pub fn run(cli: Cli) -> miette::Result<Output> {
         Command::Inspect(args) => run_inspect(args).map(Output::from),
         Command::Check(args) => run_check(args),
         Command::Push(args) => run_push(args).map(Output::from),
+        Command::Pull(args) => run_pull(args).map(Output::from),
     }
+}
+
+fn run_pull(args: PullArgs) -> miette::Result<String> {
+    let reference = registry::ImageRef::parse(&args.reference)?;
+    let conda_platform = args
+        .platform
+        .unwrap_or_else(|| platform::default_conda_platform().to_string());
+    let oci = platform::oci_platform(&conda_platform).ok_or_else(|| plan::PlanError::NotLinux {
+        platform: conda_platform.clone(),
+    })?;
+    let output = args.output.unwrap_or_else(|| {
+        let name = reference.repository.rsplit('/').next().unwrap_or("image");
+        std::path::PathBuf::from(format!("{name}.tar"))
+    });
+    let cache = args.cache_dir.unwrap_or_else(fetch::Fetcher::default_root);
+    let registry = registry::Registry::new(cache);
+    let pulled = pull::pull(&reference, &oci, &output, args.force, &registry)?;
+    Ok(match args.format {
+        Format::Text => pulled.text(),
+        Format::Json => pulled.json() + "\n",
+    })
 }
 
 fn run_push(args: PushArgs) -> miette::Result<String> {
