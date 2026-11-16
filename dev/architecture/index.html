@@ -487,6 +487,33 @@
   
   
     <li class="md-nav__item">
+      <a href="../private-channels/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Private channels
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../examples/" class="md-nav__link">
         
   
@@ -637,10 +664,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_11" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_12" checked>
         
           
-          <label class="md-nav__link" for="__nav_11" id="__nav_11_label" tabindex="">
+          <label class="md-nav__link" for="__nav_12" id="__nav_12_label" tabindex="">
             
   
   
@@ -658,8 +685,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_11_label" aria-expanded="true">
-          <label class="md-nav__title" for="__nav_11">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_12_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_12">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -950,7 +977,7 @@
 </tr>
 <tr>
 <td><code>fetch.rs</code></td>
-<td>Downloads conda archives (ureq), checks each against the lockfile's sha256, and keeps it in a cache named by that hash.</td>
+<td>Downloads conda archives and wheels (ureq) with pixi's credentials for each host, applied as rattler applies them and kept out of errors; checks each against the lockfile's sha256, and keeps it in a cache named by that hash.</td>
 </tr>
 <tr>
 <td><code>stream.rs</code></td>

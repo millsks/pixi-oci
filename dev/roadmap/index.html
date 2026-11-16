@@ -487,6 +487,33 @@
   
   
     <li class="md-nav__item">
+      <a href="../private-channels/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Private channels
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../examples/" class="md-nav__link">
         
   
@@ -726,10 +753,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_11" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_12" >
         
           
-          <label class="md-nav__link" for="__nav_11" id="__nav_11_label" tabindex="">
+          <label class="md-nav__link" for="__nav_12" id="__nav_12_label" tabindex="">
             
   
   
@@ -747,8 +774,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_11_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_11">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_12_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_12">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -980,6 +1007,8 @@ scope and acceptance criteria live and its pull requests are linked. Comment the
       (<a href="https://github.com/millsks/pixi-oci/issues/39">#39</a>)</li>
 <li>[x] <strong>Pull</strong>: <code>pixi oci pull</code> writes a registry image to a <code>.tar</code> or layout, no daemon or store (<a href="https://github.com/millsks/pixi-oci/issues/42">#42</a>)</li>
 <li>[x] <strong>Digest</strong>: <code>pixi oci digest</code> prints a tag's digest to pin a base with (<a href="https://github.com/millsks/pixi-oci/issues/43">#43</a>)</li>
+<li>[x] <strong>Private channels</strong>: builds download with pixi's own credentials (keychain, credentials file, <code>.netrc</code>),
+      kept out of the image (<a href="https://github.com/millsks/pixi-oci/issues/18">#18</a>)</li>
 </ul>
 <h2 id="next">Next<a class="headerlink" href="#next" title="Permanent link">&para;</a></h2>
 <ul>
@@ -1029,6 +1058,7 @@ scope and acceptance criteria live and its pull requests are linked. Comment the
 </table>
 <h2 id="after-that">After that<a class="headerlink" href="#after-that" title="Permanent link">&para;</a></h2>
 <ul>
+<li>[ ] Mirrors, and S3 and GCS channels (<a href="https://github.com/millsks/pixi-oci/issues/51">#51</a>)</li>
 <li>[ ] <code>inspect</code>, <code>validate</code> and <code>check</code> straight from a registry (<a href="https://github.com/millsks/pixi-oci/issues/44">#44</a>)</li>
 <li>[ ] <code>pixi oci tag</code>: a new tag in a registry without moving blobs (<a href="https://github.com/millsks/pixi-oci/issues/45">#45</a>)</li>
 <li>[ ] <code>pixi oci copy</code>: between registries and files, only what is missing (<a href="https://github.com/millsks/pixi-oci/issues/46">#46</a>)</li>
@@ -1040,7 +1070,6 @@ scope and acceptance criteria live and its pull requests are linked. Comment the
       (<a href="https://github.com/millsks/pixi-oci/issues/15">#15</a>)</li>
 <li>[ ] pixi's activation variables, and an entrypoint from a pixi task
       (<a href="https://github.com/millsks/pixi-oci/issues/16">#16</a>)</li>
-<li>[ ] Private channels, with pixi's own credentials (<a href="https://github.com/millsks/pixi-oci/issues/18">#18</a>)</li>
 <li>[ ] A <a href="https://github.com/aesir-oss/pixi-sbom">pixi-sbom</a> SBOM attached to the image, and
       <a href="https://github.com/aesir-oss/pixi-policy">pixi-policy</a> as a gate before pushing
       (<a href="https://github.com/millsks/pixi-oci/issues/19">#19</a>)</li>
