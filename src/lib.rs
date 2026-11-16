@@ -220,7 +220,7 @@ fn run_build(args: BuildArgs) -> miette::Result<String> {
         expose: args.expose,
         stop_signal: args.stop_signal,
     };
-    let fetcher = fetch::Fetcher::new(cache);
+    let fetcher = fetch::Fetcher::new(cache).with_pixi_credentials()?;
     let written = build::build(&plan, &options, &fetcher, &mut std::io::stderr())?;
     Ok(format!(
         "Wrote {} to {}\n  manifest {}\n  {}, {} for {}\n",

@@ -231,7 +231,7 @@ Every item has an issue labelled [`roadmap`](https://github.com/millsks/pixi-oci
 - [ ] Multi-platform image indexes ([#15](https://github.com/millsks/pixi-oci/issues/15))
 - [ ] pixi's activation variables and an entrypoint from a task
       ([#16](https://github.com/millsks/pixi-oci/issues/16))
-- [ ] Private channels with pixi's credentials ([#18](https://github.com/millsks/pixi-oci/issues/18))
+- [x] Private channels with pixi's credentials ([#18](https://github.com/millsks/pixi-oci/issues/18))
 - [ ] A [pixi-sbom](https://github.com/aesir-oss/pixi-sbom) SBOM attached, and
       [pixi-policy](https://github.com/aesir-oss/pixi-policy) before pushing
       ([#19](https://github.com/millsks/pixi-oci/issues/19))

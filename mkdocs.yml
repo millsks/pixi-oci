@@ -23,6 +23,7 @@ nav:
   - Your first image: first-image.md
   - Building on Windows: windows.md
   - Base images: base-images.md
+  - Private channels: private-channels.md
   - Examples: examples.md
   - Command-line reference: cli.md
   - How it works: how-it-works.md

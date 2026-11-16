@@ -14,7 +14,7 @@ One crate, `pixi-oci`, a binary pixi runs as `pixi oci`: it builds OCI container
 | `src/platform.rs` | conda platform to OCI platform |
 | `src/report.rs` | a plan as text or JSON |
 | `src/build.rs` | `build`: fetch every archive, then write the planned layers in parallel within `--max-memory` |
-| `src/fetch.rs` | downloads conda archives, checks the lockfile's sha256, keeps them in a cache keyed by it |
+| `src/fetch.rs` | downloads conda archives and wheels with pixi's credentials, checks the lockfile's sha256, keeps them in a cache keyed by it |
 | `src/stream.rs` | a layer written straight from package archives: prefix replacement, noarch python, conda-meta |
 | `src/target.rs` | the install target: prefix in the image, platform, python |
 | `src/layer.rs` | the reproducible tar+gzip layer writer, with its digest and diff_id |
