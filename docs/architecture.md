@@ -22,7 +22,7 @@ pixi-oci is one Rust binary, organized as a short pipeline. Each stage has one m
 | `platform.rs` | Maps `linux-*` conda platforms to OCI platforms (`linux-aarch64` to `linux/arm64/v8`), and picks the default. |
 | `report.rs` | A plan as a table or JSON. |
 | `build.rs` | `build`: checks the request, fetches every archive, writes the planned layers in parallel within `--max-memory`, puts a pulled base's layers underneath, merges its config, then writes the image. |
-| `fetch.rs` | Downloads conda archives (ureq), checks each against the lockfile's sha256, and keeps it in a cache named by that hash. |
+| `fetch.rs` | Downloads conda archives and wheels (ureq) with pixi's credentials for each host, applied as rattler applies them and kept out of errors; checks each against the lockfile's sha256, and keeps it in a cache named by that hash. |
 | `stream.rs` | Writes one layer straight from its packages' archives: placeholder replacement, `noarch: python` placement and entry points, `conda-meta` records, the prefix guard, and the piecewise rewrite of large files. |
 | `target.rs` | The install target: the prefix in the image, the platform, and python for noarch packages. |
 | `layer.rs` | The layer writer: a GNU tar, gzip-compressed, every entry root-owned with one time and one of three modes, hashed twice on the way (diff_id and digest). |

@@ -39,8 +39,19 @@ pixi-oci prints them, with the variable parts in angle brackets.
 ## Downloading
 
 **`could not download <url>`**
-:   The cause follows the message. Behind a proxy, set `HTTPS_PROXY`. A channel that needs credentials is not
-    supported yet.
+:   The cause follows the message. Behind a proxy, set `HTTPS_PROXY`.
+
+**`<url> refused the download (401)`** or **`(403)`**
+:   The channel needs credentials, or refused the ones pixi has. Log in as for pixi, with `pixi auth login <host>
+    --token <token>` (or `--username` and `--password`), and build again ([Private channels](private-channels.md)).
+
+**`<location> is in a s3:// channel, which pixi-oci cannot download from yet`**
+:   S3 and GCS channels are [#51](https://github.com/millsks/pixi-oci/issues/51). Lock against an https mirror of
+    the channel meanwhile.
+
+**`could not read pixi's credentials`**
+:   pixi's credential store could not be opened: a `RATTLER_AUTH_FILE` that is not JSON, or a credentials file that
+    is not readable. `pixi auth logout <host>` and log in again, or fix the file the message names.
 
 **`<name> downloaded from <url> does not match the lockfile's sha256`**
 :   The bytes the channel served are not the ones that were locked: the channel replaced the file, or something

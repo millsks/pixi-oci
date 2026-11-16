@@ -42,6 +42,31 @@ pub enum FetchError {
         source: Box<rattler_package_streaming::ExtractError>,
     },
 
+    #[error("{url} refused the download ({status})")]
+    #[diagnostic(help(
+        "{}",
+        if *.had_credentials {
+            format!("the credentials pixi has for {host} were refused; log in again with `pixi auth login {host} --token <token>` (or --username and --password)")
+        } else {
+            format!("the channel needs credentials: log in with `pixi auth login {host} --token <token>` (or --username and --password), as pixi itself does to lock it")
+        }
+    ))]
+    Unauthorized {
+        url: String,
+        host: String,
+        status: u16,
+        had_credentials: bool,
+    },
+
+    #[error("{location} is in a {scheme}:// channel, which pixi-oci cannot download from yet")]
+    #[diagnostic(help(
+        "S3 and GCS channels are https://github.com/millsks/pixi-oci/issues/51; an https mirror of the channel works today"
+    ))]
+    UnsupportedScheme { location: String, scheme: String },
+
+    #[error("could not read pixi's credentials: {message}")]
+    Credentials { message: String },
+
     #[error("{location} is not a .conda, .tar.bz2 or .whl archive")]
     UnknownArchive { location: String },
 
@@ -57,6 +82,8 @@ pub enum FetchError {
 pub struct Fetcher {
     root: PathBuf,
     agent: ureq::Agent,
+    /// pixi's credentials, looked up for each download's host; none in tests unless given.
+    credentials: Option<rattler_networking::AuthenticationStorage>,
 }
 
 impl Fetcher {
@@ -69,9 +96,82 @@ impl Fetcher {
         let agent = ureq::Agent::config_builder()
             .user_agent(concat!("pixi-oci/", env!("CARGO_PKG_VERSION")))
             .proxy(proxy)
+            // A redirect to another host, such as a channel's storage, is not given the channel's credentials.
+            .redirect_auth_headers(ureq::config::RedirectAuthHeaders::SameHost)
             .build()
             .new_agent();
-        Self { root, agent }
+        Self {
+            root,
+            agent,
+            credentials: None,
+        }
+    }
+
+    /// The fetcher with pixi's credentials, as `pixi auth login` keeps them: the keyring, `RATTLER_AUTH_FILE`,
+    /// `~/.rattler/credentials.json` and `~/.netrc`, looked up as pixi looks them up for each download's host.
+    pub fn with_pixi_credentials(self) -> Result<Self, FetchError> {
+        let storage = rattler_networking::AuthenticationStorage::from_env_and_defaults().map_err(|err| {
+            FetchError::Credentials {
+                message: err.to_string(),
+            }
+        })?;
+        Ok(self.with_credentials(storage))
+    }
+
+    pub fn with_credentials(mut self, storage: rattler_networking::AuthenticationStorage) -> Self {
+        self.credentials = Some(storage);
+        self
+    }
+
+    /// The URL to request and the `Authorization` header to send for `url`, as rattler's authentication middleware
+    /// gives them: a bearer or basic header, or a conda token in the path (`/t/<token>/...`).
+    fn authenticate(&self, url: &str) -> Result<Authenticated, FetchError> {
+        let none = Authenticated {
+            url: url.to_string(),
+            header: None,
+            secret: None,
+        };
+        let Some(storage) = &self.credentials else {
+            return Ok(none);
+        };
+        if !(url.starts_with("https://") || url.starts_with("http://")) {
+            return Ok(none);
+        }
+        let (_, found) = storage.get_by_url(url).map_err(|err| FetchError::Credentials {
+            message: err.to_string(),
+        })?;
+        use rattler_networking::Authentication;
+        Ok(match found {
+            Some(Authentication::BearerToken(token))
+            | Some(Authentication::OAuth {
+                access_token: token, ..
+            }) => Authenticated {
+                header: Some(format!("Bearer {token}")),
+                secret: Some(token),
+                ..none
+            },
+            Some(Authentication::BasicHTTP { username, password }) => {
+                let encoded = crate::registry::base64_encode(format!("{username}:{password}").as_bytes());
+                Authenticated {
+                    header: Some(format!("Basic {encoded}")),
+                    secret: Some(password),
+                    ..none
+                }
+            }
+            Some(Authentication::CondaToken(token)) => {
+                let mut parsed = url::Url::parse(url).map_err(|err| FetchError::Credentials {
+                    message: err.to_string(),
+                })?;
+                let path = format!("/t/{token}{}", parsed.path());
+                parsed.set_path(&path);
+                Authenticated {
+                    url: parsed.to_string(),
+                    header: None,
+                    secret: Some(token),
+                }
+            }
+            Some(Authentication::S3Credentials { .. }) | None => none,
+        })
     }
 
     /// The cache directory to use when none is given: `PIXI_OCI_CACHE_DIR`, else the platform's cache directory.
@@ -180,13 +280,59 @@ impl Fetcher {
 
     /// Stream `url` into `out`, returning the sha256 of what was written.
     fn download(&self, url: &str, out: &mut File) -> Result<String, FetchError> {
+        if let Some((scheme, _)) = url.split_once("://")
+            && matches!(scheme, "s3" | "gcs")
+        {
+            return Err(FetchError::UnsupportedScheme {
+                location: url.to_string(),
+                scheme: scheme.to_string(),
+            });
+        }
+        let auth = self.authenticate(url)?;
+        // Errors name the lockfile's URL, never the one with a token in it, and say nothing a credential is in.
         let download_err = |source: ureq::Error| FetchError::Download {
             url: url.to_string(),
-            source: Box::new(source),
+            source: Box::new(scrub(source, auth.secret.as_deref())),
         };
-        let response = self.agent.get(url).call().map_err(download_err)?;
+        let mut request = self.agent.get(&auth.url);
+        if let Some(header) = &auth.header {
+            request = request.header("Authorization", header);
+        }
+        let response = match request.call() {
+            Ok(response) => response,
+            Err(ureq::Error::StatusCode(status @ (401 | 403))) => {
+                return Err(FetchError::Unauthorized {
+                    url: url.to_string(),
+                    host: url::Url::parse(url)
+                        .ok()
+                        .and_then(|parsed| parsed.host_str().map(str::to_string))
+                        .unwrap_or_default(),
+                    status,
+                    had_credentials: auth.secret.is_some(),
+                });
+            }
+            Err(err) => return Err(download_err(err)),
+        };
         let mut reader = response.into_body().into_reader();
         copy_hashed(&mut reader, out).map_err(|err| download_err(ureq::Error::Io(err)))
+    }
+}
+
+/// What a download is sent with: the URL (with a conda token in it, if that is the credential) and a header.
+struct Authenticated {
+    url: String,
+    header: Option<String>,
+    /// The secret itself, to keep out of errors.
+    secret: Option<String>,
+}
+
+/// `error`, with `secret` taken out of anything it says.
+fn scrub(error: ureq::Error, secret: Option<&str>) -> ureq::Error {
+    match secret {
+        Some(secret) if !secret.is_empty() && error.to_string().contains(secret) => {
+            ureq::Error::Io(io::Error::other(error.to_string().replace(secret, "<credential>")))
+        }
+        _ => error,
     }
 }
 
@@ -439,5 +585,243 @@ mod tests {
         if std::env::var_os("PIXI_OCI_CACHE_DIR").is_none() {
             assert!(Fetcher::default_root().ends_with("pixi-oci"));
         }
+    }
+
+    /// What a guarded channel wants before it serves a file.
+    #[derive(Clone)]
+    enum Wants {
+        Header(String),
+        TokenInPath(String),
+    }
+
+    /// A channel that serves `body` for every path, but only to a request with the credential `wants` names, and
+    /// answers 401 otherwise. Every request's line and headers are kept.
+    fn guarded(body: Vec<u8>, wants: Wants) -> (String, std::sync::Arc<std::sync::Mutex<Vec<String>>>) {
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let seen = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
+        let kept = seen.clone();
+        std::thread::spawn(move || {
+            for stream in listener.incoming() {
+                let mut stream = stream.unwrap();
+                let mut request = [0u8; 8192];
+                let read = stream.read(&mut request).unwrap_or(0);
+                let request = String::from_utf8_lossy(&request[..read]).to_string();
+                let line = request.lines().next().unwrap_or_default().to_string();
+                let allowed = match &wants {
+                    Wants::Header(value) => request
+                        .lines()
+                        .any(|header| header.eq_ignore_ascii_case(&format!("authorization: {value}"))),
+                    Wants::TokenInPath(token) => line.contains(&format!(" /t/{token}/")),
+                };
+                kept.lock().unwrap().push(request);
+                let (status, payload): (&str, &[u8]) = if allowed {
+                    ("200 OK", &body)
+                } else {
+                    ("401 Unauthorized", b"")
+                };
+                let head = format!(
+                    "HTTP/1.1 {status}\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+                    payload.len()
+                );
+                stream.write_all(head.as_bytes()).unwrap();
+                stream.write_all(payload).unwrap();
+            }
+        });
+        (format!("http://127.0.0.1:{port}/private/noarch/pkg-1-0.tar.bz2"), seen)
+    }
+
+    /// pixi's credentials as `pixi auth login` writes them to a credentials file, for the host 127.0.0.1.
+    fn stored(dir: &Path, authentication: serde_json::Value) -> rattler_networking::AuthenticationStorage {
+        let file = dir.join("credentials.json");
+        fs::write(&file, serde_json::json!({ "127.0.0.1": authentication }).to_string()).unwrap();
+        let mut storage = rattler_networking::AuthenticationStorage::empty();
+        storage.add_backend(std::sync::Arc::new(
+            rattler_networking::authentication_storage::backends::file::FileStorage::from_path(file).unwrap(),
+        ));
+        storage
+    }
+
+    #[test]
+    fn each_kind_of_pixi_credential_is_sent_as_rattler_sends_it() {
+        let body = archive_bytes();
+        let sha = hex(&Sha256::digest(&body));
+        let basic = format!("Basic {}", crate::registry::base64_encode(b"me:s3cret-pass"));
+        let cases = [
+            (
+                serde_json::json!({"BearerToken": "bearer-tok"}),
+                Wants::Header("Bearer bearer-tok".into()),
+                "bearer-tok",
+            ),
+            (
+                serde_json::json!({"BasicHTTP": {"username": "me", "password": "s3cret-pass"}}),
+                Wants::Header(basic),
+                "s3cret-pass",
+            ),
+            (
+                serde_json::json!({"CondaToken": "conda-tok"}),
+                Wants::TokenInPath("conda-tok".into()),
+                "conda-tok",
+            ),
+        ];
+        for (authentication, wants, secret) in cases {
+            let dir = tempfile::tempdir().unwrap();
+            let (url, seen) = guarded(body.clone(), wants);
+            let package = package(&url, Some(&sha));
+
+            // Without credentials, the channel's refusal says to log in, naming the host.
+            let without = Fetcher::with_proxy(dir.path().join("a"), None);
+            let err = without.archive_for(&package).unwrap_err();
+            assert!(
+                matches!(
+                    err,
+                    FetchError::Unauthorized {
+                        status: 401,
+                        had_credentials: false,
+                        ..
+                    }
+                ),
+                "{err}"
+            );
+            let help = miette::Diagnostic::help(&err).unwrap().to_string();
+            assert!(help.contains("pixi auth login 127.0.0.1"), "{help}");
+
+            let fetcher =
+                Fetcher::with_proxy(dir.path().join("b"), None).with_credentials(stored(dir.path(), authentication));
+            let archive = fetcher.archive_for(&package).unwrap();
+            assert_eq!(fs::read(archive).unwrap(), body, "{secret}");
+            assert_eq!(seen.lock().unwrap().len(), 2, "{secret}");
+        }
+    }
+
+    #[test]
+    fn refused_credentials_and_storage_schemes_say_what_to_do() {
+        let body = archive_bytes();
+        let sha = hex(&Sha256::digest(&body));
+        let dir = tempfile::tempdir().unwrap();
+        let (url, _) = guarded(body, Wants::Header("Bearer right".into()));
+        let fetcher = Fetcher::with_proxy(dir.path().join("c"), None)
+            .with_credentials(stored(dir.path(), serde_json::json!({"BearerToken": "wrong-token"})));
+        let err = fetcher.archive_for(&package(&url, Some(&sha))).unwrap_err();
+        assert!(
+            matches!(
+                err,
+                FetchError::Unauthorized {
+                    had_credentials: true,
+                    ..
+                }
+            ),
+            "{err}"
+        );
+        let message = format!("{err} {}", miette::Diagnostic::help(&err).unwrap());
+        assert!(
+            message.contains("were refused") && !message.contains("wrong-token"),
+            "{message}"
+        );
+
+        for scheme in ["s3", "gcs"] {
+            let location = format!("{scheme}://bucket/channel/noarch/pkg-1-0.conda");
+            let err = fetcher.archive_for(&package(&location, Some(&sha))).unwrap_err();
+            assert!(matches!(err, FetchError::UnsupportedScheme { .. }), "{err}");
+            assert!(err.to_string().contains(&format!("{scheme}://")), "{err}");
+        }
+    }
+
+    #[test]
+    fn a_credential_is_scrubbed_from_what_an_error_says() {
+        let error = ureq::Error::BadUri("http://h/t/tok-123/a.conda".to_string());
+        let scrubbed = scrub(error, Some("tok-123")).to_string();
+        assert!(
+            !scrubbed.contains("tok-123") && scrubbed.contains("<credential>"),
+            "{scrubbed}"
+        );
+        let untouched = scrub(ureq::Error::BadUri("http://h/a.conda".to_string()), Some("tok-123"));
+        assert!(matches!(untouched, ureq::Error::BadUri(_)));
+        assert!(matches!(
+            scrub(ureq::Error::BadUri("x".into()), None),
+            ureq::Error::BadUri(_)
+        ));
+    }
+
+    /// A build from a channel that needs a token: the token reaches the channel and nothing else, not a layer, the
+    /// config, the manifest, the index or what the build prints.
+    #[test]
+    fn a_private_channels_token_never_reaches_the_image() {
+        let dir = tempfile::tempdir().unwrap();
+        let secret = "pixi-oci-secret-token-7d1f";
+        for (authentication, wants) in [
+            (
+                serde_json::json!({"CondaToken": secret}),
+                Wants::TokenInPath(secret.into()),
+            ),
+            (
+                serde_json::json!({"BearerToken": secret}),
+                Wants::Header(format!("Bearer {secret}")),
+            ),
+        ] {
+            let work = tempfile::tempdir_in(dir.path()).unwrap();
+            let mut tool = crate::testing::simple(work.path(), "tool", &[]);
+            let bytes = fs::read(local_path(&tool.location).unwrap()).unwrap();
+            let (url, seen) = guarded(bytes, wants);
+            tool.location = url.replace("pkg-1-0.tar.bz2", "tool-1-0.tar.bz2");
+            let plan = crate::testing::plan_of(vec![tool.clone()], 10);
+            let layout = work.path().join("layout");
+            let options = crate::build::BuildOptions {
+                prefix: "/opt/env".to_string(),
+                output: layout.clone(),
+                force: true,
+                reference: crate::image::Reference::parse("private:1").unwrap(),
+                env: Vec::new(),
+                entrypoint: None,
+                cmd: None,
+                workdir: None,
+                source_date_epoch: 0,
+                max_memory: 16 << 20,
+                base: None,
+                labels: Vec::new(),
+                annotations: Vec::new(),
+                user: None,
+                expose: Vec::new(),
+                stop_signal: None,
+            };
+            let fetcher = Fetcher::with_proxy(work.path().join("cache"), None)
+                .with_credentials(stored(work.path(), authentication));
+            let mut printed = Vec::new();
+            crate::build::build(&plan, &options, &fetcher, &mut printed).unwrap();
+            assert!(seen.lock().unwrap().iter().any(|request| request.contains(secret)));
+            assert!(!String::from_utf8_lossy(&printed).contains(secret));
+
+            let mut checked = 0;
+            for entry in walk(&layout) {
+                let bytes = fs::read(&entry).unwrap();
+                let mut plain = Vec::new();
+                if flate2::read::GzDecoder::new(&bytes[..])
+                    .read_to_end(&mut plain)
+                    .is_err()
+                {
+                    plain = bytes;
+                }
+                assert!(
+                    !String::from_utf8_lossy(&plain).contains(secret),
+                    "{} has the token",
+                    entry.display()
+                );
+                checked += 1;
+            }
+            assert!(checked >= 5, "{checked}");
+        }
+    }
+
+    fn walk(dir: &Path) -> Vec<PathBuf> {
+        let mut files = Vec::new();
+        for entry in fs::read_dir(dir).unwrap() {
+            let path = entry.unwrap().path();
+            if path.is_dir() {
+                files.extend(walk(&path));
+            } else {
+                files.push(path);
+            }
+        }
+        files
     }
 }
