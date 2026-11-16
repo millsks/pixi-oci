@@ -173,6 +173,11 @@ fn run_build(args: BuildArgs) -> miette::Result<String> {
         source_date_epoch: build::source_date_epoch(),
         max_memory: args.max_memory,
         base,
+        labels: args.label,
+        annotations: args.annotation,
+        user: args.user,
+        expose: args.expose,
+        stop_signal: args.stop_signal,
     };
     let fetcher = fetch::Fetcher::new(cache);
     let written = build::build(&plan, &options, &fetcher, &mut std::io::stderr())?;
