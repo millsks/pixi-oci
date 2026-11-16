@@ -31,6 +31,8 @@ pub enum Command {
     Push(PushArgs),
     /// Download an image from a registry into a `.tar` archive or an OCI image layout directory.
     Pull(PullArgs),
+    /// Print the digest a registry serves for a tag, to pin a base with; downloads no layers.
+    Digest(DigestArgs),
 }
 
 /// Which environment of which lockfile, and for which platform.
@@ -77,6 +79,26 @@ pub struct PlanArgs {
     /// How to print the plan.
     #[arg(long, value_enum, default_value_t = Format::Text)]
     pub format: Format,
+}
+
+#[derive(Debug, Args)]
+pub struct DigestArgs {
+    /// The image: [registry/]repository[:tag], such as debian:bookworm-slim.
+    #[arg(value_name = "REFERENCE")]
+    pub reference: String,
+
+    /// Print the digest of this platform's manifest (linux-64, linux-aarch64), rather than the tag's, which may be an
+    /// index of several.
+    #[arg(short, long)]
+    pub platform: Option<String>,
+
+    /// Print the whole reference with the digest, ready for `build --base`.
+    #[arg(long)]
+    pub pinned: bool,
+
+    /// Where downloaded manifests are kept, as for `build`.
+    #[arg(long, value_name = "PATH")]
+    pub cache_dir: Option<PathBuf>,
 }
 
 #[derive(Debug, Args)]

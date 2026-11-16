@@ -610,3 +610,40 @@ fn public_images_pull_for_both_platforms() {
         }
     }
 }
+
+/// `digest` prints what `pull` resolves for the same tag, for the whole tag and for one platform.
+#[test]
+fn digest_agrees_with_pull() {
+    if enabled().is_none() {
+        return;
+    }
+    let dir = tempfile::tempdir().unwrap();
+    let run = |args: &[&str]| {
+        let output = Command::cargo_bin("pixi-oci").unwrap().args(args).output().unwrap();
+        assert!(
+            output.status.success(),
+            "{args:?}: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        String::from_utf8(output.stdout).unwrap().trim().to_string()
+    };
+    let tag = "debian:bookworm-slim";
+    let index = run(&["digest", tag]);
+    assert!(index.starts_with("sha256:") && index.len() == 71, "{index}");
+    let manifest = run(&["digest", tag, "--platform", "linux-64"]);
+    let out = dir.path().join("debian.tar").display().to_string();
+    let pulled: serde_json::Value = serde_json::from_str(&run(&[
+        "pull",
+        tag,
+        "--platform",
+        "linux-64",
+        "--format",
+        "json",
+        "-o",
+        &out,
+    ]))
+    .unwrap();
+    assert_eq!(pulled["digest"], manifest.as_str());
+    assert!(pulled["reference"].as_str().unwrap().ends_with(&index), "{pulled}");
+    assert_eq!(run(&["digest", tag, "--pinned"]), format!("{tag}@{index}"));
+}

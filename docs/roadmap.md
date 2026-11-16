@@ -37,6 +37,7 @@ scope and acceptance criteria live and its pull requests are linked. Comment the
 - [x] **Image metadata**: `--label`, `--annotation`, `--user`, `--expose` and `--stop-signal`, as a Dockerfile sets them
       ([#39](https://github.com/millsks/pixi-oci/issues/39))
 - [x] **Pull**: `pixi oci pull` writes a registry image to a `.tar` or layout, no daemon or store ([#42](https://github.com/millsks/pixi-oci/issues/42))
+- [x] **Digest**: `pixi oci digest` prints a tag's digest to pin a base with ([#43](https://github.com/millsks/pixi-oci/issues/43))
 
 ## Next
 
@@ -52,7 +53,6 @@ scope and acceptance criteria live and its pull requests are linked. Comment the
 
 ## After that
 
-- [ ] `pixi oci digest`: a tag's digest, to pin a base ([#43](https://github.com/millsks/pixi-oci/issues/43))
 - [ ] `inspect`, `validate` and `check` straight from a registry ([#44](https://github.com/millsks/pixi-oci/issues/44))
 - [ ] `pixi oci tag`: a new tag in a registry without moving blobs ([#45](https://github.com/millsks/pixi-oci/issues/45))
 - [ ] `pixi oci copy`: between registries and files, only what is missing ([#46](https://github.com/millsks/pixi-oci/issues/46))
