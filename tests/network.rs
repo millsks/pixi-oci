@@ -541,6 +541,17 @@ fn an_image_pushes_to_a_registry() {
     assert_eq!(second["digest"], first["digest"]);
     let pulled = docker(&["pull", &destination]).unwrap();
     assert!(pulled.status.success(), "{}", String::from_utf8_lossy(&pulled.stderr));
+    // pixi-oci pulls it back too, with the digest it was pushed with.
+    let back = dir.path().join("back.tar");
+    let output = Command::cargo_bin("pixi-oci")
+        .unwrap()
+        .args(["pull", &destination, "--platform", platform, "--format", "json", "-o"])
+        .arg(&back)
+        .output()
+        .unwrap();
+    assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
+    let report: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert_eq!(report["digest"], first["digest"]);
     let _ = docker(&["rmi", &destination]);
     let _ = docker(&["rm", "-f", &container]);
 }
@@ -565,4 +576,37 @@ fn an_image_pushes_to_ghcr() {
     let second = push_json(&archive, &destination);
     assert_eq!(second["uploaded"], 0, "{second:#}");
     assert_eq!(second["digest"], first["digest"]);
+}
+
+/// The two documented bases, pulled by tag for both platforms, with no docker: each validates.
+#[test]
+fn public_images_pull_for_both_platforms() {
+    if enabled().is_none() {
+        return;
+    }
+    let dir = tempfile::tempdir().unwrap();
+    for (name, base) in BASES {
+        let tag = base.split('@').next().unwrap();
+        for platform in ["linux-64", "linux-aarch64"] {
+            let output = dir.path().join(format!("{name}-{platform}.tar"));
+            let pulled = Command::cargo_bin("pixi-oci")
+                .unwrap()
+                .args(["pull", tag, "--platform", platform, "-o"])
+                .arg(&output)
+                .output()
+                .unwrap();
+            assert!(
+                pulled.status.success(),
+                "{tag} {platform}: {}",
+                String::from_utf8_lossy(&pulled.stderr)
+            );
+            let validated = Command::cargo_bin("pixi-oci")
+                .unwrap()
+                .arg("validate")
+                .arg(&output)
+                .output()
+                .unwrap();
+            assert!(validated.status.success(), "{tag} {platform}");
+        }
+    }
 }

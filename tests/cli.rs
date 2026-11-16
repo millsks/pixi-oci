@@ -454,3 +454,17 @@ fn build_refuses_bad_metadata_before_reading_anything() {
             .stderr(predicate::str::contains(format!("invalid value '{value}' for")));
     }
 }
+
+#[test]
+fn pull_refuses_a_bad_reference_or_platform_before_connecting() {
+    pixi_oci()
+        .args(["pull", "Not A Reference"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("is not an image reference"));
+    pixi_oci()
+        .args(["pull", "127.0.0.1:9/team/app:1", "--platform", "osx-arm64"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("osx-arm64 is not a Linux platform"));
+}

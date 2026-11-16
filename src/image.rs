@@ -278,43 +278,68 @@ pub fn finish_layout(
     let blobs = layout.join("blobs/sha256");
     let config_blob = write_json_blob(&config(platform, layers, settings, created), &blobs)?;
     let manifest_blob = write_json_blob(&manifest(&config_blob, layers, settings), &blobs)?;
-    let mut platform_json = json!({"architecture": platform.architecture, "os": platform.os});
-    if let Some(variant) = platform.variant {
-        platform_json["variant"] = json!(variant);
-    }
-    let index = json!({
-        "schemaVersion": 2,
-        "mediaType": INDEX_MEDIA_TYPE,
-        "manifests": [{
-            "mediaType": MANIFEST_MEDIA_TYPE,
-            "digest": manifest_blob.digest,
-            "size": manifest_blob.size,
-            "platform": platform_json,
-            "annotations": {
-                // containerd, nerdctl and docker's containerd image store read the full name, and take it as it is
-                // written, so it is written fully qualified; skopeo and podman read the tag.
-                "io.containerd.image.name": reference.qualified(),
-                "org.opencontainers.image.ref.name": reference.tag,
-            },
-        }],
-    });
-    fs::write(layout.join("index.json"), serde_json::to_vec_pretty(&index)?)?;
-    fs::write(layout.join("oci-layout"), br#"{"imageLayoutVersion":"1.0.0"}"#)?;
-    // What `docker load` reads: the config and the layers, by their paths in the archive.
-    let docker = json!([{
-        "Config": format!("blobs/sha256/{}", config_blob.digest.trim_start_matches("sha256:")),
-        "RepoTags": [reference.to_string()],
-        "Layers": layers.iter()
-            .map(|layer| format!("blobs/sha256/{}", layer.blob.digest.trim_start_matches("sha256:")))
-            .collect::<Vec<_>>(),
-    }]);
-    fs::write(layout.join("manifest.json"), serde_json::to_vec_pretty(&docker)?)?;
+    write_index(
+        layout,
+        platform,
+        MANIFEST_MEDIA_TYPE,
+        &manifest_blob,
+        Some(reference),
+        &config_blob.digest,
+        &layers.iter().map(|layer| layer.blob.digest.clone()).collect::<Vec<_>>(),
+    )?;
     Ok(Written {
         manifest: manifest_blob,
         config: config_blob,
         reference: reference.clone(),
         layers_size: layers.iter().map(|layer| layer.blob.size).sum(),
     })
+}
+
+/// Write `index.json`, `oci-layout` and the `manifest.json` `docker load` reads, for a manifest already in
+/// `layout`'s blobs: one built here, or one pulled as it was served.
+pub fn write_index(
+    layout: &Path,
+    platform: &OciPlatform,
+    manifest_media_type: &str,
+    manifest: &Blob,
+    reference: Option<&Reference>,
+    config_digest: &str,
+    layer_digests: &[String],
+) -> io::Result<()> {
+    let mut platform_json = json!({"architecture": platform.architecture, "os": platform.os});
+    if let Some(variant) = platform.variant {
+        platform_json["variant"] = json!(variant);
+    }
+    let mut entry = json!({
+        "mediaType": manifest_media_type,
+        "digest": manifest.digest,
+        "size": manifest.size,
+        "platform": platform_json,
+    });
+    if let Some(reference) = reference {
+        // containerd, nerdctl and docker's containerd image store read the full name, and take it as it is
+        // written, so it is written fully qualified; skopeo and podman read the tag.
+        entry["annotations"] = json!({
+            "io.containerd.image.name": reference.qualified(),
+            "org.opencontainers.image.ref.name": reference.tag,
+        });
+    }
+    let index = json!({
+        "schemaVersion": 2,
+        "mediaType": INDEX_MEDIA_TYPE,
+        "manifests": [entry],
+    });
+    fs::write(layout.join("index.json"), serde_json::to_vec_pretty(&index)?)?;
+    fs::write(layout.join("oci-layout"), br#"{"imageLayoutVersion":"1.0.0"}"#)?;
+    // What `docker load` reads: the config and the layers, by their paths in the archive.
+    let path = |digest: &str| format!("blobs/sha256/{}", digest.trim_start_matches("sha256:"));
+    let docker = json!([{
+        "Config": path(config_digest),
+        "RepoTags": reference.map(|reference| vec![reference.to_string()]).unwrap_or_default(),
+        "Layers": layer_digests.iter().map(|digest| path(digest)).collect::<Vec<_>>(),
+    }]);
+    fs::write(layout.join("manifest.json"), serde_json::to_vec_pretty(&docker)?)?;
+    Ok(())
 }
 
 /// Tar the layout directory `layout` into the archive `output`, uncompressed: its layers are compressed already.

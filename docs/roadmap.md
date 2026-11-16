@@ -36,6 +36,7 @@ scope and acceptance criteria live and its pull requests are linked. Comment the
       scoped ones for CI; tested against `registry:2` and GHCR ([#13](https://github.com/millsks/pixi-oci/issues/13))
 - [x] **Image metadata**: `--label`, `--annotation`, `--user`, `--expose` and `--stop-signal`, as a Dockerfile sets them
       ([#39](https://github.com/millsks/pixi-oci/issues/39))
+- [x] **Pull**: `pixi oci pull` writes a registry image to a `.tar` or layout, no daemon or store ([#42](https://github.com/millsks/pixi-oci/issues/42))
 
 ## Next
 
@@ -51,6 +52,12 @@ scope and acceptance criteria live and its pull requests are linked. Comment the
 
 ## After that
 
+- [ ] `pixi oci digest`: a tag's digest, to pin a base ([#43](https://github.com/millsks/pixi-oci/issues/43))
+- [ ] `inspect`, `validate` and `check` straight from a registry ([#44](https://github.com/millsks/pixi-oci/issues/44))
+- [ ] `pixi oci tag`: a new tag in a registry without moving blobs ([#45](https://github.com/millsks/pixi-oci/issues/45))
+- [ ] `pixi oci copy`: between registries and files, only what is missing ([#46](https://github.com/millsks/pixi-oci/issues/46))
+- [ ] `pixi oci cache`: see and prune the download cache ([#47](https://github.com/millsks/pixi-oci/issues/47))
+- [ ] Application files in the image, the Dockerfile's `COPY` ([#40](https://github.com/millsks/pixi-oci/issues/40))
 - [ ] `pixi oci diff`: two images compared layer by layer, with the packages behind each change and what a rebuild
       re-uploads ([#26](https://github.com/millsks/pixi-oci/issues/26))
 - [ ] Multi-platform image indexes: `linux-64` and `linux-aarch64` under one tag

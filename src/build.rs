@@ -369,7 +369,7 @@ fn is_wheel(package: &crate::lock::Package) -> bool {
     location.ends_with(".whl") && package.sha256.is_some()
 }
 
-fn prepare_output(output: &Path, force: bool) -> Result<(), BuildError> {
+pub(crate) fn prepare_output(output: &Path, force: bool) -> Result<(), BuildError> {
     if !output.exists() {
         if let Some(parent) = output.parent().filter(|p| !p.as_os_str().is_empty()) {
             fs::create_dir_all(parent).map_err(write_err(parent))?;
