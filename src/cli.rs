@@ -187,6 +187,27 @@ pub struct BuildArgs {
     #[arg(long, value_name = "PATH")]
     pub workdir: Option<String>,
 
+    /// A label in the image config, as a Dockerfile's LABEL; repeat for more. pixi-oci's own dev.pixi.* labels win.
+    #[arg(long = "label", value_name = "KEY=VALUE", value_parser = crate::build::parse_key_value)]
+    pub label: Vec<(String, String)>,
+
+    /// An annotation on the image manifest, such as org.opencontainers.image.source=https://github.com/team/app;
+    /// repeat for more.
+    #[arg(long = "annotation", value_name = "KEY=VALUE", value_parser = crate::build::parse_key_value)]
+    pub annotation: Vec<(String, String)>,
+
+    /// The user processes run as, as a Dockerfile's USER: NAME, UID, NAME:GROUP or UID:GID.
+    #[arg(long, value_name = "USER", value_parser = crate::build::parse_user)]
+    pub user: Option<String>,
+
+    /// A port the image listens on, as a Dockerfile's EXPOSE: PORT or PORT/PROTOCOL; repeat for more.
+    #[arg(long, value_name = "PORT[/PROTOCOL]", value_parser = crate::build::parse_port)]
+    pub expose: Vec<String>,
+
+    /// The signal that stops the container, as a Dockerfile's STOPSIGNAL: SIGTERM, TERM or a number.
+    #[arg(long, value_name = "SIGNAL", value_parser = crate::build::parse_signal)]
+    pub stop_signal: Option<String>,
+
     #[command(flatten)]
     pub layers: LayerArgs,
 

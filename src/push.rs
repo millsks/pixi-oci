@@ -520,6 +520,11 @@ mod tests {
             source_date_epoch: 0,
             max_memory: 16 << 20,
             base: Some(base),
+            labels: Vec::new(),
+            annotations: Vec::new(),
+            user: None,
+            expose: Vec::new(),
+            stop_signal: None,
         };
         crate::build::build(
             &plan,

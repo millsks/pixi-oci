@@ -87,6 +87,12 @@ pub struct Inspection {
     pub workdir: Option<String>,
     pub env: Vec<String>,
     pub labels: serde_json::Map<String, Value>,
+    pub user: Option<String>,
+    /// As the config lists them: `8000/tcp`.
+    pub exposed_ports: Vec<String>,
+    pub stop_signal: Option<String>,
+    /// The manifest's annotations.
+    pub annotations: serde_json::Map<String, Value>,
     pub layers: Vec<LayerInfo>,
 }
 
@@ -181,6 +187,16 @@ pub fn inspect(path: &Path, platform: Option<&str>) -> Result<Inspection, Inspec
             .map(str::to_string),
         env: strings(&settings["Env"]).unwrap_or_default(),
         labels: settings["Labels"].as_object().cloned().unwrap_or_default(),
+        user: settings["User"]
+            .as_str()
+            .filter(|user| !user.is_empty())
+            .map(str::to_string),
+        exposed_ports: settings["ExposedPorts"]
+            .as_object()
+            .map(|ports| ports.keys().cloned().collect())
+            .unwrap_or_default(),
+        stop_signal: settings["StopSignal"].as_str().map(str::to_string),
+        annotations: manifest["annotations"].as_object().cloned().unwrap_or_default(),
         layers,
     })
 }
@@ -353,7 +369,21 @@ impl Inspection {
         field("entrypoint", self.entrypoint.iter().map(json).collect());
         field("cmd", self.cmd.iter().map(json).collect());
         field("workdir", self.workdir.iter().cloned().collect());
+        field("user", self.user.iter().cloned().collect());
+        field("ports", self.exposed_ports.clone());
+        field("stop signal", self.stop_signal.iter().cloned().collect());
         field("env", self.env.clone());
+        let pairs = |map: &serde_json::Map<String, Value>| -> Vec<String> {
+            map.iter()
+                .map(|(key, value)| {
+                    format!(
+                        "{key}={}",
+                        value.as_str().map_or_else(|| value.to_string(), str::to_string)
+                    )
+                })
+                .collect()
+        };
+        field("annotations", pairs(&self.annotations));
         field(
             "labels",
             self.labels

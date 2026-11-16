@@ -34,6 +34,8 @@ scope and acceptance criteria live and its pull requests are linked. Comment the
       request and built and checked in CI ([#22](https://github.com/millsks/pixi-oci/issues/22))
 - [x] **Push**: `pixi oci push` sends only the blobs a registry lacks, with docker's and podman's credentials or
       scoped ones for CI; tested against `registry:2` and GHCR ([#13](https://github.com/millsks/pixi-oci/issues/13))
+- [x] **Image metadata**: `--label`, `--annotation`, `--user`, `--expose` and `--stop-signal`, as a Dockerfile sets them
+      ([#39](https://github.com/millsks/pixi-oci/issues/39))
 
 ## Next
 

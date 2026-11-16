@@ -74,6 +74,16 @@ pub struct BuildOptions {
     /// The image to build on, pulled for the plan's platform: its layers go under the environment's, and its config
     /// is where the image's starts.
     pub base: Option<crate::registry::Pulled>,
+    /// Labels for the config, after the base's and before pixi-oci's own `dev.pixi.*`.
+    pub labels: Vec<(String, String)>,
+    /// Annotations for the manifest.
+    pub annotations: Vec<(String, String)>,
+    /// The user processes run as, replacing the base's.
+    pub user: Option<String>,
+    /// Ports to expose, as `8000/tcp`, added to the base's.
+    pub expose: Vec<String>,
+    /// The signal that stops the container, replacing the base's.
+    pub stop_signal: Option<String>,
 }
 
 /// The default for `--max-memory`: 512 MiB.
@@ -321,10 +331,10 @@ fn settings(plan: &Plan, options: &BuildOptions) -> Settings {
             .filter(|dir| !dir.is_empty())
             .map(str::to_string)
     });
-    let mut labels = vec![
-        ("dev.pixi.environment".to_string(), plan.environment.clone()),
-        ("dev.pixi.platform".to_string(), plan.platform.clone()),
-    ];
+    // The user's labels, then pixi-oci's own, which say what the image was built from and so win.
+    let mut labels = options.labels.clone();
+    labels.push(("dev.pixi.environment".to_string(), plan.environment.clone()));
+    labels.push(("dev.pixi.platform".to_string(), plan.platform.clone()));
     let base = options.base.as_ref().map(|base| {
         let reference = &base.reference;
         let name = match &reference.tag {
@@ -346,6 +356,10 @@ fn settings(plan: &Plan, options: &BuildOptions) -> Settings {
         workdir,
         labels,
         base,
+        user: options.user.clone(),
+        exposed_ports: options.expose.clone(),
+        stop_signal: options.stop_signal.clone(),
+        annotations: options.annotations.clone(),
     }
 }
 
@@ -448,6 +462,70 @@ pub fn parse_env(value: &str) -> Result<String, String> {
     }
 }
 
+/// A label or annotation, `KEY=VALUE`: the key is not empty and has no whitespace; the value may be anything.
+pub fn parse_key_value(value: &str) -> Result<(String, String), String> {
+    match value.split_once('=') {
+        Some((key, rest)) if !key.is_empty() && !key.contains(char::is_whitespace) => {
+            Ok((key.to_string(), rest.to_string()))
+        }
+        _ => Err("expected KEY=VALUE, with a KEY that is not empty and has no spaces".to_string()),
+    }
+}
+
+/// A port to expose, `PORT` or `PORT/PROTOCOL`, as the image config writes it: `8000/tcp`.
+pub fn parse_port(value: &str) -> Result<String, String> {
+    let (port, protocol) = value.split_once('/').unwrap_or((value, "tcp"));
+    let protocol = protocol.to_ascii_lowercase();
+    match (port.parse::<u16>(), protocol.as_str()) {
+        (Ok(port), "tcp" | "udp" | "sctp") if port > 0 => Ok(format!("{port}/{protocol}")),
+        _ => Err("expected PORT or PORT/PROTOCOL: a port from 1 to 65535, and tcp, udp or sctp".to_string()),
+    }
+}
+
+/// A signal to stop the container with: a name such as `SIGTERM` (or `TERM`), or a number.
+pub fn parse_signal(value: &str) -> Result<String, String> {
+    if !value.is_empty() && value.chars().all(|c| c.is_ascii_digit()) {
+        return match value.parse::<u8>() {
+            Ok(number) if (1..=64).contains(&number) => Ok(value.to_string()),
+            _ => Err("expected a signal name such as SIGTERM, or a number from 1 to 64".to_string()),
+        };
+    }
+    let name = value.to_ascii_uppercase();
+    let name = if name.starts_with("SIG") {
+        name
+    } else {
+        format!("SIG{name}")
+    };
+    if name.len() > 3
+        && name[3..]
+            .chars()
+            .all(|c| c.is_ascii_uppercase() || c.is_ascii_digit() || c == '+' || c == '-')
+    {
+        Ok(name)
+    } else {
+        Err("expected a signal name such as SIGTERM, or a number from 1 to 64".to_string())
+    }
+}
+
+/// The user processes run as: `NAME`, `UID`, `NAME:GROUP` or `UID:GID`.
+pub fn parse_user(value: &str) -> Result<String, String> {
+    let part = |part: &str| {
+        !part.is_empty()
+            && part
+                .chars()
+                .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-' || c == '.')
+    };
+    let valid = match value.split_once(':') {
+        Some((user, group)) => part(user) && part(group),
+        None => part(value),
+    };
+    if valid {
+        Ok(value.to_string())
+    } else {
+        Err("expected NAME, UID, NAME:GROUP or UID:GID".to_string())
+    }
+}
+
 /// `SOURCE_DATE_EPOCH` from the environment, the convention reproducible builds share; 0 when unset or unreadable.
 pub fn source_date_epoch() -> u64 {
     std::env::var("SOURCE_DATE_EPOCH")
@@ -484,6 +562,11 @@ mod tests {
             // One layer at a time, so progress lines arrive in order.
             max_memory: 16 << 20,
             base: None,
+            labels: Vec::new(),
+            annotations: Vec::new(),
+            user: None,
+            expose: Vec::new(),
+            stop_signal: None,
         }
     }
 
@@ -972,5 +1055,133 @@ mod tests {
                 report.text()
             );
         }
+    }
+
+    #[test]
+    fn metadata_values_are_checked_and_normalized() {
+        assert_eq!(
+            parse_key_value("a.b-c=x=y"),
+            Ok(("a.b-c".to_string(), "x=y".to_string()))
+        );
+        assert_eq!(parse_key_value("empty="), Ok(("empty".to_string(), String::new())));
+        assert!(
+            parse_key_value("=x").is_err() && parse_key_value("a b=x").is_err() && parse_key_value("novalue").is_err()
+        );
+        assert_eq!(parse_port("8000"), Ok("8000/tcp".to_string()));
+        assert_eq!(parse_port("53/UDP"), Ok("53/udp".to_string()));
+        assert_eq!(parse_port("9/sctp"), Ok("9/sctp".to_string()));
+        for bad in ["0", "70000", "80/http", "http", ""] {
+            assert!(parse_port(bad).is_err(), "{bad}");
+        }
+        assert_eq!(parse_signal("SIGTERM"), Ok("SIGTERM".to_string()));
+        assert_eq!(parse_signal("int"), Ok("SIGINT".to_string()));
+        assert_eq!(parse_signal("SIGRTMIN+3"), Ok("SIGRTMIN+3".to_string()));
+        assert_eq!(parse_signal("15"), Ok("15".to_string()));
+        for bad in ["", "SIG", "65", "SIG TERM", "kill!"] {
+            assert!(parse_signal(bad).is_err(), "{bad}");
+        }
+        for good in ["app", "1001", "app:app", "1001:0", "www-data"] {
+            assert_eq!(parse_user(good), Ok(good.to_string()));
+        }
+        for bad in ["", ":", "app:", ":app", "a b", "app:x:y"] {
+            assert!(parse_user(bad).is_err(), "{bad}");
+        }
+    }
+
+    #[test]
+    fn metadata_lands_where_a_dockerfile_puts_it() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut base = crate::testing::base_image(dir.path(), &[]);
+        base.config["config"]["ExposedPorts"] = serde_json::json!({"22/tcp": {}});
+        base.config["config"]["StopSignal"] = serde_json::json!("SIGQUIT");
+        let plan = plan_of(vec![package(dir.path(), "tool", &[])], 100);
+        let pairs = |items: &[(&str, &str)]| {
+            items
+                .iter()
+                .map(|(k, v)| (k.to_string(), v.to_string()))
+                .collect::<Vec<_>>()
+        };
+        for on_base in [false, true] {
+            let layout = dir.path().join(format!("layout-{on_base}"));
+            let mut opts = options(layout.clone());
+            opts.base = on_base.then(|| base.clone());
+            opts.labels = pairs(&[
+                ("vendor", "Team"),
+                ("org.opencontainers.image.title", "tool"),
+                ("dev.pixi.environment", "mine"),
+            ]);
+            opts.annotations = pairs(&[("org.opencontainers.image.source", "https://github.com/team/tool")]);
+            opts.user = Some("app:app".to_string());
+            opts.expose = vec!["8000/tcp".to_string(), "53/udp".to_string()];
+            opts.stop_signal = Some("SIGTERM".to_string());
+            build(
+                &plan,
+                &opts,
+                &Fetcher::new(dir.path().join("cache")),
+                &mut std::io::sink(),
+            )
+            .unwrap();
+            let raw = |which| crate::inspect::raw(&layout, None, which).unwrap();
+            let config: serde_json::Value = serde_json::from_str(&raw(crate::inspect::Raw::Config)).unwrap();
+            let settings = &config["config"];
+            assert_eq!(settings["User"], "app:app");
+            assert_eq!(settings["StopSignal"], "SIGTERM");
+            let ports: Vec<&String> = settings["ExposedPorts"].as_object().unwrap().keys().collect();
+            let expected: &[&str] = if on_base {
+                &["22/tcp", "8000/tcp", "53/udp"]
+            } else {
+                &["8000/tcp", "53/udp"]
+            };
+            assert_eq!(ports, expected, "on a base: {on_base}");
+            let labels = &settings["Labels"];
+            // The user's label overrides the base's; pixi-oci's own say what the image was built from.
+            assert_eq!(labels["vendor"], "Team");
+            assert_eq!(labels["org.opencontainers.image.title"], "tool");
+            assert_eq!(labels["dev.pixi.environment"], "test");
+            let manifest: serde_json::Value = serde_json::from_str(&raw(crate::inspect::Raw::Manifest)).unwrap();
+            assert_eq!(
+                manifest["annotations"]["org.opencontainers.image.source"],
+                "https://github.com/team/tool"
+            );
+            assert_eq!(
+                manifest["annotations"]
+                    .get("org.opencontainers.image.base.name")
+                    .is_some(),
+                on_base
+            );
+            let report = crate::validate::validate(&layout).unwrap();
+            assert!(report.valid, "{}", report.text());
+
+            let inspection = crate::inspect::inspect(&layout, None).unwrap();
+            assert_eq!(inspection.user.as_deref(), Some("app:app"));
+            assert_eq!(inspection.stop_signal.as_deref(), Some("SIGTERM"));
+            assert_eq!(inspection.exposed_ports.len(), expected.len());
+            let text = inspection.text(false);
+            for line in [
+                "  user        app:app\n",
+                &format!("  ports       {}\n", expected[0]),
+                "  stop signal SIGTERM\n",
+                "  annotations org.opencontainers.image.source=https://github.com/team/tool\n",
+            ] {
+                assert!(text.contains(line), "no {line:?} in\n{text}");
+            }
+        }
+        // Without any of it, the config holds none of the keys.
+        let plain = dir.path().join("plain");
+        build(
+            &plan,
+            &options(plain.clone()),
+            &Fetcher::new(dir.path().join("cache")),
+            &mut std::io::sink(),
+        )
+        .unwrap();
+        let config: serde_json::Value =
+            serde_json::from_str(&crate::inspect::raw(&plain, None, crate::inspect::Raw::Config).unwrap()).unwrap();
+        for key in ["User", "StopSignal", "ExposedPorts"] {
+            assert!(config["config"].get(key).is_none(), "{key}");
+        }
+        let manifest: serde_json::Value =
+            serde_json::from_str(&crate::inspect::raw(&plain, None, crate::inspect::Raw::Manifest).unwrap()).unwrap();
+        assert!(manifest.get("annotations").is_none());
     }
 }

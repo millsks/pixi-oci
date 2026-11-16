@@ -99,6 +99,8 @@ and 15.9 s for the same two images.
 | `--env KEY=VALUE` | | an environment variable; repeatable |
 | `--entrypoint`, `--cmd` | | a JSON array (`["python", "-m", "http.server"]`) or words |
 | `--workdir PATH` | | the working directory |
+| `--label KEY=VALUE`, `--annotation KEY=VALUE` | | labels in the config, annotations on the manifest; repeat for more |
+| `--user`, `--expose PORT[/PROTOCOL]`, `--stop-signal` | | as a Dockerfile's `USER`, `EXPOSE` and `STOPSIGNAL` |
 | `--base IMAGE@DIGEST` | | an image to build on, pinned by digest, such as `registry.access.redhat.com/ubi9/ubi-minimal@sha256:...` or `debian:bookworm-slim@sha256:...` |
 | `--max-memory SIZE` | `512M` | how much memory the build's buffers may use, such as `128M` or `2G`; at least `16M` |
 | `--cache-dir PATH` | `PIXI_OCI_CACHE_DIR`, else the platform's cache | downloaded package archives, named by their sha256 |
@@ -221,6 +223,7 @@ Every item has an issue labelled [`roadmap`](https://github.com/millsks/pixi-oci
 - [x] PyPI wheels in the top layer ([#17](https://github.com/millsks/pixi-oci/issues/17))
 - [x] [Examples](examples/README.md) of real pixi workspaces, small to large ([#22](https://github.com/millsks/pixi-oci/issues/22))
 - [x] `push` to any registry ([#13](https://github.com/millsks/pixi-oci/issues/13))
+- [x] Image metadata: labels, annotations, user, ports, stop signal ([#39](https://github.com/millsks/pixi-oci/issues/39))
 - [ ] `run`: rootless containers on Linux and in CI ([#14](https://github.com/millsks/pixi-oci/issues/14))
 - [ ] `diff`: two images compared layer by layer ([#26](https://github.com/millsks/pixi-oci/issues/26))
 - [ ] Multi-platform image indexes ([#15](https://github.com/millsks/pixi-oci/issues/15))

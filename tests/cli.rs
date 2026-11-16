@@ -437,3 +437,20 @@ fn push_refuses_a_bad_destination_or_an_invalid_image_before_connecting() {
     let invalid = stderr(&["push", image, "127.0.0.1:9/team/app:1"]);
     assert!(invalid.contains("is not a valid OCI image: 2 problems"), "{invalid}");
 }
+
+#[test]
+fn build_refuses_bad_metadata_before_reading_anything() {
+    for (option, value) in [
+        ("--expose", "70000"),
+        ("--stop-signal", "kill!"),
+        ("--user", "a b"),
+        ("--label", "=x"),
+        ("--annotation", "noequals"),
+    ] {
+        pixi_oci()
+            .args(["build", "--lockfile", "does-not-exist.lock", option, value])
+            .assert()
+            .code(2)
+            .stderr(predicate::str::contains(format!("invalid value '{value}' for")));
+    }
+}

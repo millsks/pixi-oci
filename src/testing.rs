@@ -364,6 +364,11 @@ pub fn build_image(dir: &Path, plan: &Plan, output: &Path) -> crate::image::Writ
         source_date_epoch: 0,
         max_memory: 16 << 20,
         base: None,
+        labels: Vec::new(),
+        annotations: Vec::new(),
+        user: None,
+        expose: Vec::new(),
+        stop_signal: None,
     };
     let fetcher = crate::fetch::Fetcher::new(dir.join("cache"));
     crate::build::build(plan, &options, &fetcher, &mut std::io::sink()).unwrap()

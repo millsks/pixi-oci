@@ -61,6 +61,14 @@ pub struct Settings {
     pub labels: Vec<(String, String)>,
     /// The base image, whose config the image's config starts from.
     pub base: Option<Base>,
+    /// The user processes run as; the base's when `None`.
+    pub user: Option<String>,
+    /// Ports to expose (`8000/tcp`), added to the base's.
+    pub exposed_ports: Vec<String>,
+    /// The signal that stops the container; the base's when `None`.
+    pub stop_signal: Option<String>,
+    /// The manifest's annotations, before the ones naming the base.
+    pub annotations: Vec<(String, String)>,
 }
 
 /// A name and tag, as `registry/name:tag` or `name:tag`; `latest` when no tag is given.
@@ -138,6 +146,22 @@ pub fn config(platform: &OciPlatform, layers: &[ImageLayer], settings: &Settings
     if let Some(workdir) = &settings.workdir {
         config.insert("WorkingDir".into(), json!(workdir));
     }
+    if let Some(user) = &settings.user {
+        config.insert("User".into(), json!(user));
+    }
+    if let Some(signal) = &settings.stop_signal {
+        config.insert("StopSignal".into(), json!(signal));
+    }
+    if !settings.exposed_ports.is_empty() {
+        let mut ports = config
+            .remove("ExposedPorts")
+            .and_then(|ports| ports.as_object().cloned())
+            .unwrap_or_default();
+        for port in &settings.exposed_ports {
+            ports.insert(port.clone(), json!({}));
+        }
+        config.insert("ExposedPorts".into(), Value::Object(ports));
+    }
     let mut labels = config
         .remove("Labels")
         .and_then(|labels| labels.as_object().cloned())
@@ -192,7 +216,7 @@ pub fn config(platform: &OciPlatform, layers: &[ImageLayer], settings: &Settings
 }
 
 /// The image manifest JSON for a config blob and layers.
-pub fn manifest(config: &Blob, layers: &[ImageLayer], base: Option<&Base>) -> Value {
+pub fn manifest(config: &Blob, layers: &[ImageLayer], settings: &Settings) -> Value {
     let mut manifest = json!({
         "schemaVersion": 2,
         "mediaType": MANIFEST_MEDIA_TYPE,
@@ -203,12 +227,17 @@ pub fn manifest(config: &Blob, layers: &[ImageLayer], base: Option<&Base>) -> Va
             "size": layer.blob.size,
         })).collect::<Vec<_>>(),
     });
-    // The image spec's own annotations for the image an image is built on.
-    if let Some(base) = base {
-        manifest["annotations"] = json!({
-            "org.opencontainers.image.base.digest": base.digest,
-            "org.opencontainers.image.base.name": base.name,
-        });
+    // The user's annotations, then the image spec's own for the image an image is built on.
+    let mut annotations = serde_json::Map::new();
+    for (key, value) in &settings.annotations {
+        annotations.insert(key.clone(), json!(value));
+    }
+    if let Some(base) = &settings.base {
+        annotations.insert("org.opencontainers.image.base.digest".into(), json!(base.digest));
+        annotations.insert("org.opencontainers.image.base.name".into(), json!(base.name));
+    }
+    if !annotations.is_empty() {
+        manifest["annotations"] = Value::Object(annotations);
     }
     manifest
 }
@@ -248,7 +277,7 @@ pub fn finish_layout(
 ) -> io::Result<Written> {
     let blobs = layout.join("blobs/sha256");
     let config_blob = write_json_blob(&config(platform, layers, settings, created), &blobs)?;
-    let manifest_blob = write_json_blob(&manifest(&config_blob, layers, settings.base.as_ref()), &blobs)?;
+    let manifest_blob = write_json_blob(&manifest(&config_blob, layers, settings), &blobs)?;
     let mut platform_json = json!({"architecture": platform.architecture, "os": platform.os});
     if let Some(variant) = platform.variant {
         platform_json["variant"] = json!(variant);
@@ -425,6 +454,10 @@ mod tests {
             workdir: Some("/work".into()),
             labels: vec![("a".into(), "b".into())],
             base: None,
+            user: None,
+            exposed_ports: Vec::new(),
+            stop_signal: None,
+            annotations: Vec::new(),
         };
         let config = config(&platform, &layers, &settings, "1970-01-01T00:00:00Z");
         assert_eq!(config["architecture"], "arm64");

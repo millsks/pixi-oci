@@ -34,9 +34,41 @@ Builds an image of an environment. It takes `plan`'s `--lockfile`, `-e`, `-p`, `
 | `--entrypoint COMMAND` | | the entrypoint: a JSON array (`'["python", "-m", "http.server"]'`) or words (`python -m http.server`) |
 | `--cmd ARGS` | | the default arguments, in the same two forms |
 | `--workdir PATH` | | the working directory processes start in |
+| `--label KEY=VALUE` | | a label in the image config; repeat for more. pixi-oci's own `dev.pixi.*` labels win |
+| `--annotation KEY=VALUE` | | an annotation on the manifest, such as `org.opencontainers.image.source`; repeat for more |
+| `--user USER` | the base's, else root | the user processes run as: `NAME`, `UID`, `NAME:GROUP` or `UID:GID` |
+| `--expose PORT[/PROTOCOL]` | | a port the image listens on, `tcp` unless `udp` or `sctp` is given; repeat for more; added to the base's |
+| `--stop-signal SIGNAL` | the base's | the signal that stops the container: `SIGTERM`, `TERM` or a number |
 | `--base IMAGE@DIGEST` | | an image to build on, pinned by digest, for glibc and a shell: its layers go under the environment's and its config is where the image's starts ([Base images](base-images.md)) |
 | `--max-memory SIZE` | `512M` | roughly how much memory the build's buffers may use, such as `128M` or `2G`; at least `16M`. Less means fewer layers at once and large files waiting on disk; the image is the same. |
 | `--cache-dir PATH` | see below | where downloaded package archives are kept, named by their sha256 |
+
+What a Dockerfile would say, `build` takes as options:
+
+| Dockerfile | `pixi oci build` |
+|---|---|
+| `FROM image@sha256:...` | `--base image@sha256:...` |
+| `ENV KEY=VALUE` | `--env KEY=VALUE` |
+| `ENTRYPOINT`, `CMD` | `--entrypoint`, `--cmd` |
+| `WORKDIR` | `--workdir` |
+| `LABEL KEY=VALUE` | `--label KEY=VALUE` |
+| `USER` | `--user` |
+| `EXPOSE 8000` | `--expose 8000` |
+| `STOPSIGNAL` | `--stop-signal` |
+| (manifest annotations, from `docker buildx --annotation`) | `--annotation KEY=VALUE` |
+
+`HEALTHCHECK`, `SHELL` and `ONBUILD` are Docker's own, not part of the OCI image spec, and container runtimes such
+as podman and Kubernetes ignore them. `RUN`, `COPY` and `ADD` have no equivalent: the image is the environment the
+lockfile describes ([#40](https://github.com/millsks/pixi-oci/issues/40) is about adding application files).
+
+GHCR links a package to its repository by the `org.opencontainers.image.source` label or annotation, and shows
+`org.opencontainers.image.description`:
+
+```sh
+pixi oci build ... \
+  --label org.opencontainers.image.source=https://github.com/team/app \
+  --annotation org.opencontainers.image.description="The app's API"
+```
 
 The image always sets `PATH=<prefix>/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin` and
 `CONDA_PREFIX=<prefix>`; `--env` adds to them. It is labelled `dev.pixi.environment` and `dev.pixi.platform`.
