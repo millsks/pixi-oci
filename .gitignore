@@ -10,6 +10,8 @@ target/
 # Images and layouts a local run writes
 /*.tar
 /oci-layout/
+# Images pulled locally to try out, kept out of the repository
+/examples/local-registry/
 
 # Local Claude overrides and worktrees
 CLAUDE.local.md
