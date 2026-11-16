@@ -978,6 +978,7 @@ scope and acceptance criteria live and its pull requests are linked. Comment the
       scoped ones for CI; tested against <code>registry:2</code> and GHCR (<a href="https://github.com/millsks/pixi-oci/issues/13">#13</a>)</li>
 <li>[x] <strong>Image metadata</strong>: <code>--label</code>, <code>--annotation</code>, <code>--user</code>, <code>--expose</code> and <code>--stop-signal</code>, as a Dockerfile sets them
       (<a href="https://github.com/millsks/pixi-oci/issues/39">#39</a>)</li>
+<li>[x] <strong>Pull</strong>: <code>pixi oci pull</code> writes a registry image to a <code>.tar</code> or layout, no daemon or store (<a href="https://github.com/millsks/pixi-oci/issues/42">#42</a>)</li>
 </ul>
 <h2 id="next">Next<a class="headerlink" href="#next" title="Permanent link">&para;</a></h2>
 <ul>
@@ -1027,6 +1028,12 @@ scope and acceptance criteria live and its pull requests are linked. Comment the
 </table>
 <h2 id="after-that">After that<a class="headerlink" href="#after-that" title="Permanent link">&para;</a></h2>
 <ul>
+<li>[ ] <code>pixi oci digest</code>: a tag's digest, to pin a base (<a href="https://github.com/millsks/pixi-oci/issues/43">#43</a>)</li>
+<li>[ ] <code>inspect</code>, <code>validate</code> and <code>check</code> straight from a registry (<a href="https://github.com/millsks/pixi-oci/issues/44">#44</a>)</li>
+<li>[ ] <code>pixi oci tag</code>: a new tag in a registry without moving blobs (<a href="https://github.com/millsks/pixi-oci/issues/45">#45</a>)</li>
+<li>[ ] <code>pixi oci copy</code>: between registries and files, only what is missing (<a href="https://github.com/millsks/pixi-oci/issues/46">#46</a>)</li>
+<li>[ ] <code>pixi oci cache</code>: see and prune the download cache (<a href="https://github.com/millsks/pixi-oci/issues/47">#47</a>)</li>
+<li>[ ] Application files in the image, the Dockerfile's <code>COPY</code> (<a href="https://github.com/millsks/pixi-oci/issues/40">#40</a>)</li>
 <li>[ ] <code>pixi oci diff</code>: two images compared layer by layer, with the packages behind each change and what a rebuild
       re-uploads (<a href="https://github.com/millsks/pixi-oci/issues/26">#26</a>)</li>
 <li>[ ] Multi-platform image indexes: <code>linux-64</code> and <code>linux-aarch64</code> under one tag
