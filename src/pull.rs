@@ -94,53 +94,21 @@ pub fn pull(
     } else {
         output.to_path_buf()
     };
-    let blobs = layout.join("blobs/sha256");
-    fs::create_dir_all(&blobs).map_err(write_err(&blobs))?;
-    let cached = |digest: &str| registry.blob_file(digest).expect("a pulled image's digests are sha256");
-    let mut copies: Vec<(String, PathBuf)> = vec![
-        (image.manifest_digest.clone(), cached(&image.manifest_digest)),
-        (image.config_digest.clone(), cached(&image.config_digest)),
-    ];
-    copies.extend(
-        image
-            .layers
-            .iter()
-            .map(|layer| (layer.digest.clone(), layer.path.clone())),
-    );
-    for (digest, source) in &copies {
-        let target = blobs.join(digest.trim_start_matches("sha256:"));
-        if !target.exists() {
-            fs::copy(source, &target).map_err(write_err(&target))?;
-        }
-    }
-
-    let manifest_size = fs::metadata(cached(&image.manifest_digest))
-        .map_err(write_err(&cached(&image.manifest_digest)))?
-        .len();
-    // A tag names the image for docker load and podman load; a reference pinned only by digest has none.
-    let name = Reference {
-        name: format!("{}/{}", reference.registry, reference.repository),
-        tag: reference.tag.clone().unwrap_or_default(),
-    };
-    let named = reference.tag.as_ref().map(|_| &name);
-    image::write_index(
+    let layers: Vec<(String, PathBuf)> = image
+        .layers
+        .iter()
+        .map(|layer| (layer.digest.clone(), layer.path.clone()))
+        .collect();
+    write_layout(
+        registry,
         &layout,
         platform,
+        reference,
+        &image.manifest_digest,
         &image.manifest_media_type,
-        &Blob {
-            digest: image.manifest_digest.clone(),
-            diff_id: String::new(),
-            size: manifest_size,
-        },
-        named,
         &image.config_digest,
-        &image
-            .layers
-            .iter()
-            .map(|layer| layer.digest.clone())
-            .collect::<Vec<_>>(),
-    )
-    .map_err(write_err(&layout))?;
+        &layers,
+    )?;
     if is_archive {
         image::write_archive(&layout, output, 0).map_err(write_err(output))?;
     }
@@ -152,6 +120,61 @@ pub fn pull(
         size: image.layers.iter().map(|layer| layer.size).sum(),
         output: output.display().to_string(),
     })
+}
+
+/// Write a layout at `layout` from documents and blobs the registry client has cached: the manifest and config as
+/// they were served, the given layers (none, for an image read for its settings alone), and an index naming the
+/// image by `reference`'s tag when it has one.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn write_layout(
+    registry: &Registry,
+    layout: &Path,
+    platform: &OciPlatform,
+    reference: &ImageRef,
+    manifest_digest: &str,
+    manifest_media_type: &str,
+    config_digest: &str,
+    layers: &[(String, PathBuf)],
+) -> Result<(), PullError> {
+    let write_err = |path: &Path| {
+        let path = path.to_path_buf();
+        move |source| PullError::Write { path, source }
+    };
+    let blobs = layout.join("blobs/sha256");
+    fs::create_dir_all(&blobs).map_err(write_err(&blobs))?;
+    let cached = |digest: &str| registry.blob_file(digest).expect("a pulled image's digests are sha256");
+    let mut copies: Vec<(String, PathBuf)> = vec![
+        (manifest_digest.to_string(), cached(manifest_digest)),
+        (config_digest.to_string(), cached(config_digest)),
+    ];
+    copies.extend(layers.iter().cloned());
+    for (digest, source) in &copies {
+        let target = blobs.join(digest.trim_start_matches("sha256:"));
+        if !target.exists() {
+            fs::copy(source, &target).map_err(write_err(&target))?;
+        }
+    }
+    let manifest_file = cached(manifest_digest);
+    let manifest_size = fs::metadata(&manifest_file).map_err(write_err(&manifest_file))?.len();
+    // A tag names the image for docker load and podman load; a reference pinned only by digest has none.
+    let name = Reference {
+        name: format!("{}/{}", reference.registry, reference.repository),
+        tag: reference.tag.clone().unwrap_or_default(),
+    };
+    image::write_index(
+        layout,
+        platform,
+        manifest_media_type,
+        &Blob {
+            digest: manifest_digest.to_string(),
+            diff_id: String::new(),
+            size: manifest_size,
+        },
+        reference.tag.as_ref().map(|_| &name),
+        config_digest,
+        &layers.iter().map(|(digest, _)| digest.clone()).collect::<Vec<_>>(),
+    )
+    .map_err(write_err(layout))
 }
 
 #[cfg(test)]

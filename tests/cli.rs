@@ -482,3 +482,25 @@ fn digest_refuses_a_bad_reference_or_platform_before_connecting() {
         .failure()
         .stderr(predicate::str::contains("osx-arm64 is not a Linux platform"));
 }
+
+#[test]
+fn inspect_validate_and_check_tell_a_path_from_a_reference() {
+    // A path that is not there is still a path: nothing is asked of a registry.
+    for command in ["inspect", "validate", "check"] {
+        pixi_oci()
+            .args([command, "missing.tar"])
+            .assert()
+            .failure()
+            .stderr(predicate::str::contains("missing.tar"));
+        pixi_oci()
+            .args([command, "docker://Not A Reference"])
+            .assert()
+            .failure()
+            .stderr(predicate::str::contains("is not an image reference"));
+    }
+    pixi_oci()
+        .args(["inspect", "127.0.0.1:9/team/app:1", "--platform", "beos/amd64"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("is not a platform"));
+}

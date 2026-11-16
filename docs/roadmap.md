@@ -42,6 +42,8 @@ scope and acceptance criteria live and its pull requests are linked. Comment the
       kept out of the image ([#18](https://github.com/millsks/pixi-oci/issues/18))
 - [x] **Mirrors, S3 and GCS**: pixi's `mirrors` and `s3-options`, and `s3://`, `gcs://` and `oci://` downloads
       through rattler's own middleware ([#51](https://github.com/millsks/pixi-oci/issues/51))
+- [x] **From a registry**: `inspect`, `validate` and `check` take a reference; `inspect` downloads no layer
+      ([#44](https://github.com/millsks/pixi-oci/issues/44))
 
 ## Next
 
@@ -57,7 +59,6 @@ scope and acceptance criteria live and its pull requests are linked. Comment the
 
 ## After that
 
-- [ ] `inspect`, `validate` and `check` straight from a registry ([#44](https://github.com/millsks/pixi-oci/issues/44))
 - [ ] `pixi oci tag`: a new tag in a registry without moving blobs ([#45](https://github.com/millsks/pixi-oci/issues/45))
 - [ ] `pixi oci copy`: between registries and files, only what is missing ([#46](https://github.com/millsks/pixi-oci/issues/46))
 - [ ] `pixi oci cache`: see and prune the download cache ([#47](https://github.com/millsks/pixi-oci/issues/47))

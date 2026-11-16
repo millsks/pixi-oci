@@ -93,7 +93,8 @@ app.tar is a valid OCI image
 
 | Argument or option | Default | |
 |---|---|---|
-| `IMAGE` | | an OCI image layout directory, or a `.tar` archive of one, read in place |
+| `IMAGE` | | an OCI image layout directory, a `.tar` archive of one read in place, or an image in a registry (see [Images in a registry](#images-in-a-registry)) |
+| `-p, --platform NAME` | Linux on the host's architecture | from a registry, which image of an index to validate; a file is validated whole |
 | `--format text\|json` | `text` | `json` gives `valid`, each manifest checked, and each problem as `at` and `message` |
 
 It checks:
@@ -112,6 +113,28 @@ their `diff_id` is not checked.
 
 The image is a standard OCI image, so other tools check it the same way: `crane validate --tarball app.tar`, or
 `skopeo copy oci-archive:app.tar ...` as a smoke test.
+
+### Images in a registry
+
+`validate`, `check` and `inspect` read an image straight from a registry, too: give a reference instead of a path.
+
+```console
+$ pixi oci inspect ghcr.io/team/app:1.0
+$ pixi oci check debian:bookworm-slim --platform linux-64
+$ pixi oci validate docker://registry.example.com/app
+```
+
+An argument is a reference when no such file or directory exists and it has a tag, a digest or a repository path
+(`debian:bookworm-slim`, `ghcr.io/team/app`), and does not look like a path (`app.tar`, `./layout`, `/images/app`).
+`docker://` makes any argument a reference, as skopeo writes one.
+
+- `inspect` downloads only the manifest and config, never a layer. `--raw index` prints the document the registry
+  serves for the reference: its index, or the image's manifest.
+- `validate` and `check` download the layers, through the same cache as `pull` and `--base`, so a `pull` after them
+  downloads nothing.
+- From an index, `--platform` picks the image, and defaults to Linux on the host's architecture. An image of one
+  platform is read for that platform.
+- The report names the reference pinned to the digest its tag resolved to. Credentials are as for `push`.
 
 ## `pixi oci check`
 
@@ -134,8 +157,8 @@ app.tar: 4 problems in 5195 files (134 ELF files, 56 scripts)
 
 | Argument or option | Default | |
 |---|---|---|
-| `IMAGE` | | an OCI image layout directory, or a `.tar` archive of one, read in place |
-| `-p, --platform NAME` | the only one | for an image of several platforms, which one: `linux/arm64/v8`, or `linux-aarch64` |
+| `IMAGE` | | an OCI image layout directory, a `.tar` archive of one read in place, or an image in a registry (see [Images in a registry](#images-in-a-registry)) |
+| `-p, --platform NAME` | the only one (from a registry's index, the host's Linux) | for an image of several platforms, which one: `linux/arm64/v8`, or `linux-aarch64` |
 | `--format text\|json` | `text` | `json` gives `ok`, what was checked, and each problem and note with every path it affects |
 
 It applies the layers in order, whiteouts included, and then:
@@ -284,8 +307,8 @@ Image app:1.0 (app.tar)
 
 | Argument or option | Default | |
 |---|---|---|
-| `IMAGE` | | an OCI image layout directory, or a `.tar` archive of one, read in place |
-| `-p, --platform NAME` | the only one | for an image of several platforms, which one: `linux/arm64/v8`, or the conda name `linux-aarch64` |
+| `IMAGE` | | an OCI image layout directory, a `.tar` archive of one read in place, or an image in a registry (see [Images in a registry](#images-in-a-registry)) |
+| `-p, --platform NAME` | the only one (from a registry's index, the host's Linux) | for an image of several platforms, which one: `linux/arm64/v8`, or the conda name `linux-aarch64` |
 | `--packages` | | list the packages of every layer that holds several |
 | `--format text\|json` | `text` | `json` gives every field, and each layer's digest, size, media type, `diff_id`, history line and packages |
 | `--raw index\|manifest\|config` | | print that stored document exactly, instead of the summary; its sha256 is its digest |
@@ -294,7 +317,7 @@ Layer sizes are the compressed sizes the registry stores. The packages of each l
 pixi-oci writes for it; a layer another tool built shows its own history line instead.
 
 Other OCI tools read the same image: `skopeo inspect oci-archive:app.tar`, `skopeo inspect --config
-oci-archive:app.tar`, or `crane config` and `crane manifest` on a pushed image.
+oci-archive:app.tar`, or `crane config` and `crane manifest` on a pushed image (which `pixi oci inspect REF` reads too).
 
 ## Environment variables
 

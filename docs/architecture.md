@@ -33,6 +33,7 @@ pixi-oci is one Rust binary, organized as a short pipeline. Each stage has one m
 | `registry.rs` | A base image pulled from a registry, pinned by digest: the platform's manifest from an index, its config and layers, each checked against its digest and cached by it. Anonymous or with docker's and podman's credentials, through bearer tokens or basic auth. |
 | `wheel.rs` | A PyPI wheel installed into a layer as pip and uv install one: site-packages, scripts, headers, data, entry point launchers, every file checked against the wheel's RECORD and a new RECORD written. |
 | `digest.rs` | `digest`: a tag resolved to its digest, or a platform's manifest digest, from manifests (and a config) alone. |
+| `remote.rs` | A registry image for `inspect`, `validate` and `check`: an argument told from a path, then fetched into a temporary layout, with its manifest and config only for `inspect`. |
 | `pull.rs` | `pull`: a tag resolved to its digest, the platform's image fetched through the blob cache, written as a layout or `.tar` with the registry's digest. |
 | `push.rs` | `push`: validate, then each blob the registry lacks uploaded (or mounted from the base's repository), the manifest last, its digest checked. |
 | `read.rs` | An image read back: a layout directory, or a `.tar` read in place by each file's offset, never unpacked. |

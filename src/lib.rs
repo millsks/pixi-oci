@@ -24,6 +24,7 @@ pub mod pull;
 pub mod push;
 pub mod read;
 pub mod registry;
+pub mod remote;
 pub mod report;
 pub mod sources;
 pub mod stream;
@@ -116,8 +117,35 @@ fn run_push(args: PushArgs) -> miette::Result<String> {
     })
 }
 
+/// The image as a path to read: the path given, or a registry image fetched into a temporary layout, with its layers
+/// when `layers` is set, and the name to report it by.
+fn open_image(
+    image: &std::path::Path,
+    platform: Option<&str>,
+    layers: bool,
+) -> miette::Result<(std::path::PathBuf, Option<remote::RemoteImage>)> {
+    match remote::reference(image)? {
+        None => Ok((image.to_path_buf(), None)),
+        Some(reference) => {
+            let registry = registry::Registry::new(fetch::Fetcher::default_root());
+            let fetched = remote::fetch(&reference, platform, layers, &registry)?;
+            Ok((fetched.layout.clone(), Some(fetched)))
+        }
+    }
+}
+
 fn run_check(args: CheckArgs) -> miette::Result<Output> {
-    let report = check::check(&args.image, args.platform.as_deref())?;
+    let (path, fetched) = open_image(&args.image, args.platform.as_deref(), true)?;
+    // A fetched layout holds the one platform it was fetched for.
+    let platform = if fetched.is_some() {
+        None
+    } else {
+        args.platform.as_deref()
+    };
+    let mut report = check::check(&path, platform)?;
+    if let Some(fetched) = &fetched {
+        report.image = fetched.name.clone();
+    }
     let stdout = match args.format {
         Format::Text => report.text(),
         Format::Json => report.json() + "\n",
@@ -129,11 +157,23 @@ fn run_check(args: CheckArgs) -> miette::Result<Output> {
 }
 
 fn run_inspect(args: InspectArgs) -> miette::Result<String> {
-    let platform = args.platform.as_deref();
+    let (path, fetched) = open_image(&args.image, args.platform.as_deref(), false)?;
+    let platform = if fetched.is_some() {
+        None
+    } else {
+        args.platform.as_deref()
+    };
     if let Some(which) = args.raw {
-        return Ok(inspect::raw(&args.image, platform, which)?);
+        // From a registry, the index is the document it serves for the reference, not the layout's own.
+        if let (Some(fetched), inspect::Raw::Index) = (&fetched, which) {
+            return Ok(String::from_utf8_lossy(&fetched.served).into_owned());
+        }
+        return Ok(inspect::raw(&path, platform, which)?);
     }
-    let inspection = inspect::inspect(&args.image, platform)?;
+    let mut inspection = inspect::inspect(&path, platform)?;
+    if let Some(fetched) = &fetched {
+        inspection.image = fetched.name.clone();
+    }
     Ok(match args.format {
         Format::Text => inspection.text(args.packages),
         Format::Json => inspection.json() + "\n",
@@ -141,7 +181,11 @@ fn run_inspect(args: InspectArgs) -> miette::Result<String> {
 }
 
 fn run_validate(args: ValidateArgs) -> miette::Result<Output> {
-    let report = validate::validate(&args.image)?;
+    let (path, fetched) = open_image(&args.image, args.platform.as_deref(), true)?;
+    let mut report = validate::validate(&path)?;
+    if let Some(fetched) = &fetched {
+        report.image = fetched.name.clone();
+    }
     let stdout = match args.format {
         Format::Text => report.text(),
         Format::Json => report.json() + "\n",

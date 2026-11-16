@@ -647,3 +647,54 @@ fn digest_agrees_with_pull() {
     assert!(pulled["reference"].as_str().unwrap().ends_with(&index), "{pulled}");
     assert_eq!(run(&["digest", tag, "--pinned"]), format!("{tag}@{index}"));
 }
+
+/// `inspect`, `validate` and `check` read a registry image as they read a file, and `check` on it says what it says
+/// on the same image pulled.
+#[test]
+fn registry_images_are_inspected_validated_and_checked_in_place() {
+    if enabled().is_none() {
+        return;
+    }
+    let dir = tempfile::tempdir().unwrap();
+    let run = |args: &[&str]| {
+        let output = Command::cargo_bin("pixi-oci")
+            .unwrap()
+            .env("PIXI_OCI_CACHE_DIR", dir.path().join("cache"))
+            .args(args)
+            .output()
+            .unwrap();
+        assert!(
+            output.status.success(),
+            "{args:?}: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        String::from_utf8(output.stdout).unwrap()
+    };
+    let tag = "debian:bookworm-slim";
+    let inspected: serde_json::Value =
+        serde_json::from_str(&run(&["inspect", tag, "-p", "linux-64", "--format", "json"])).unwrap();
+    assert_eq!(inspected["platform"], "linux/amd64");
+    assert!(
+        inspected["image"]
+            .as_str()
+            .unwrap()
+            .starts_with("docker.io/library/debian:bookworm-slim@sha256:")
+    );
+    // inspect downloaded no layer: the cache holds documents only.
+    let biggest = std::fs::read_dir(dir.path().join("cache/blobs/sha256"))
+        .unwrap()
+        .map(|entry| entry.unwrap().metadata().unwrap().len())
+        .max()
+        .unwrap();
+    assert!(biggest < 1 << 20, "{biggest}");
+    assert!(run(&["validate", tag, "-p", "linux-64"]).contains("is a valid OCI image"));
+
+    let pulled = dir.path().join("debian.tar").display().to_string();
+    run(&["pull", tag, "-p", "linux-64", "-o", &pulled]);
+    let from_registry: serde_json::Value =
+        serde_json::from_str(&run(&["check", tag, "-p", "linux-64", "--format", "json"])).unwrap();
+    let from_file: serde_json::Value = serde_json::from_str(&run(&["check", &pulled, "--format", "json"])).unwrap();
+    for key in ["ok", "checked", "problems", "notes"] {
+        assert_eq!(from_registry[key], from_file[key], "{key}");
+    }
+}
