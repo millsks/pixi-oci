@@ -10,7 +10,7 @@ use crate::fetch::{FetchError, Fetcher};
 use crate::image::{self, ImageLayer, Reference, Settings, Written};
 use crate::lock::Kind;
 use crate::plan::Plan;
-use crate::report::size_text;
+use crate::report::{plural, size_text};
 use crate::stream::{self, StreamError};
 use crate::target::{Target, TargetError};
 
@@ -84,6 +84,8 @@ pub struct BuildOptions {
     pub expose: Vec<String>,
     /// The signal that stops the container, replacing the base's.
     pub stop_signal: Option<String>,
+    /// Files from `--add`, collected already: one layer above the environment's.
+    pub app: Option<crate::add::App>,
 }
 
 /// The default for `--max-memory`: 512 MiB.
@@ -234,6 +236,19 @@ pub fn build(
             // A layer that never started because an earlier one failed: that failure was returned above.
             None => break,
         }
+    }
+
+    if let Some(app) = &options.app {
+        if let Ok(mut out) = progress.lock() {
+            let _ = writeln!(
+                out,
+                "application: {} ({})",
+                plural(app.files(), "file"),
+                size_text(Some(app.size()))
+            );
+        }
+        let blob = crate::add::write_layer(app, &blobs, LAYER_MTIME).map_err(write_err(&layout))?;
+        layers.push(ImageLayer::new(blob, app.created_by()));
     }
 
     // The base's layers go underneath, as they were pulled: copied from the cache, their digests already checked.
@@ -571,6 +586,7 @@ mod tests {
             user: None,
             expose: Vec::new(),
             stop_signal: None,
+            app: None,
         }
     }
 
@@ -832,6 +848,52 @@ mod tests {
         let err = build(&plan_of(vec![pypi], 100), &relative, &fetcher, &mut std::io::sink()).unwrap_err();
         assert!(matches!(err, BuildError::RelativePrefix { .. }), "{err}");
         assert!(!output.exists());
+    }
+
+    #[test]
+    fn added_files_are_one_layer_above_the_environment() {
+        let dir = tempfile::tempdir().unwrap();
+        let plan = plan_of(
+            vec![package(dir.path(), "tool", &["base"]), package(dir.path(), "base", &[])],
+            100,
+        );
+        let src = dir.path().join("src");
+        fs::create_dir_all(&src).unwrap();
+        fs::write(src.join("main.py"), "print('hi')\n").unwrap();
+        fs::write(src.join(".gitignore"), "*.log\n").unwrap();
+        fs::write(src.join("debug.log"), "noise").unwrap();
+        let adds = [crate::add::parse_add(&format!("{}:/app", src.display())).unwrap()];
+        let fetcher = Fetcher::new(dir.path().join("cache"));
+        let built = |name: &str| {
+            let layout = dir.path().join(name);
+            let mut options = options(layout.clone());
+            options.app = Some(crate::add::collect(&adds, None).unwrap());
+            let mut progress = Vec::new();
+            let written = build(&plan, &options, &fetcher, &mut progress).unwrap();
+            (layout, written, String::from_utf8(progress).unwrap())
+        };
+        let (layout, written, progress) = built("first");
+        assert!(progress.ends_with("application: 2 files (18 B)\n"), "{progress}");
+        let image = manifest(&layout, &written);
+        let layers = image["layers"].as_array().unwrap();
+        assert_eq!(layers.len(), 3);
+        let top = layer_files(&blob(&layout, layers[2]["digest"].as_str().unwrap()));
+        let paths: Vec<&str> = top.keys().map(String::as_str).collect();
+        assert_eq!(paths, ["app/", "app/.gitignore", "app/main.py"]);
+        let config: serde_json::Value =
+            serde_json::from_slice(&fs::read(blob(&layout, &written.config.digest)).unwrap()).unwrap();
+        assert_eq!(config["history"][2]["created_by"], "pixi-oci add: /app");
+        assert_eq!(config["rootfs"]["diff_ids"].as_array().unwrap().len(), 3);
+
+        // The same files give the same image, and the environment's layers are the ones a build without them has.
+        let (_, again, _) = built("second");
+        assert_eq!(again.manifest.digest, written.manifest.digest);
+        let without = dir.path().join("without");
+        let plain = build(&plan, &options(without.clone()), &fetcher, &mut std::io::sink()).unwrap();
+        assert_eq!(
+            manifest(&without, &plain)["layers"].as_array().unwrap()[..],
+            layers[..2]
+        );
     }
 
     #[test]

@@ -22,6 +22,8 @@ scope and acceptance criteria live and its pull requests are linked. Comment the
       ([#10](https://github.com/millsks/pixi-oci/issues/10))
 - [x] **One environment layer by default**: the base image's layers and the environment in one, `--layers grouped`
       for large environments that change often ([#56](https://github.com/millsks/pixi-oci/issues/56))
+- [x] **`--add SRC:DEST`**: the application's files in one layer above the environment, with `.gitignore`,
+      `.dockerignore` and `.pixi-oci-ignore` applied ([#40](https://github.com/millsks/pixi-oci/issues/40))
 - [x] **`validate`**: an image checked against the OCI image spec on any OS, every blob, digest, size and `diff_id`
       ([#25](https://github.com/millsks/pixi-oci/issues/25))
 - [x] **`inspect`**: an image's settings and layers, with the packages each layer holds, as text, JSON or the exact
@@ -64,7 +66,6 @@ scope and acceptance criteria live and its pull requests are linked. Comment the
 - [ ] `pixi oci tag`: a new tag in a registry without moving blobs ([#45](https://github.com/millsks/pixi-oci/issues/45))
 - [ ] `pixi oci copy`: between registries and files, only what is missing ([#46](https://github.com/millsks/pixi-oci/issues/46))
 - [ ] `pixi oci cache`: see and prune the download cache ([#47](https://github.com/millsks/pixi-oci/issues/47))
-- [ ] Application files in the image, the Dockerfile's `COPY` ([#40](https://github.com/millsks/pixi-oci/issues/40))
 - [ ] `pixi oci diff`: two images compared layer by layer, with the packages behind each change and what a rebuild
       re-uploads ([#26](https://github.com/millsks/pixi-oci/issues/26))
 - [ ] Multi-platform image indexes: `linux-64` and `linux-aarch64` under one tag

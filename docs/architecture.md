@@ -21,7 +21,7 @@ pixi-oci is one Rust binary, organized as a short pipeline. Each stage has one m
 | `plan.rs` | Splits those packages into layers as `--layers` says: one for everything (the default), large packages alone and small ones grouped at cut points their names fix, or one per package; dependencies first with ties by name, capped by `--max-layers`, PyPI on top. |
 | `platform.rs` | Maps `linux-*` conda platforms to OCI platforms (`linux-aarch64` to `linux/arm64/v8`), and picks the default. |
 | `report.rs` | A plan as a table or JSON. |
-| `build.rs` | `build`: checks the request, fetches every archive, writes the planned layers in parallel within `--max-memory`, puts a pulled base's layers underneath, merges its config, then writes the image. |
+| `build.rs` | `build`: checks the request, fetches every archive, writes the planned layers in parallel within `--max-memory`, adds the application layer from `--add` on top, puts a pulled base's layers underneath, merges its config, then writes the image. |
 | `sources.rs` | pixi's config as pixi reads it (`mirrors`, `s3-options`, through rattler_config), each location's mirrors longest match first, and a reqwest client with rattler's S3, GCS and OCI middleware for those schemes. |
 | `fetch.rs` | Downloads conda archives and wheels (ureq) with pixi's credentials for each host, applied as rattler applies them and kept out of errors; checks each against the lockfile's sha256, and keeps it in a cache named by that hash. |
 | `stream.rs` | Writes one layer straight from its packages' archives: placeholder replacement, `noarch: python` placement and entry points, `conda-meta` records, the prefix guard, and the piecewise rewrite of large files. |
@@ -31,6 +31,7 @@ pixi-oci is one Rust binary, organized as a short pipeline. Each stage has one m
 | `check.rs` | `check`: the layers applied into a map of facts (modes, ELF dynamic sections, shebangs, placeholders), then the loader's and the shell's lookups run inside it. |
 | `inspect.rs` | `inspect`: an image's settings and layers, with each layer's packages read from its history line. |
 | `registry.rs` | A base image pulled from a registry, pinned by digest: the platform's manifest from an index, its config and layers, each checked against its digest and cached by it. Anonymous or with docker's and podman's credentials, through bearer tokens or basic auth. |
+| `add.rs` | `--add`: files and directories from the host, walked with `.gitignore`, `.pixi-oci-ignore` and the workspace's `.dockerignore` (the `ignore` crate), written as one application layer whose modes come from content (`#!`, ELF), never the host's bits. |
 | `wheel.rs` | A PyPI wheel installed into a layer as pip and uv install one: site-packages, scripts, headers, data, entry point launchers, every file checked against the wheel's RECORD and a new RECORD written. |
 | `digest.rs` | `digest`: a tag resolved to its digest, or a platform's manifest digest, from manifests (and a config) alone. |
 | `remote.rs` | A registry image for `inspect`, `validate` and `check`: an argument told from a path, then fetched into a temporary layout, with its manifest and config only for `inspect`. |

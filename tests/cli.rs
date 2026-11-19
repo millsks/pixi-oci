@@ -531,3 +531,32 @@ fn inspect_validate_and_check_tell_a_path_from_a_reference() {
         .failure()
         .stderr(predicate::str::contains("is not a platform"));
 }
+
+#[test]
+fn build_refuses_a_wrong_add_before_downloading() {
+    let dir = tempfile::tempdir().unwrap();
+    let build = |add: String| {
+        pixi_oci()
+            .args([
+                "build",
+                "--lockfile",
+                LOCKFILE,
+                "-e",
+                "app",
+                "--platform",
+                "linux-64",
+                "--add",
+            ])
+            .arg(add)
+            .arg("--output")
+            .arg(dir.path().join("image.tar"))
+            .arg("--cache-dir")
+            .arg(dir.path().join("cache"))
+            .assert()
+            .failure()
+    };
+    build(format!("{}:/app", dir.path().join("absent").display())).stderr(predicate::str::contains("does not exist"));
+    build("src".to_string()).stderr(predicate::str::contains("expected SRC:DEST"));
+    assert!(!dir.path().join("cache").exists());
+    assert!(!dir.path().join("image.tar").exists());
+}

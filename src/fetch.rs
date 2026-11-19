@@ -846,6 +846,7 @@ mod tests {
                 user: None,
                 expose: Vec::new(),
                 stop_signal: None,
+                app: None,
             };
             let fetcher = Fetcher::with_proxy(work.path().join("cache"), None)
                 .with_credentials(stored(work.path(), authentication));

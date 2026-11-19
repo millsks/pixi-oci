@@ -34,6 +34,7 @@ Builds an image of an environment. It takes `plan`'s `--lockfile`, `-e`, `-p`, `
 | `--entrypoint COMMAND` | | the entrypoint: a JSON array (`'["python", "-m", "http.server"]'`) or words (`python -m http.server`) |
 | `--cmd ARGS` | | the default arguments, in the same two forms |
 | `--workdir PATH` | | the working directory processes start in |
+| `--add SRC:DEST` | | a file or directory to put in the image, such as `src:/app`; repeat for more. Every `--add` goes into one application layer above the environment ([Your application's files](#your-applications-files)) |
 | `--label KEY=VALUE` | | a label in the image config; repeat for more. pixi-oci's own `dev.pixi.*` labels win |
 | `--annotation KEY=VALUE` | | an annotation on the manifest, such as `org.opencontainers.image.source`; repeat for more |
 | `--user USER` | the base's, else root | the user processes run as: `NAME`, `UID`, `NAME:GROUP` or `UID:GID` |
@@ -50,6 +51,7 @@ What a Dockerfile would say, `build` takes as options:
 | `FROM image@sha256:...` | `--base image@sha256:...` |
 | `ENV KEY=VALUE` | `--env KEY=VALUE` |
 | `ENTRYPOINT`, `CMD` | `--entrypoint`, `--cmd` |
+| `COPY src /app` | `--add src:/app` |
 | `WORKDIR` | `--workdir` |
 | `LABEL KEY=VALUE` | `--label KEY=VALUE` |
 | `USER` | `--user` |
@@ -58,8 +60,50 @@ What a Dockerfile would say, `build` takes as options:
 | (manifest annotations, from `docker buildx --annotation`) | `--annotation KEY=VALUE` |
 
 `HEALTHCHECK`, `SHELL` and `ONBUILD` are Docker's own, not part of the OCI image spec, and container runtimes such
-as podman and Kubernetes ignore them. `RUN`, `COPY` and `ADD` have no equivalent: the image is the environment the
-lockfile describes ([#40](https://github.com/millsks/pixi-oci/issues/40) is about adding application files).
+as podman and Kubernetes ignore them. `RUN` has no equivalent: the environment is what the lockfile describes, and
+nothing runs during a build.
+
+### Your application's files
+
+`--add SRC:DEST` puts a file or directory from your machine into the image, as `COPY` does. The image is then the
+base image's layers, the environment's, and one application layer holding every `--add`:
+
+```sh
+pixi oci build -p linux-64 \
+  --base debian:bookworm-slim@sha256:734a72b3d6142a71993b4bc580ca01d8ca687f77a2c422d96a961d3376b179bc \
+  --add src:/app --add config/api.toml:/etc/api/ \
+  --workdir /app --entrypoint uvicorn --cmd "main:app --host 0.0.0.0" \
+  -t api:1.0 -o api.tar
+```
+
+- **A directory** goes to `DEST` with its contents, as `COPY src /app` puts `src`'s contents in `/app`.
+- **A file** goes to `DEST`, or into it when `DEST` ends with `/`.
+- **Later wins.** When two `--add`s put something at the same path, the later one's is kept.
+- `DEST` is an absolute path in the image. On Windows the source keeps its drive: `--add C:\work\api\src:/app`.
+
+A directory leaves out:
+
+- what `.gitignore` files ignore, from the directory up, and `.git/info/exclude`, as git would;
+- what `.pixi-oci-ignore` files name, in the same syntax and read the same way, for what git should keep but the
+  image should not;
+- what the workspace's `.dockerignore` names, its patterns relative to the workspace (the directory of the
+  lockfile), as docker reads them relative to the build context;
+- `.git` and `.pixi`, always.
+
+A file named by itself is added whatever the ignore files say. A directory that leaves everything out is refused.
+
+Only content reaches the layer, so the same files give the same digest on any machine:
+
+- every entry is owned by root, so the application cannot rewrite its own code even when it runs as `--user`;
+- a file is 0755 when it starts with `#!` or is an ELF binary, 0644 otherwise: the mode bits of your checkout are
+  not read, so a Windows checkout gives the layer a Linux one does;
+- every file is stamped with the Unix epoch, and symbolic links are kept as links;
+- the layer's history line names the destinations (`pixi-oci add: /app, /etc/api/`), never a path on your machine.
+
+A script checked out with Windows line endings keeps them, and `#!/bin/sh\r` does not run. Check out with `eol=lf`
+(`* text=auto eol=lf` in `.gitattributes`); `pixi oci check` reports such a script's interpreter as missing.
+
+The files are read when the build starts, before anything is downloaded, so a wrong path fails at once.
 
 GHCR links a package to its repository by the `org.opencontainers.image.source` label or annotation, and shows
 `org.opencontainers.image.description`:

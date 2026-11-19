@@ -62,6 +62,7 @@ fn streamed(plan: &Plan, fetcher: &Fetcher, dir: &Path, name: &str, max_memory: 
         user: None,
         expose: Vec::new(),
         stop_signal: None,
+        app: None,
     };
     let written = build(plan, &options, fetcher, &mut std::io::sink()).unwrap();
     let report = crate::validate::validate(&layout).unwrap();

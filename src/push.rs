@@ -334,6 +334,7 @@ mod tests {
             user: None,
             expose: Vec::new(),
             stop_signal: None,
+            app: None,
         };
         crate::build::build(
             &plan,
