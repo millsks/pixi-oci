@@ -1076,6 +1076,13 @@ pixi-oci prints them, with the variable parts in angle brackets.</p>
 <h2 id="downloading">Downloading<a class="headerlink" href="#downloading" title="Permanent link">&para;</a></h2>
 <p><strong><code>could not download &lt;url&gt;</code></strong>
 :   The cause follows the message. Behind a proxy, set <code>HTTPS_PROXY</code>.</p>
+<p><strong><code>invalid peer certificate: UnknownIssuer</code></strong>
+:   The server's certificate is signed by a CA pixi-oci does not trust, usually a company's own: a TLS-inspecting
+    proxy, or an internal channel or registry. pixi-oci trusts the operating system's certificate store, as pixi
+    does, so a CA the system trusts works: on Linux, install it into the system bundle (<code>update-ca-certificates</code>,
+    <code>update-ca-trust</code>). Or set <code>SSL_CERT_FILE</code> to a PEM bundle that holds it, which is then the only one trusted.
+    pixi's <code>tls-root-certs = "webpki"</code> in its config switches to the Mozilla roots built in, which a company CA is
+    never among (<a href="../cli/#tls-certificates">TLS certificates</a>).</p>
 <p><strong><code>&lt;url&gt; refused the download (401)</code></strong> or <strong><code>(403)</code></strong>
 :   The channel needs credentials, or refused the ones pixi has. Log in as for pixi, with <code>pixi auth login &lt;host&gt;
     --token &lt;token&gt;</code> (or <code>--username</code> and <code>--password</code>), and build again (<a href="../private-channels/">Private channels</a>).</p>

@@ -824,6 +824,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Environment variables">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#tls-certificates" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        TLS certificates
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1263,6 +1280,23 @@
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Environment variables">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#tls-certificates" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        TLS certificates
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -2020,6 +2054,10 @@ oci-archive:app.tar</code>, or <code>crane config</code> and <code>crane manifes
 <td>the proxy for downloads</td>
 </tr>
 <tr>
+<td><code>SSL_CERT_FILE</code></td>
+<td>a PEM bundle of the CA certificates to trust, instead of the system's (<a href="#tls-certificates">TLS certificates</a>)</td>
+</tr>
+<tr>
 <td><code>PIXI_OCI_REGISTRY_USERNAME</code>, <code>PIXI_OCI_REGISTRY_PASSWORD</code></td>
 <td>credentials for one registry, for CI: <code>push</code>'s destination, or <code>PIXI_OCI_REGISTRY</code></td>
 </tr>
@@ -2033,6 +2071,16 @@ oci-archive:app.tar</code>, or <code>crane config</code> and <code>crane manifes
 </tr>
 </tbody>
 </table>
+<h3 id="tls-certificates">TLS certificates<a class="headerlink" href="#tls-certificates" title="Permanent link">&para;</a></h3>
+<p>Every HTTPS connection (channels, mirrors, registries) trusts the operating system's certificate store by default, as
+pixi does, so a company CA the system trusts, such as a TLS-inspecting proxy's, works with no setup. Two settings
+change that:</p>
+<ul>
+<li><code>SSL_CERT_FILE=/path/to/bundle.pem</code> trusts the certificates in that bundle and no others.</li>
+<li>pixi's <code>tls-root-certs</code> setting, from pixi's config files or the workspace's <code>.pixi/config.toml</code>: <code>system</code> (the
+  default) or <code>webpki</code>, the Mozilla roots built into the binary, which ignore the system store.</li>
+</ul>
+<p><code>s3://</code> and <code>gcs://</code> downloads go through rattler's own client, which uses the system's store.</p>
 <h2 id="exit-codes">Exit codes<a class="headerlink" href="#exit-codes" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
