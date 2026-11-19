@@ -1057,11 +1057,11 @@
 </code></pre></div>
 <h2 id="planning-the-layers">Planning the layers<a class="headerlink" href="#planning-the-layers" title="Permanent link">&para;</a></h2>
 <p><code>plan</code> reads one environment of <code>pixi.lock</code> for one platform and decides the layers.</p>
-<p><strong>By default the environment is one layer.</strong> The image is the base image's layers and one layer holding the whole
-environment, conda and PyPI; the application's own layer will go on top
-(<a href="https://github.com/millsks/pixi-oci/issues/40">#40</a>). Layers are named by their sha256, so an unchanged
-environment keeps its digest from build to build and is neither uploaded nor pulled again. When <code>pixi.lock</code> changes, the whole environment layer is uploaded once more,
-which for most environments is a few hundred megabytes at most.</p>
+<p><strong>By default the environment is one layer.</strong> The image is the base image's layers, one layer holding the whole
+environment, conda and PyPI, and one holding the files <code>--add</code> names. Layers are named by their sha256, so an
+unchanged environment keeps its digest from build to build and is neither uploaded nor pulled again: a commit that
+changes only code moves only the application layer. When <code>pixi.lock</code> changes, the whole environment layer is
+uploaded once more, which for most environments is a few hundred megabytes at most.</p>
 <p><strong><code>--layers grouped</code> splits a large environment.</strong> When the environment is large and its packages change often, a
 package upgrade that re-uploads gigabytes costs more than extra layers do. Grouping re-uploads only the layers that
 hold the changed packages:</p>
@@ -1087,7 +1087,9 @@ hold the changed packages:</p>
 request. <code>--layers per-package</code> gives every conda package a layer of its own, as long as the cap allows.
 <code>plan --packages</code> lists what each shared layer holds.</p>
 <p>Conda packages pixi builds from source have no archive yet, so an environment with them is refused, by name; so are
-PyPI packages that are not wheels (sdists, git and path checkouts), which would have to be built.</p>
+PyPI packages that are not wheels (sdists, git and path checkouts), which would have to be built. The workspace's own
+package, a PyPI path or editable dependency, is one of those until
+<a href="https://github.com/millsks/pixi-oci/issues/34">#34</a>; add its source with <code>--add</code> meanwhile.</p>
 <h2 id="fetching">Fetching<a class="headerlink" href="#fetching" title="Permanent link">&para;</a></h2>
 <p>Every archive of the plan is fetched before any layer is written, one at a time, so a failed download stops the build
 early. Each is checked against the sha256 the lockfile recorded, and kept in the cache named by that hash. A file

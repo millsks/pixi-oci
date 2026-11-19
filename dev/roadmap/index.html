@@ -991,6 +991,8 @@ scope and acceptance criteria live and its pull requests are linked. Comment the
       (<a href="https://github.com/millsks/pixi-oci/issues/10">#10</a>)</li>
 <li>[x] <strong>One environment layer by default</strong>: the base image's layers and the environment in one, <code>--layers grouped</code>
       for large environments that change often (<a href="https://github.com/millsks/pixi-oci/issues/56">#56</a>)</li>
+<li>[x] <strong><code>--add SRC:DEST</code></strong>: the application's files in one layer above the environment, with <code>.gitignore</code>,
+      <code>.dockerignore</code> and <code>.pixi-oci-ignore</code> applied (<a href="https://github.com/millsks/pixi-oci/issues/40">#40</a>)</li>
 <li>[x] <strong><code>validate</code></strong>: an image checked against the OCI image spec on any OS, every blob, digest, size and <code>diff_id</code>
       (<a href="https://github.com/millsks/pixi-oci/issues/25">#25</a>)</li>
 <li>[x] <strong><code>inspect</code></strong>: an image's settings and layers, with the packages each layer holds, as text, JSON or the exact
@@ -1067,7 +1069,6 @@ scope and acceptance criteria live and its pull requests are linked. Comment the
 <li>[ ] <code>pixi oci tag</code>: a new tag in a registry without moving blobs (<a href="https://github.com/millsks/pixi-oci/issues/45">#45</a>)</li>
 <li>[ ] <code>pixi oci copy</code>: between registries and files, only what is missing (<a href="https://github.com/millsks/pixi-oci/issues/46">#46</a>)</li>
 <li>[ ] <code>pixi oci cache</code>: see and prune the download cache (<a href="https://github.com/millsks/pixi-oci/issues/47">#47</a>)</li>
-<li>[ ] Application files in the image, the Dockerfile's <code>COPY</code> (<a href="https://github.com/millsks/pixi-oci/issues/40">#40</a>)</li>
 <li>[ ] <code>pixi oci diff</code>: two images compared layer by layer, with the packages behind each change and what a rebuild
       re-uploads (<a href="https://github.com/millsks/pixi-oci/issues/26">#26</a>)</li>
 <li>[ ] Multi-platform image indexes: <code>linux-64</code> and <code>linux-aarch64</code> under one tag

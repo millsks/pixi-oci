@@ -973,7 +973,7 @@
 </tr>
 <tr>
 <td><code>build.rs</code></td>
-<td><code>build</code>: checks the request, fetches every archive, writes the planned layers in parallel within <code>--max-memory</code>, puts a pulled base's layers underneath, merges its config, then writes the image.</td>
+<td><code>build</code>: checks the request, fetches every archive, writes the planned layers in parallel within <code>--max-memory</code>, adds the application layer from <code>--add</code> on top, puts a pulled base's layers underneath, merges its config, then writes the image.</td>
 </tr>
 <tr>
 <td><code>sources.rs</code></td>
@@ -1010,6 +1010,10 @@
 <tr>
 <td><code>registry.rs</code></td>
 <td>A base image pulled from a registry, pinned by digest: the platform's manifest from an index, its config and layers, each checked against its digest and cached by it. Anonymous or with docker's and podman's credentials, through bearer tokens or basic auth.</td>
+</tr>
+<tr>
+<td><code>add.rs</code></td>
+<td><code>--add</code>: files and directories from the host, walked with <code>.gitignore</code>, <code>.pixi-oci-ignore</code> and the workspace's <code>.dockerignore</code> (the <code>ignore</code> crate), written as one application layer whose modes come from content (<code>#!</code>, ELF), never the host's bits.</td>
 </tr>
 <tr>
 <td><code>wheel.rs</code></td>
