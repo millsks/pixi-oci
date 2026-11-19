@@ -24,6 +24,8 @@ scope and acceptance criteria live and its pull requests are linked. Comment the
       for large environments that change often ([#56](https://github.com/millsks/pixi-oci/issues/56))
 - [x] **`--add SRC:DEST`**: the application's files in one layer above the environment, with `.gitignore`,
       `.dockerignore` and `.pixi-oci-ignore` applied ([#40](https://github.com/millsks/pixi-oci/issues/40))
+- [x] **`--task` and activation variables**: a pixi task as the entrypoint, and `[activation.env]` in every image
+      ([#16](https://github.com/millsks/pixi-oci/issues/16))
 - [x] **`validate`**: an image checked against the OCI image spec on any OS, every blob, digest, size and `diff_id`
       ([#25](https://github.com/millsks/pixi-oci/issues/25))
 - [x] **`inspect`**: an image's settings and layers, with the packages each layer holds, as text, JSON or the exact
@@ -70,8 +72,6 @@ scope and acceptance criteria live and its pull requests are linked. Comment the
       re-uploads ([#26](https://github.com/millsks/pixi-oci/issues/26))
 - [ ] Multi-platform image indexes: `linux-64` and `linux-aarch64` under one tag
       ([#15](https://github.com/millsks/pixi-oci/issues/15))
-- [ ] pixi's activation variables, and an entrypoint from a pixi task
-      ([#16](https://github.com/millsks/pixi-oci/issues/16))
 - [ ] A [pixi-sbom](https://github.com/aesir-oss/pixi-sbom) SBOM attached to the image, and
       [pixi-policy](https://github.com/aesir-oss/pixi-policy) as a gate before pushing
       ([#19](https://github.com/millsks/pixi-oci/issues/19))

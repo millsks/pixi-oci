@@ -17,6 +17,7 @@ pub mod inspect;
 pub mod install;
 pub mod layer;
 pub mod lock;
+pub mod manifest;
 #[cfg(all(test, unix))]
 mod parity;
 pub mod plan;
@@ -225,20 +226,62 @@ fn run_build(args: BuildArgs) -> miette::Result<String> {
     let lock = lock::load(&selection.lockfile)?;
     let locked = lock::select(&lock, &selection.environment, &platform)?;
     let workspace = selection.lockfile.parent().map(std::path::Path::to_path_buf);
-    // The application's files are collected before anything is downloaded, so a wrong path fails at once.
-    let app = if args.add.is_empty() {
-        None
-    } else {
-        let root = workspace.as_deref().map(|dir| {
+    let root = workspace
+        .as_deref()
+        .map(|dir| {
             if dir.as_os_str().is_empty() {
                 std::path::Path::new(".")
             } else {
                 dir
             }
-        });
-        Some(add::collect(&args.add, root)?)
+        })
+        .unwrap_or(std::path::Path::new("."))
+        .to_path_buf();
+    // The application's files are collected before anything is downloaded, so a wrong path fails at once.
+    let app = if args.add.is_empty() {
+        None
+    } else {
+        Some(add::collect(&args.add, Some(&root))?)
     };
     let app_layers = usize::from(app.is_some());
+    // What `pixi run` sets in the environment, and the task the image starts, from the manifest beside the lockfile.
+    let manifest = manifest::find(&root)?;
+    let prefix = args.prefix.trim_end_matches('/').to_string();
+    let mut env: Vec<String> = Vec::new();
+    if let Some(manifest) = &manifest {
+        let (activation, scripts) = manifest.activation(&selection.environment, &platform, &prefix)?;
+        if scripts {
+            eprintln!(
+                "note: environment `{}` has activation scripts, which an image does not run; only [activation.env] is \
+                 set",
+                selection.environment
+            );
+        }
+        env.extend(activation.into_iter().map(|(key, value)| format!("{key}={value}")));
+    }
+    let task = match &args.task {
+        Some(name) => {
+            let manifest = manifest
+                .as_ref()
+                .ok_or_else(|| manifest::ManifestError::NoManifest { dir: root.clone() })?;
+            Some(manifest.task(&selection.environment, &platform, name)?)
+        }
+        None => None,
+    };
+    if let Some(task) = &task {
+        env.extend(task.env.iter().map(|(key, value)| format!("{key}={value}")));
+    }
+    env.extend(args.env);
+    let entrypoint = args
+        .entrypoint
+        .map(|command| command.0)
+        .or_else(|| task.as_ref().map(|task| task.command.clone()));
+    // A task's cwd is relative to the workspace's root, which is `/` in the image; --workdir wins.
+    let workdir = args.workdir.or_else(|| {
+        task.as_ref()
+            .and_then(|task| task.cwd.as_deref())
+            .map(|cwd| format!("/{}", cwd.trim_start_matches("./").trim_matches('/')))
+    });
     let cache = args.cache_dir.unwrap_or_else(fetch::Fetcher::default_root);
     // The base first: it is pinned and small next to the environment, and its layers come out of the layer budget.
     let base = match &args.base {
@@ -268,10 +311,10 @@ fn run_build(args: BuildArgs) -> miette::Result<String> {
         output: args.output,
         force: args.force,
         reference,
-        env: args.env,
-        entrypoint: args.entrypoint.map(|command| command.0),
+        env,
+        entrypoint,
         cmd: args.cmd.map(|command| command.0),
-        workdir: args.workdir,
+        workdir,
         source_date_epoch: build::source_date_epoch(),
         max_memory: args.max_memory,
         base,

@@ -54,6 +54,8 @@ sha2 = "0.11"
 tar = "0.4.46"
 tempfile = "3.27.0"
 thiserror = "2.0.20"
+# pixi's manifest, for a task as the entrypoint and the activation variables; already in the build through rattler_config.
+toml = "1.2.1"
 # Only to run rattler's async S3 and GCS middleware for those downloads; already in the build through rattler.
 tokio = { version = "1.54.1", default-features = false, features = ["rt", "rt-multi-thread"] }
 url = "2"

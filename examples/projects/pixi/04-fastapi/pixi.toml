@@ -10,3 +10,11 @@ python = "3.13.*"
 xorg-libx11 = "*"
 fastapi = "*"
 uvicorn = "*"
+
+# Set by `pixi run` and, with pixi-oci, in the image: logs reach the container's output at once.
+[activation.env]
+PYTHONUNBUFFERED = "1"
+
+# `pixi run serve` here, and the image's entrypoint with `pixi oci build --task serve`.
+[tasks]
+serve = { cmd = "uvicorn main:app --host 0.0.0.0 --port 8000", cwd = "app" }

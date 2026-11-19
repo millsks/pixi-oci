@@ -248,6 +248,12 @@ pub struct BuildArgs {
     #[arg(long, value_name = "PATH")]
     pub workdir: Option<String>,
 
+    /// A pixi task to start the image with, from the workspace's manifest beside the lockfile: its command becomes the
+    /// entrypoint, its `cwd` (from `/`) the working directory, and its `env` is added. A command with shell syntax
+    /// runs through /bin/sh -c. --entrypoint, --workdir and --env win over it.
+    #[arg(long, value_name = "NAME")]
+    pub task: Option<String>,
+
     /// A file or directory to put in the image, as a Dockerfile's COPY: SRC:DEST, such as src:/app; repeat for
     /// more. Every --add goes into one application layer above the environment. A directory leaves out what
     /// .gitignore, .dockerignore and .pixi-oci-ignore name, and .git and .pixi; a file named by itself is always
