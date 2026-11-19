@@ -396,6 +396,15 @@ pub struct Registry {
     credentials: Box<dyn CredentialSource>,
     /// Bearer tokens by registry and repository, for the life of the client.
     tokens: Mutex<BTreeMap<String, String>>,
+    /// Blobs larger than this go up in chunks of it, for a proxy that limits a request's size; `None` sends each in
+    /// one request.
+    chunk: Option<u64>,
+}
+
+/// An upload the registry has started: where to send the blob, and the smallest chunk it takes.
+pub(crate) struct UploadStart {
+    pub location: String,
+    pub chunk_min: Option<u64>,
 }
 
 /// What `send` got: the body, and its content type.
@@ -433,6 +442,7 @@ impl Registry {
             root,
             credentials,
             tokens: Mutex::new(BTreeMap::new()),
+            chunk: None,
         }
     }
 
@@ -807,11 +817,11 @@ impl Registry {
                 }
                 request.call()
             }
-            Method::Post | Method::Put => {
-                let mut request = if method == Method::Post {
-                    self.agent.post(url)
-                } else {
-                    self.agent.put(url)
+            Method::Post | Method::Put | Method::Patch => {
+                let mut request = match method {
+                    Method::Post => self.agent.post(url),
+                    Method::Patch => self.agent.patch(url),
+                    _ => self.agent.put(url),
                 };
                 if let Some(authorization) = authorization {
                     request = request.header("Authorization", authorization);
@@ -826,6 +836,22 @@ impl Registry {
                         request
                             .header("Content-Type", "application/octet-stream")
                             .header("Content-Length", size.to_string())
+                            .send(ureq::SendBody::from_owned_reader(reader))
+                    }
+                    Payload::Range {
+                        image,
+                        name,
+                        offset,
+                        len,
+                        range,
+                    } => {
+                        let reader = image
+                            .range_reader(name, *offset, *len)
+                            .map_err(|err| http_err(url, ureq::Error::Io(err)))?;
+                        request
+                            .header("Content-Type", "application/octet-stream")
+                            .header("Content-Length", len.to_string())
+                            .header("Content-Range", *range)
                             .send(ureq::SendBody::from_owned_reader(reader))
                     }
                 }
@@ -846,6 +872,7 @@ impl Registry {
                 .map(|value| value.split(';').next().unwrap_or_default().trim().to_string()),
             location: header("location"),
             digest: header("docker-content-digest"),
+            chunk_min: header("oci-chunk-min-length").and_then(|value| value.trim().parse().ok()),
             body: Box::new(response.into_body().into_reader()),
         })
     }
@@ -861,13 +888,19 @@ impl Registry {
         }
     }
 
+    /// Upload blobs larger than `chunk` bytes in chunks of that size.
+    pub fn with_chunk_size(mut self, chunk: Option<u64>) -> Self {
+        self.chunk = chunk.filter(|chunk| *chunk > 0);
+        self
+    }
+
     /// Start an upload to `destination`, or mount `digest` from the repository `from` on the same registry. A
-    /// mount the registry made is `None`; otherwise the upload URL to `PUT` the blob to.
+    /// mount the registry made is `None`; otherwise where to send the blob.
     pub(crate) fn start_upload(
         &self,
         destination: &ImageRef,
         mount: Option<(&str, &str)>,
-    ) -> Result<Option<String>, RegistryError> {
+    ) -> Result<Option<UploadStart>, RegistryError> {
         let mut url = format!("{}/blobs/uploads/", destination.base_url());
         if let Some((digest, from)) = mount {
             url.push_str(&format!("?mount={digest}&from={from}"));
@@ -881,25 +914,60 @@ impl Registry {
                     status: 202,
                     message: "the registry gave no upload location".to_string(),
                 })?;
-                Ok(Some(destination.resolve(&location)))
+                Ok(Some(UploadStart {
+                    location: destination.resolve(&location),
+                    chunk_min: answer.chunk_min,
+                }))
             }
             _ => Err(failed(destination, &url, answer)),
         }
     }
 
-    /// Send the blob `name` of `image` to an upload URL, as `digest`.
+    /// Send the blob `name` of `image` to an upload the registry started, as `digest`: in one `PUT`, or, past the
+    /// chunk size, in `PATCH`es of it (no smaller than the registry's minimum) and a closing `PUT`.
     pub(crate) fn upload(
         &self,
         destination: &ImageRef,
-        location: &str,
+        start: &UploadStart,
         digest: &str,
         image: &crate::read::Image,
         name: &str,
         size: u64,
     ) -> Result<(), RegistryError> {
+        let mut location = start.location.clone();
+        let mut payload = Payload::Blob { image, name, size };
+        if let Some(chunk) = self.chunk
+            && size > chunk
+        {
+            let chunk = chunk.max(start.chunk_min.unwrap_or(0));
+            let mut offset = 0;
+            while offset < size {
+                let len = chunk.min(size - offset);
+                let range = format!("{offset}-{}", offset + len - 1);
+                let chunk_payload = Payload::Range {
+                    image,
+                    name,
+                    offset,
+                    len,
+                    range: &range,
+                };
+                let answer = self.call(destination, Method::Patch, &location, &chunk_payload, true)?;
+                if answer.status != 202 {
+                    return Err(failed(
+                        destination,
+                        &format!("{location} (bytes {range} of {size})"),
+                        answer,
+                    ));
+                }
+                if let Some(next) = &answer.location {
+                    location = destination.resolve(next);
+                }
+                offset += len;
+            }
+            payload = Payload::None;
+        }
         let separator = if location.contains('?') { '&' } else { '?' };
         let url = format!("{location}{separator}digest={digest}");
-        let payload = Payload::Blob { image, name, size };
         let answer = self.call(destination, Method::Put, &url, &payload, true)?;
         match answer.status {
             200..=299 => Ok(()),
@@ -934,6 +1002,8 @@ struct Response {
     content_type: Option<String>,
     location: Option<String>,
     digest: Option<String>,
+    /// `OCI-Chunk-Min-Length`: the smallest chunk the registry takes.
+    chunk_min: Option<u64>,
     body: Box<dyn Read + Send + Sync>,
 }
 
@@ -943,6 +1013,7 @@ enum Method {
     Head,
     Post,
     Put,
+    Patch,
 }
 
 /// A request body that can be sent again, after an authentication challenge.
@@ -957,6 +1028,14 @@ enum Payload<'a> {
         image: &'a crate::read::Image,
         name: &'a str,
         size: u64,
+    },
+    /// One chunk of a blob, `range` being its `Content-Range`.
+    Range {
+        image: &'a crate::read::Image,
+        name: &'a str,
+        offset: u64,
+        len: u64,
+        range: &'a str,
     },
 }
 

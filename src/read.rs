@@ -116,6 +116,27 @@ impl Image {
         }
     }
 
+    /// `len` bytes of the file `name` from `offset`: one chunk of a blob, read without reading what comes before.
+    pub fn range_reader(&self, name: &str, offset: u64, len: u64) -> io::Result<Box<dyn Read>> {
+        if !plain(name) {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                format!("{name} is not a path inside the image"),
+            ));
+        }
+        let (mut file, start) = match self {
+            Image::Layout(root) => (fs::File::open(root.join(name))?, 0),
+            Image::Archive { path, entries } => {
+                let (start, _) = entries
+                    .get(name)
+                    .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, format!("{name} is not in the archive")))?;
+                (fs::File::open(path)?, *start)
+            }
+        };
+        file.seek(SeekFrom::Start(start + offset))?;
+        Ok(Box::new(io::BufReader::new(file.take(len))))
+    }
+
     /// The whole file `name`, refused past [`JSON_LIMIT`].
     pub fn read_small(&self, name: &str) -> io::Result<Vec<u8>> {
         let mut bytes = Vec::new();

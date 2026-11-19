@@ -333,11 +333,26 @@ Pushed ghcr.io/team/app:1.0
 | `IMAGE` | | an OCI image layout directory, or a `.tar` archive of one |
 | `DESTINATION` | | `[registry/]repository[:tag]`, `latest` when no tag is given; or `repository@sha256:...` to push by digest, which must be the image's |
 | `-p, --platform NAME` | the only one | for an image of several platforms, which one to push |
+| `--chunk-size SIZE` | | upload each blob larger than `SIZE` (such as `64M`, at least `1K`) in chunks of it ([Chunked uploads](#chunked-uploads)) |
 | `--format text\|json` | `text` | `json` gives the reference, digest, and how many blobs were uploaded, mounted and already there |
 
 Because layers are named by their digest, pushing a rebuilt image sends only the layers that changed: change one
 package and a push sends its layer and the config, nothing else. When the image was built on a base that lives on
 the same registry, the base's layers are mounted from its repository rather than uploaded.
+
+### Chunked uploads
+
+By default each blob goes up in one request. A proxy in front of a registry, such as nginx with `client_max_body_size`
+or a corporate gateway in front of Artifactory, often limits a request's size or time, so a large layer fails where
+small ones succeed. `--chunk-size 64M` sends any blob larger than 64 MiB in 64 MiB `PATCH` requests and a closing
+`PUT`, as the OCI distribution spec describes, so no request is larger than the chunk:
+
+```sh
+pixi oci push app.tar artifactory.example.com/docker-local/app:1.0 --chunk-size 64M
+```
+
+A registry that names a smallest chunk (`OCI-Chunk-Min-Length`) gets chunks of at least that. Chunks are opt-in:
+some registries handle `PATCH` poorly, and one request each is fastest where nothing limits it.
 
 **Credentials.** pixi-oci uses pixi's own: log in once with `pixi auth login`, which stores them in the operating
 system's keychain (or `~/.rattler/credentials.json`), on Windows, macOS and Linux alike. No Docker or Podman is needed

@@ -552,6 +552,22 @@ fn an_image_pushes_to_a_registry() {
     assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
     let report: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
     assert_eq!(report["digest"], first["digest"]);
+    // In chunks, to a repository that has none of it: the registry takes PATCHes, and stores the same image.
+    let chunked = format!("{port}/pixi-oci/chunked:test");
+    let output = Command::cargo_bin("pixi-oci")
+        .unwrap()
+        .arg("push")
+        .arg(&archive)
+        .args([chunked.as_str(), "--chunk-size", "16K", "--format", "json"])
+        .output()
+        .unwrap();
+    assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
+    let pushed: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    assert!(pushed["uploaded"].as_u64().unwrap() >= 2, "{pushed:#}");
+    assert_eq!(pushed["digest"], first["digest"]);
+    let pulled = docker(&["pull", &chunked]).unwrap();
+    assert!(pulled.status.success(), "{}", String::from_utf8_lossy(&pulled.stderr));
+    let _ = docker(&["rmi", &chunked]);
     let _ = docker(&["rmi", &destination]);
     let _ = docker(&["rm", "-f", &container]);
 }
