@@ -3,14 +3,38 @@
 pixi-oci is one executable, `pixi-oci` (`pixi-oci.exe` on Windows). pixi runs any `pixi-<name>` executable it finds as
 `pixi <name>`, so once `pixi-oci` is on your `PATH`, `pixi oci` works.
 
-!!! note "No release yet"
+!!! note "Prereleases only"
 
-    pixi-oci has not been released, so there is no `pixi global install pixi-oci` yet. Packaging it on conda-forge is
-    on the [roadmap](roadmap.md). Until then, build it from source, or take a binary from a CI run.
+    pixi-oci is in release candidates, so there is no `pixi global install pixi-oci` yet. Packaging it on conda-forge
+    is on the [roadmap](roadmap.md). Until then, download a binary from a release.
+
+## A binary from a release
+
+Every [release](https://github.com/millsks/pixi-oci/releases) has a binary for six targets, with a `SHA256SUMS` file:
+
+| System | Archive |
+|---|---|
+| Linux x86_64 (any distribution: static) | `pixi-oci-VERSION-x86_64-unknown-linux-musl.tar.gz` |
+| Linux ARM64 | `pixi-oci-VERSION-aarch64-unknown-linux-musl.tar.gz` |
+| macOS Apple silicon | `pixi-oci-VERSION-aarch64-apple-darwin.tar.gz` |
+| macOS Intel | `pixi-oci-VERSION-x86_64-apple-darwin.tar.gz` |
+| Windows x86_64 | `pixi-oci-VERSION-x86_64-pc-windows-msvc.zip` |
+| Windows ARM64 | `pixi-oci-VERSION-aarch64-pc-windows-msvc.zip` |
+
+```sh
+version=0.1.0-rc.1
+curl -fsSLO https://github.com/millsks/pixi-oci/releases/download/v$version/pixi-oci-$version-x86_64-unknown-linux-musl.tar.gz
+tar -xzf pixi-oci-$version-x86_64-unknown-linux-musl.tar.gz --strip-components 1 -C ~/.pixi/bin pixi-oci-$version-x86_64-unknown-linux-musl/pixi-oci
+pixi oci --version
+```
+
+`~/.pixi/bin` is on your `PATH` when pixi is installed; any other folder on it works too. On Windows, unzip the
+archive and put `pixi-oci.exe` in `%USERPROFILE%\.pixi\bin`, which needs no admin rights. macOS marks a downloaded
+binary as quarantined; `xattr -d com.apple.quarantine ~/.pixi/bin/pixi-oci` lets it run.
 
 ## A binary from CI
 
-Every CI run on `main` and on pull requests builds release binaries for Linux, macOS and Windows in the **Image
+Between releases, every CI run on `main` and on pull requests builds release binaries for Linux, macOS and Windows in the **Image
 digest** jobs and keeps them as artifacts for a few days:
 
 1. Open the repository's **Actions** tab, then a recent **CI** run on `main`.

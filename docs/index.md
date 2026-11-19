@@ -47,6 +47,10 @@ pixi-oci builds from the lockfile instead:
 
     From a `pixi.toml` to an image you can inspect and load, in five commands.
 
+-   **[Common use cases](use-cases.md)**
+
+    Recipes: an application image, an image in `pixi.toml`, CI, private registries, Windows, ARM.
+
 -   **[Building on Windows](windows.md)**
 
     What works from PowerShell with no admin rights, WSL or VM, and what needs a Linux machine.
