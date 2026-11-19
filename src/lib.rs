@@ -34,6 +34,7 @@ pub mod stream;
 pub mod target;
 #[cfg(test)]
 mod testing;
+pub mod tls;
 pub mod validate;
 pub mod wheel;
 

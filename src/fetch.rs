@@ -106,6 +106,7 @@ impl Fetcher {
         let agent = ureq::Agent::config_builder()
             .user_agent(concat!("pixi-oci/", env!("CARGO_PKG_VERSION")))
             .proxy(proxy)
+            .tls_config(crate::tls::config())
             // A redirect to another host, such as a channel's storage, is not given the channel's credentials.
             .redirect_auth_headers(ureq::config::RedirectAuthHeaders::SameHost)
             .build()

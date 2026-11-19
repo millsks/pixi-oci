@@ -6,3 +6,7 @@ extend-exclude = ["Cargo.lock", "pixi.lock", "tests/fixtures/**/pixi.lock"]
 certifi = "certifi"
 # conda-build fills the prefix with `_placehold_placehold_...`; pixi oci check looks for it
 placehold = "placehold"
+
+[default]
+# base64 in PEM certificates used by tests
+extend-ignore-re = ["(?s)-----BEGIN CERTIFICATE-----.*?-----END CERTIFICATE-----"]

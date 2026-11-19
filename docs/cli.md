@@ -429,9 +429,22 @@ oci-archive:app.tar`, or `crane config` and `crane manifest` on a pushed image (
 | `PIXI_OCI_CACHE_DIR` | the package cache, when `--cache-dir` is not given. Otherwise `$XDG_CACHE_HOME/pixi-oci`, `~/.cache/pixi-oci` on Linux, `~/Library/Caches/pixi-oci` on macOS, `%LOCALAPPDATA%\pixi-oci` on Windows |
 | `SOURCE_DATE_EPOCH` | seconds since the Unix epoch, the image's `created` time; `0` when unset. Files in layers are always stamped 0, so it never changes a layer's digest. The [reproducible-builds](https://reproducible-builds.org/docs/source-date-epoch/) convention. |
 | `HTTPS_PROXY`, `HTTP_PROXY`, `NO_PROXY` | the proxy for downloads |
+| `SSL_CERT_FILE` | a PEM bundle of the CA certificates to trust, instead of the system's ([TLS certificates](#tls-certificates)) |
 | `PIXI_OCI_REGISTRY_USERNAME`, `PIXI_OCI_REGISTRY_PASSWORD` | credentials for one registry, for CI: `push`'s destination, or `PIXI_OCI_REGISTRY` |
 | `PIXI_OCI_REGISTRY` | the registry those credentials are for, such as `ghcr.io`; set it when a build should also use them to pull its base |
 | `PIXI_OCI_NETWORK_TESTS` | for development only: `1` adds the tests that download from conda-forge |
+
+### TLS certificates
+
+Every HTTPS connection (channels, mirrors, registries) trusts the operating system's certificate store by default, as
+pixi does, so a company CA the system trusts, such as a TLS-inspecting proxy's, works with no setup. Two settings
+change that:
+
+- `SSL_CERT_FILE=/path/to/bundle.pem` trusts the certificates in that bundle and no others.
+- pixi's `tls-root-certs` setting, from pixi's config files or the workspace's `.pixi/config.toml`: `system` (the
+  default) or `webpki`, the Mozilla roots built into the binary, which ignore the system store.
+
+`s3://` and `gcs://` downloads go through rattler's own client, which uses the system's store.
 
 ## Exit codes
 
