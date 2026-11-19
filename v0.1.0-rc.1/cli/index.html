@@ -1,0 +1,2181 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="OCI container images straight from pixi.lock, with no Dockerfile, no Docker daemon and no admin rights">
+      
+      
+      
+        <link rel="canonical" href="https://millsks.github.io/pixi-oci/latest/cli/">
+      
+      
+        <link rel="prev" href="../examples/">
+      
+      
+        <link rel="next" href="../how-it-works/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/favicon.svg">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.1">
+    
+    
+      
+        <title>Command-line reference - pixi-oci</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.57a0d79d.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.fb2fffe2.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,700,700i%7CJetBrains+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  <style>@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&display=swap");
+/* pixi-oci on Material for MkDocs, in the Aesir palette that aesir-oss/pixi-sbom's docs use: emerald on white, and
+   deep emerald when dark. The light page stays white so Deep Emerald links (#07835d) read at 4.76:1 (AA); on the
+   dark ground links are Aesir Emerald (#5ae9b6). */
+:root,
+[data-md-color-scheme="default"] {
+  --md-primary-fg-color: #ffffff;
+  --md-primary-fg-color--light: #f5f6f7;
+  --md-primary-fg-color--dark: #f5f6f7;
+  --md-primary-bg-color: #1a1d20;
+  --md-primary-bg-color--light: #5b636b;
+  --md-accent-fg-color: #2fb889;
+  --md-accent-fg-color--transparent: rgba(47, 184, 137, 0.1);
+  --md-typeset-a-color: #07835d;
+  --md-code-bg-color: #f5f6f7;
+  --md-footer-bg-color: #1a1d20;
+  --md-footer-bg-color--dark: #111315;
+  --oci-rule: #c9ced3;
+}
+
+[data-md-color-scheme="slate"] {
+  --md-default-bg-color: #052620;
+  --md-default-bg-color--light: rgba(5, 38, 32, 0.54);
+  --md-default-bg-color--lighter: rgba(5, 38, 32, 0.26);
+  --md-default-bg-color--lightest: rgba(5, 38, 32, 0.07);
+  --md-default-fg-color: rgba(234, 251, 243, 0.9);
+  --md-default-fg-color--light: rgba(169, 217, 198, 0.9);
+  --md-default-fg-color--lighter: rgba(169, 217, 198, 0.4);
+  --md-default-fg-color--lightest: rgba(169, 217, 198, 0.14);
+  --md-typeset-color: #eafbf3;
+  --md-primary-fg-color: #031915;
+  --md-primary-fg-color--light: #0a3a30;
+  --md-primary-fg-color--dark: #031915;
+  --md-primary-bg-color: #eafbf3;
+  --md-primary-bg-color--light: #a9d9c6;
+  --md-accent-fg-color: #5ae9b6;
+  --md-accent-fg-color--transparent: rgba(90, 233, 182, 0.1);
+  --md-typeset-a-color: #5ae9b6;
+  --md-code-bg-color: #0a3a30;
+  --md-code-fg-color: #eafbf3;
+  --md-footer-bg-color: #031915;
+  --md-footer-bg-color--dark: #021210;
+  --oci-rule: #125244;
+}
+
+/* A white header needs a rule under it and a visible search field. */
+.md-header {
+  box-shadow: 0 1px 0 var(--oci-rule);
+}
+.md-header[data-md-state="shadow"],
+.md-header--shadow {
+  box-shadow: 0 1px 0 var(--oci-rule), 0 0.2rem 0.4rem rgba(0, 0, 0, 0.08);
+}
+[data-md-color-scheme="default"] .md-search__form {
+  background-color: rgba(26, 29, 32, 0.06);
+}
+[data-md-color-scheme="default"] .md-search__form:hover {
+  background-color: rgba(26, 29, 32, 0.1);
+}
+
+/* Headings in Space Grotesk; Inter and JetBrains Mono come from the theme's font setting. */
+.md-typeset h1,
+.md-typeset h2,
+.md-typeset h3 {
+  font-family: "Space Grotesk", var(--md-text-font-family), sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.md-typeset h1 {
+  color: var(--md-typeset-color);
+}
+.md-header__title {
+  font-weight: 700;
+}</style>
+  
+  <script>
+    (function () {
+      try {
+        var key = "__source_fetched_at";
+        var fetched = Number(sessionStorage.getItem(key) || 0);
+        if (Date.now() - fetched > 10 * 60 * 1000) {
+          sessionStorage.removeItem("__source");
+          sessionStorage.setItem(key, String(Date.now()));
+        }
+      } catch (e) {}
+    })();
+  </script>
+
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="custom">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#command-line-reference" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="pixi-oci" class="md-header__button md-logo" aria-label="pixi-oci" data-md-component="logo">
+      
+  <img src="../assets/favicon.svg" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            pixi-oci
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Command-line reference
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="custom"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="custom" data-md-color-accent="custom"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/millsks/pixi-oci" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    millsks/pixi-oci
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="pixi-oci" class="md-nav__button md-logo" aria-label="pixi-oci" data-md-component="logo">
+      
+  <img src="../assets/favicon.svg" alt="logo">
+
+    </a>
+    pixi-oci
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/millsks/pixi-oci" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    millsks/pixi-oci
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../first-image/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Your first image
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../use-cases/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Common use cases
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../windows/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Building on Windows
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../base-images/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Base images
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../private-channels/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Private channels
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../config/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Config files
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Examples
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Command-line reference
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Command-line reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#pixi-oci-plan" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        pixi oci plan
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#pixi-oci-build" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        pixi oci build
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="pixi oci build">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#a-pixi-task-as-the-entrypoint" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A pixi task as the entrypoint
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pixis-activation-variables" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        pixi's activation variables
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#your-applications-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Your application's files
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#pixi-oci-validate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        pixi oci validate
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="pixi oci validate">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#images-in-a-registry" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Images in a registry
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#pixi-oci-check" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        pixi oci check
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#pixi-oci-digest" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        pixi oci digest
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#pixi-oci-pull" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        pixi oci pull
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#pixi-oci-push" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        pixi oci push
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="pixi oci push">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#chunked-uploads" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chunked uploads
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#pixi-oci-inspect" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        pixi oci inspect
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#environment-variables" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Environment variables
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#exit-codes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Exit codes
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../how-it-works/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    How it works
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../roadmap/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_14" >
+        
+          
+          <label class="md-nav__link" for="__nav_14" id="__nav_14_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_14_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_14">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Contributing
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../development/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Development
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../security/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security policy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#pixi-oci-plan" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        pixi oci plan
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#pixi-oci-build" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        pixi oci build
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="pixi oci build">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#a-pixi-task-as-the-entrypoint" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A pixi task as the entrypoint
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pixis-activation-variables" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        pixi's activation variables
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#your-applications-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Your application's files
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#pixi-oci-validate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        pixi oci validate
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="pixi oci validate">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#images-in-a-registry" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Images in a registry
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#pixi-oci-check" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        pixi oci check
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#pixi-oci-digest" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        pixi oci digest
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#pixi-oci-pull" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        pixi oci pull
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#pixi-oci-push" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        pixi oci push
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="pixi oci push">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#chunked-uploads" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Chunked uploads
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#pixi-oci-inspect" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        pixi oci inspect
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#environment-variables" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Environment variables
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#exit-codes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Exit codes
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+    <a href="https://github.com/millsks/pixi-oci/edit/main/docs/cli.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+
+
+<h1 id="command-line-reference">Command-line reference<a class="headerlink" href="#command-line-reference" title="Permanent link">&para;</a></h1>
+<p>pixi runs <code>pixi-oci</code> for <code>pixi oci</code>, passing everything after <code>oci</code>, so <code>pixi oci build -e app</code> and
+<code>pixi-oci build -e app</code> are the same command.</p>
+<h2 id="pixi-oci-plan"><code>pixi oci plan</code><a class="headerlink" href="#pixi-oci-plan" title="Permanent link">&para;</a></h2>
+<p>Shows the layers an image of an environment would be built from, without downloading anything.</p>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Default</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--lockfile PATH</code></td>
+<td><code>pixi.lock</code></td>
+<td>the lockfile to read</td>
+</tr>
+<tr>
+<td><code>-e, --environment NAME</code></td>
+<td><code>default</code></td>
+<td>the environment to put in the image</td>
+</tr>
+<tr>
+<td><code>-p, --platform NAME</code></td>
+<td>Linux on the host's architecture</td>
+<td>a <code>linux-*</code> conda platform: <code>linux-64</code>, <code>linux-aarch64</code>, <code>linux-ppc64le</code>, ...</td>
+</tr>
+<tr>
+<td><code>--layers single\|grouped\|per-package</code></td>
+<td><code>single</code></td>
+<td>how to split the environment into layers: the whole environment in one layer, packages of 4 MiB or more alone and smaller ones grouped, or a layer per package. See <a href="../how-it-works/#planning-the-layers">Planning the layers</a>.</td>
+</tr>
+<tr>
+<td><code>--max-layers N</code></td>
+<td><code>100</code></td>
+<td>the most layers to use; past it, the layers of the packages fewest others depend on are merged into the last conda layer. At least 2, except with <code>--layers single</code>.</td>
+</tr>
+<tr>
+<td><code>--packages</code></td>
+<td></td>
+<td>list the packages of every layer that holds several</td>
+</tr>
+<tr>
+<td><code>--format text\|json</code></td>
+<td><code>text</code></td>
+<td><code>json</code> carries every package's kind, URL, sha256 and size</td>
+</tr>
+</tbody>
+</table>
+<p>The default platform is <code>linux-aarch64</code> on an ARM machine (an Apple Silicon Mac, an ARM server) and <code>linux-64</code>
+everywhere else.</p>
+<h2 id="pixi-oci-build"><code>pixi oci build</code><a class="headerlink" href="#pixi-oci-build" title="Permanent link">&para;</a></h2>
+<p>Builds an image of an environment. It takes <code>plan</code>'s <code>--lockfile</code>, <code>-e</code>, <code>-p</code>, <code>--layers</code> and <code>--max-layers</code>, and:</p>
+<table>
+<thead>
+<tr>
+<th>Argument</th>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>IMAGE</code></td>
+<td></td>
+<td>an image a <a href="../config/">config file</a> defines; without one, every image it defines. With no config file, the flags alone describe the image</td>
+</tr>
+<tr>
+<td><code>--config PATH</code></td>
+<td></td>
+<td>the config file to read, and no other; by default the manifest's <code>[tool.pixi-oci]</code> beside the lockfile, else <code>pixi-oci.toml</code> there</td>
+</tr>
+</tbody>
+</table>
+<p>Every option below can also be a key in a config file, where the flag wins.</p>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Default</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>-o, --output PATH</code></td>
+<td><code>image.tar</code></td>
+<td>a <code>.tar</code> archive, for <code>docker load</code>, <code>podman load</code> and <code>skopeo copy oci-archive:</code>; any other path is an OCI image layout directory</td>
+</tr>
+<tr>
+<td><code>--force</code></td>
+<td></td>
+<td>replace the output if it exists</td>
+</tr>
+<tr>
+<td><code>-t, --tag NAME[:TAG]</code></td>
+<td>the environment's name, <code>:latest</code></td>
+<td>the image's name: lowercase, optionally with a registry (<code>quay.io/team/app:1.0</code>)</td>
+</tr>
+<tr>
+<td><code>--prefix PATH</code></td>
+<td><code>/opt/env</code></td>
+<td>where the environment lives in the image; an absolute path</td>
+</tr>
+<tr>
+<td><code>--env KEY=VALUE</code></td>
+<td></td>
+<td>an environment variable in the image; repeat for more</td>
+</tr>
+<tr>
+<td><code>--entrypoint COMMAND</code></td>
+<td></td>
+<td>the entrypoint: a JSON array (<code>'["python", "-m", "http.server"]'</code>) or words (<code>python -m http.server</code>)</td>
+</tr>
+<tr>
+<td><code>--cmd ARGS</code></td>
+<td></td>
+<td>the default arguments, in the same two forms</td>
+</tr>
+<tr>
+<td><code>--workdir PATH</code></td>
+<td></td>
+<td>the working directory processes start in</td>
+</tr>
+<tr>
+<td><code>--task NAME</code></td>
+<td></td>
+<td>a pixi task from the workspace's manifest as the entrypoint (<a href="#a-pixi-task-as-the-entrypoint">A pixi task as the entrypoint</a>)</td>
+</tr>
+<tr>
+<td><code>--add SRC:DEST</code></td>
+<td></td>
+<td>a file or directory to put in the image, such as <code>src:/app</code>; repeat for more. Every <code>--add</code> goes into one application layer above the environment (<a href="#your-applications-files">Your application's files</a>)</td>
+</tr>
+<tr>
+<td><code>--label KEY=VALUE</code></td>
+<td></td>
+<td>a label in the image config; repeat for more. pixi-oci's own <code>dev.pixi.*</code> labels win</td>
+</tr>
+<tr>
+<td><code>--annotation KEY=VALUE</code></td>
+<td></td>
+<td>an annotation on the manifest, such as <code>org.opencontainers.image.source</code>; repeat for more</td>
+</tr>
+<tr>
+<td><code>--user USER</code></td>
+<td>the base's, else root</td>
+<td>the user processes run as: <code>NAME</code>, <code>UID</code>, <code>NAME:GROUP</code> or <code>UID:GID</code></td>
+</tr>
+<tr>
+<td><code>--expose PORT[/PROTOCOL]</code></td>
+<td></td>
+<td>a port the image listens on, <code>tcp</code> unless <code>udp</code> or <code>sctp</code> is given; repeat for more; added to the base's</td>
+</tr>
+<tr>
+<td><code>--stop-signal SIGNAL</code></td>
+<td>the base's</td>
+<td>the signal that stops the container: <code>SIGTERM</code>, <code>TERM</code> or a number</td>
+</tr>
+<tr>
+<td><code>--base IMAGE@DIGEST</code></td>
+<td></td>
+<td>an image to build on, pinned by digest, for glibc and a shell: its layers go under the environment's and its config is where the image's starts (<a href="../base-images/">Base images</a>)</td>
+</tr>
+<tr>
+<td><code>--max-memory SIZE</code></td>
+<td><code>512M</code></td>
+<td>roughly how much memory the build's buffers may use, such as <code>128M</code> or <code>2G</code>; at least <code>16M</code>. Less means fewer layers at once and large files waiting on disk; the image is the same.</td>
+</tr>
+<tr>
+<td><code>--cache-dir PATH</code></td>
+<td>see below</td>
+<td>where downloaded package archives are kept, named by their sha256</td>
+</tr>
+</tbody>
+</table>
+<p>What a Dockerfile would say, <code>build</code> takes as options:</p>
+<table>
+<thead>
+<tr>
+<th>Dockerfile</th>
+<th><code>pixi oci build</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>FROM image@sha256:...</code></td>
+<td><code>--base image@sha256:...</code></td>
+</tr>
+<tr>
+<td><code>ENV KEY=VALUE</code></td>
+<td><code>--env KEY=VALUE</code></td>
+</tr>
+<tr>
+<td><code>ENTRYPOINT</code>, <code>CMD</code></td>
+<td><code>--entrypoint</code>, <code>--cmd</code></td>
+</tr>
+<tr>
+<td><code>COPY src /app</code></td>
+<td><code>--add src:/app</code></td>
+</tr>
+<tr>
+<td><code>WORKDIR</code></td>
+<td><code>--workdir</code>, or a task's <code>cwd</code> with <code>--task</code></td>
+</tr>
+<tr>
+<td><code>LABEL KEY=VALUE</code></td>
+<td><code>--label KEY=VALUE</code></td>
+</tr>
+<tr>
+<td><code>USER</code></td>
+<td><code>--user</code></td>
+</tr>
+<tr>
+<td><code>EXPOSE 8000</code></td>
+<td><code>--expose 8000</code></td>
+</tr>
+<tr>
+<td><code>STOPSIGNAL</code></td>
+<td><code>--stop-signal</code></td>
+</tr>
+<tr>
+<td>(manifest annotations, from <code>docker buildx --annotation</code>)</td>
+<td><code>--annotation KEY=VALUE</code></td>
+</tr>
+</tbody>
+</table>
+<p><code>HEALTHCHECK</code>, <code>SHELL</code> and <code>ONBUILD</code> are Docker's own, not part of the OCI image spec, and container runtimes such
+as podman and Kubernetes ignore them. <code>RUN</code> has no equivalent: the environment is what the lockfile describes, and
+nothing runs during a build.</p>
+<h3 id="a-pixi-task-as-the-entrypoint">A pixi task as the entrypoint<a class="headerlink" href="#a-pixi-task-as-the-entrypoint" title="Permanent link">&para;</a></h3>
+<p><code>--task NAME</code> starts the image the way <code>pixi run NAME</code> starts the task in that environment. pixi-oci reads the
+manifest beside the lockfile: <code>pixi.toml</code>, or <code>[tool.pixi]</code> in <code>pyproject.toml</code>. It looks the task up in the
+environment's features in order, the platform's <code>[target]</code> tables winning.</p>
+<div class="highlight"><span class="filename">pixi.toml</span><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="k">[tasks]</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="n">serve</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">cmd</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s2">"uvicorn main:app --host 0.0.0.0 --port 8000"</span><span class="p">,</span><span class="w"> </span><span class="n">cwd</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s2">"app"</span><span class="p">,</span><span class="w"> </span><span class="n">env</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">WORKERS</span><span class="w"> </span><span class="p">=</span><span class="w"> </span><span class="s2">"2"</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="p">}</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>pixi<span class="w"> </span>oci<span class="w"> </span>build<span class="w"> </span>--add<span class="w"> </span>app:/app<span class="w"> </span>--task<span class="w"> </span>serve<span class="w"> </span>...
+</code></pre></div>
+<ul>
+<li><strong>The command becomes the entrypoint.</strong> A task written as a list runs as written. A plain command line is split into
+  words. One with shell syntax (<code>&amp;&amp;</code>, <code>|</code>, <code>;</code>, <code>$VAR</code>, quotes, redirections, globs, a leading <code>VAR=value</code>) runs as
+  <code>["/bin/sh", "-c", "..."]</code>, so the base image must have <code>/bin/sh</code>; <code>pixi oci check</code> says when it does not.</li>
+<li><strong><code>cwd</code> becomes the working directory</strong>, from <code>/</code>: the workspace's root is <code>/</code> in the image, so <code>cwd = "app"</code> is
+  <code>/app</code>. Put the files there with <code>--add app:/app</code>.</li>
+<li><strong><code>env</code> is added</strong> to the image's environment.</li>
+<li><strong><code>args</code> take their defaults</strong>; a task with an argument that has none is refused.</li>
+<li><strong><code>depends-on</code> is refused</strong>: nothing runs before an image's entrypoint.</li>
+</ul>
+<p><code>--entrypoint</code>, <code>--workdir</code> and <code>--env</code> win over what the task gives, and <code>--cmd</code> adds default arguments to it.</p>
+<h3 id="pixis-activation-variables">pixi's activation variables<a class="headerlink" href="#pixis-activation-variables" title="Permanent link">&para;</a></h3>
+<p>Every build sets the environment's static <code>[activation.env]</code> variables in the image, as <code>pixi run</code> sets them: the
+default feature's (unless the environment has <code>no-default-feature</code>) and then its own features', the platform's
+<code>[target]</code> tables winning, sorted by name. <code>$CONDA_PREFIX</code> in a value becomes the image's prefix; any other <code>$VAR</code>
+is written as given, since an image's environment is not expanded. <code>--env</code> wins over them.</p>
+<p>Activation scripts (<code>[activation] scripts = [...]</code>, and the <code>etc/conda/activate.d</code> scripts some packages ship) are
+not run: a build runs nothing. pixi-oci says so on stderr when the environment has them.</p>
+<h3 id="your-applications-files">Your application's files<a class="headerlink" href="#your-applications-files" title="Permanent link">&para;</a></h3>
+<p><code>--add SRC:DEST</code> puts a file or directory from your machine into the image, as <code>COPY</code> does. The image is then the
+base image's layers, the environment's, and one application layer holding every <code>--add</code>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>pixi<span class="w"> </span>oci<span class="w"> </span>build<span class="w"> </span>-p<span class="w"> </span>linux-64<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="w">  </span>--base<span class="w"> </span>debian:bookworm-slim@sha256:734a72b3d6142a71993b4bc580ca01d8ca687f77a2c422d96a961d3376b179bc<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="w">  </span>--add<span class="w"> </span>src:/app<span class="w"> </span>--add<span class="w"> </span>config/api.toml:/etc/api/<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="w">  </span>--workdir<span class="w"> </span>/app<span class="w"> </span>--entrypoint<span class="w"> </span>uvicorn<span class="w"> </span>--cmd<span class="w"> </span><span class="s2">"main:app --host 0.0.0.0"</span><span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="w">  </span>-t<span class="w"> </span>api:1.0<span class="w"> </span>-o<span class="w"> </span>api.tar
+</code></pre></div>
+<ul>
+<li><strong>A directory</strong> goes to <code>DEST</code> with its contents, as <code>COPY src /app</code> puts <code>src</code>'s contents in <code>/app</code>.</li>
+<li><strong>A file</strong> goes to <code>DEST</code>, or into it when <code>DEST</code> ends with <code>/</code>.</li>
+<li><strong>Later wins.</strong> When two <code>--add</code>s put something at the same path, the later one's is kept.</li>
+<li><code>DEST</code> is an absolute path in the image. On Windows the source keeps its drive: <code>--add C:\work\api\src:/app</code>.</li>
+</ul>
+<p>A directory leaves out:</p>
+<ul>
+<li>what <code>.gitignore</code> files ignore, from the directory up, and <code>.git/info/exclude</code>, as git would;</li>
+<li>what <code>.pixi-oci-ignore</code> files name, in the same syntax and read the same way, for what git should keep but the
+  image should not;</li>
+<li>what the workspace's <code>.dockerignore</code> names, its patterns relative to the workspace (the directory of the
+  lockfile), as docker reads them relative to the build context;</li>
+<li><code>.git</code> and <code>.pixi</code>, always.</li>
+</ul>
+<p>A file named by itself is added whatever the ignore files say. A directory that leaves everything out is refused.</p>
+<p>Only content reaches the layer, so the same files give the same digest on any machine:</p>
+<ul>
+<li>every entry is owned by root, so the application cannot rewrite its own code even when it runs as <code>--user</code>;</li>
+<li>a file is 0755 when it starts with <code>#!</code> or is an ELF binary, 0644 otherwise: the mode bits of your checkout are
+  not read, so a Windows checkout gives the layer a Linux one does;</li>
+<li>every file is stamped with the Unix epoch, and symbolic links are kept as links;</li>
+<li>the layer's history line names the destinations (<code>pixi-oci add: /app, /etc/api/</code>), never a path on your machine.</li>
+</ul>
+<p>A script checked out with Windows line endings keeps them, and <code>#!/bin/sh\r</code> does not run. Check out with <code>eol=lf</code>
+(<code>* text=auto eol=lf</code> in <code>.gitattributes</code>); <code>pixi oci check</code> reports such a script's interpreter as missing.</p>
+<p>The files are read when the build starts, before anything is downloaded, so a wrong path fails at once.</p>
+<p>GHCR links a package to its repository by the <code>org.opencontainers.image.source</code> label or annotation, and shows
+<code>org.opencontainers.image.description</code>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>pixi<span class="w"> </span>oci<span class="w"> </span>build<span class="w"> </span>...<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">  </span>--label<span class="w"> </span>org.opencontainers.image.source<span class="o">=</span>https://github.com/team/app<span class="w"> </span><span class="se">\</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w">  </span>--annotation<span class="w"> </span>org.opencontainers.image.description<span class="o">=</span><span class="s2">"The app's API"</span>
+</code></pre></div>
+<p>The image always sets <code>PATH=&lt;prefix&gt;/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin</code> and
+<code>CONDA_PREFIX=&lt;prefix&gt;</code>; <code>--env</code> adds to them. It is labelled <code>dev.pixi.environment</code> and <code>dev.pixi.platform</code>.</p>
+<p>Progress goes to stderr, one line per layer as it starts. The summary goes to stdout:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a>Wrote app:1.0 to app.tar
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>  manifest sha256:9ec8407e4f1860919cd8dd7af6027a9bdcb91a5a008b2c5ea657ed3f300044ef
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>  7 layers, 62.6 MiB for linux/amd64
+</code></pre></div>
+<h2 id="pixi-oci-validate"><code>pixi oci validate</code><a class="headerlink" href="#pixi-oci-validate" title="Permanent link">&para;</a></h2>
+<p>Checks an image against the <a href="https://github.com/opencontainers/image-spec">OCI image spec</a>, on any OS, running nothing.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="gp">$ </span>pixi<span class="w"> </span>oci<span class="w"> </span>validate<span class="w"> </span>app.tar
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="go">app.tar is a valid OCI image</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a><span class="go">  manifest sha256:9ec8407e4f18 for linux/amd64: 7 layers, 62.6 MiB</span>
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Argument or option</th>
+<th>Default</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>IMAGE</code></td>
+<td></td>
+<td>an OCI image layout directory, a <code>.tar</code> archive of one read in place, or an image in a registry (see <a href="#images-in-a-registry">Images in a registry</a>)</td>
+</tr>
+<tr>
+<td><code>-p, --platform NAME</code></td>
+<td>Linux on the host's architecture</td>
+<td>from a registry, which image of an index to validate; a file is validated whole</td>
+</tr>
+<tr>
+<td><code>--format text\|json</code></td>
+<td><code>text</code></td>
+<td><code>json</code> gives <code>valid</code>, each manifest checked, and each problem as <code>at</code> and <code>message</code></td>
+</tr>
+</tbody>
+</table>
+<p>It checks:</p>
+<ul>
+<li><code>oci-layout</code> and <code>index.json</code>, and any index nested in it</li>
+<li>every manifest and config: schema version, media types, and that the index lists each with its own media type</li>
+<li>every blob: present, and its sha256 and size the ones its descriptor names</li>
+<li>every layer: a layer media type, and for gzip and uncompressed layers, that its uncompressed tar hashes to the
+  config's <code>diff_id</code> for it</li>
+<li>the config: as many <code>diff_ids</code> and history entries as layers, and the same platform as the index</li>
+<li><code>org.opencontainers.image.ref.name</code>, by the spec's grammar</li>
+<li>for an archive, that the <code>manifest.json</code> <code>docker load</code> reads names the same config and layers</li>
+</ul>
+<p>It reports every problem it finds, not just the first, and exits <code>1</code> if there is any. zstd layers are hashed but
+their <code>diff_id</code> is not checked.</p>
+<p>The image is a standard OCI image, so other tools check it the same way: <code>crane validate --tarball app.tar</code>, or
+<code>skopeo copy oci-archive:app.tar ...</code> as a smoke test.</p>
+<h3 id="images-in-a-registry">Images in a registry<a class="headerlink" href="#images-in-a-registry" title="Permanent link">&para;</a></h3>
+<p><code>validate</code>, <code>check</code> and <code>inspect</code> read an image straight from a registry, too: give a reference instead of a path.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="gp">$ </span>pixi<span class="w"> </span>oci<span class="w"> </span>inspect<span class="w"> </span>ghcr.io/team/app:1.0
+<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="gp">$ </span>pixi<span class="w"> </span>oci<span class="w"> </span>check<span class="w"> </span>debian:bookworm-slim<span class="w"> </span>--platform<span class="w"> </span>linux-64
+<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="gp">$ </span>pixi<span class="w"> </span>oci<span class="w"> </span>validate<span class="w"> </span>docker://registry.example.com/app
+</code></pre></div>
+<p>An argument is a reference when no such file or directory exists and it has a tag, a digest or a repository path
+(<code>debian:bookworm-slim</code>, <code>ghcr.io/team/app</code>), and does not look like a path (<code>app.tar</code>, <code>./layout</code>, <code>/images/app</code>).
+<code>docker://</code> makes any argument a reference, as skopeo writes one.</p>
+<ul>
+<li><code>inspect</code> downloads only the manifest and config, never a layer. <code>--raw index</code> prints the document the registry
+  serves for the reference: its index, or the image's manifest.</li>
+<li><code>validate</code> and <code>check</code> download the layers, through the same cache as <code>pull</code> and <code>--base</code>, so a <code>pull</code> after them
+  downloads nothing.</li>
+<li>From an index, <code>--platform</code> picks the image, and defaults to Linux on the host's architecture. An image of one
+  platform is read for that platform.</li>
+<li>The report names the reference pinned to the digest its tag resolved to. Credentials are as for <code>push</code>.</li>
+</ul>
+<h2 id="pixi-oci-check"><code>pixi oci check</code><a class="headerlink" href="#pixi-oci-check" title="Permanent link">&para;</a></h2>
+<p>Checks that an image will run, by Linux's rules, without running it, so it works on Windows and macOS too. It runs
+<a href="#pixi-oci-validate"><code>validate</code></a> first, and looks at the files only if the image is valid.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="gp">$ </span>pixi<span class="w"> </span>oci<span class="w"> </span>check<span class="w"> </span>app.tar
+<a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="go">app.tar: 4 problems in 5195 files (134 ELF files, 56 scripts)</span>
+<a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="go">  glibc: glibc is not in the image: 129 ELF files need /lib64/ld-linux-x86-64.so.2, ld-linux-x86-64.so.2, libc.so.6, libdl.so.2, libm.so.6, libpthread.so.0, librt.so.1, libutil.so.1</span>
+<a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a><span class="go">    /opt/env/bin/bunzip2, /opt/env/bin/bzcat, /opt/env/bin/bzip2, and 126 more</span>
+<a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="go">    help: conda packages use the system's glibc: build on a base image that has it (`--base`, #12), or add the loader and libraries in a layer below the environment</span>
+<a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a><span class="go">  library: libX11.so.6 is needed by 1 ELF file, but the loader would not find it</span>
+<a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a><span class="go">    /opt/env/lib/libtk8.6.so</span>
+<a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a><span class="go">  shebang: 20 scripts start with #!/bin/sh, which is not in the image</span>
+<a id="__codelineno-7-9" name="__codelineno-7-9" href="#__codelineno-7-9"></a><span class="go">    /opt/env/bin/bzdiff, /opt/env/bin/bzgrep, /opt/env/bin/bzmore, and 17 more</span>
+<a id="__codelineno-7-10" name="__codelineno-7-10" href="#__codelineno-7-10"></a><span class="go">  ...</span>
+<a id="__codelineno-7-11" name="__codelineno-7-11" href="#__codelineno-7-11"></a><span class="go">  note: entrypoint: the image sets no entrypoint or cmd, so a container needs a command</span>
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Argument or option</th>
+<th>Default</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>IMAGE</code></td>
+<td></td>
+<td>an OCI image layout directory, a <code>.tar</code> archive of one read in place, or an image in a registry (see <a href="#images-in-a-registry">Images in a registry</a>)</td>
+</tr>
+<tr>
+<td><code>-p, --platform NAME</code></td>
+<td>the only one (from a registry's index, the host's Linux)</td>
+<td>for an image of several platforms, which one: <code>linux/arm64/v8</code>, or <code>linux-aarch64</code></td>
+</tr>
+<tr>
+<td><code>--format text\|json</code></td>
+<td><code>text</code></td>
+<td><code>json</code> gives <code>ok</code>, what was checked, and each problem and note with every path it affects</td>
+</tr>
+</tbody>
+</table>
+<p>It applies the layers in order, whiteouts included, and then:</p>
+<table>
+<thead>
+<tr>
+<th>Problem</th>
+<th>What it means</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>architecture</code></td>
+<td>an ELF file is for another machine than the image's platform</td>
+</tr>
+<tr>
+<td><code>glibc</code></td>
+<td>ELF files need a loader or glibc libraries no layer provides: an image without a base has none</td>
+</tr>
+<tr>
+<td><code>library</code></td>
+<td>a library an ELF file needs (<code>DT_NEEDED</code>) is not where the loader would look: its <code>RPATH</code> or <code>RUNPATH</code> (with <code>$ORIGIN</code>), the image's <code>LD_LIBRARY_PATH</code>, then <code>/lib</code>, <code>/usr/lib</code>, <code>/lib64</code>, <code>/usr/lib64</code> and the multiarch directories</td>
+</tr>
+<tr>
+<td><code>shebang</code></td>
+<td>an executable script's <code>#!</code> interpreter is not in the image; for <code>#!/usr/bin/env prog</code>, <code>prog</code> is looked for on the image's <code>PATH</code></td>
+</tr>
+<tr>
+<td><code>placeholder</code></td>
+<td>a file still holds a conda build placeholder, so it was not rewritten for the image's prefix (<code>conda-meta</code> records and <code>__pycache__</code> caches excepted)</td>
+</tr>
+<tr>
+<td><code>entrypoint</code></td>
+<td>the entrypoint, or cmd when there is none, is not on the image's <code>PATH</code>, or is not executable</td>
+</tr>
+<tr>
+<td><code>elf</code></td>
+<td>a file starts like an ELF file but cannot be read as one</td>
+</tr>
+<tr>
+<td><code>spec</code></td>
+<td><code>validate</code> found a problem; the files were not looked at</td>
+</tr>
+</tbody>
+</table>
+<p>Symlinks are followed as the kernel follows them. It exits <code>1</code> if there is any problem; a note, such as an image
+with no entrypoint, does not fail it. ELF files are parsed in memory up to 64 MiB, and from a temporary file beyond.</p>
+<h2 id="pixi-oci-digest"><code>pixi oci digest</code><a class="headerlink" href="#pixi-oci-digest" title="Permanent link">&para;</a></h2>
+<p>Prints the digest a registry serves for a tag, to pin <code>--base</code> with. Only manifests are fetched, never layers.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="gp">$ </span>pixi<span class="w"> </span>oci<span class="w"> </span>digest<span class="w"> </span>debian:bookworm-slim
+<a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="go">sha256:734a72b3d6142a71993b4bc580ca01d8ca687f77a2c422d96a961d3376b179bc</span>
+<a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="gp">$ </span>pixi<span class="w"> </span>oci<span class="w"> </span>digest<span class="w"> </span>debian:bookworm-slim<span class="w"> </span>--platform<span class="w"> </span>linux-64<span class="w"> </span>--pinned
+<a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="go">debian:bookworm-slim@sha256:c67e92c8099ba22853ab4cfda7cfb494d253d6012ca82dee98ba8976772af018</span>
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Argument or option</th>
+<th>Default</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>REFERENCE</code></td>
+<td></td>
+<td><code>[registry/]repository[:tag]</code>; <code>latest</code> when there is no tag</td>
+</tr>
+<tr>
+<td><code>-p, --platform NAME</code></td>
+<td></td>
+<td>the digest of that platform's manifest, rather than the tag's (often an index of several)</td>
+</tr>
+<tr>
+<td><code>--pinned</code></td>
+<td></td>
+<td>print the reference as given, with <code>@&lt;digest&gt;</code> added, ready for <code>build --base</code></td>
+</tr>
+<tr>
+<td><code>--cache-dir PATH</code></td>
+<td>as for <code>build</code></td>
+<td>where fetched manifests are kept</td>
+</tr>
+</tbody>
+</table>
+<p>A base pinned to an index's digest works for every platform the index has, so the plain digest is usually the one
+to pin. It is what <code>crane digest</code> prints; <code>skopeo inspect docker://...</code> prints the platform's.</p>
+<h2 id="pixi-oci-pull"><code>pixi oci pull</code><a class="headerlink" href="#pixi-oci-pull" title="Permanent link">&para;</a></h2>
+<p>Downloads an image from a registry into a <code>.tar</code> archive or an OCI image layout directory, with no Docker, Podman
+or local registry: pixi-oci keeps no image store, so a pulled image is a file, like a built one.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="gp">$ </span>pixi<span class="w"> </span>oci<span class="w"> </span>pull<span class="w"> </span>debian:bookworm-slim
+<a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="go">Pulled docker.io/library/debian:bookworm-slim@sha256:734a72b3d6142a71993b4bc580ca01d8ca687f77a2c422d96a961d3376b179bc to debian.tar</span>
+<a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="go">  manifest sha256:ec8534cda2cb30f29f44f23e135297af7a1496f2990fd8e4e84aa36b081a757a</span>
+<a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a><span class="go">  1 layer, 26.8 MiB for linux/arm64/v8</span>
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Argument or option</th>
+<th>Default</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>REFERENCE</code></td>
+<td></td>
+<td><code>[registry/]repository[:tag][@digest]</code>; a tag is resolved to the digest the registry serves</td>
+</tr>
+<tr>
+<td><code>-o, --output PATH</code></td>
+<td><code>&lt;repository&gt;.tar</code></td>
+<td>a <code>.tar</code> archive, or any other path for an OCI image layout directory</td>
+</tr>
+<tr>
+<td><code>--force</code></td>
+<td></td>
+<td>replace the output if it exists</td>
+</tr>
+<tr>
+<td><code>-p, --platform NAME</code></td>
+<td>Linux on the host's architecture</td>
+<td>which image of an index to pull: <code>linux-64</code>, <code>linux-aarch64</code>, ...</td>
+</tr>
+<tr>
+<td><code>--cache-dir PATH</code></td>
+<td>as for <code>build</code></td>
+<td>where downloaded blobs are kept</td>
+</tr>
+<tr>
+<td><code>--format text\|json</code></td>
+<td><code>text</code></td>
+<td><code>json</code> gives the pinned reference, digest, platform, layers and size</td>
+</tr>
+</tbody>
+</table>
+<p>Every manifest, config and layer is checked against its digest, and the manifest and config are written as they
+were served, so the pulled image keeps the registry's digest. Blobs come through the same cache as <code>--base</code>, so a
+base already used for a build is not downloaded again. Credentials are as for <code>push</code>. <code>skopeo copy docker://...
+oci-archive:...</code> and <code>crane pull</code> do the same, where installed.</p>
+<h2 id="pixi-oci-push"><code>pixi oci push</code><a class="headerlink" href="#pixi-oci-push" title="Permanent link">&para;</a></h2>
+<p>Sends an image to a registry, with no Docker or Podman. It runs <a href="#pixi-oci-validate"><code>validate</code></a> first, then asks the
+registry for each blob the image needs (its config, then its layers) and sends only the ones it lacks; the manifest
+goes last, under the tag, and the digest the registry reports must be the image's.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="gp">$ </span>pixi<span class="w"> </span>oci<span class="w"> </span>push<span class="w"> </span>app.tar<span class="w"> </span>ghcr.io/team/app:1.0
+<a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="go">[1/9] sha256:3f2c09a1b4de already there</span>
+<a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="go">[2/9] sha256:9c1e77a0e5f2 uploading (2.1 MiB)</span>
+<a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a><span class="go">...</span>
+<a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a><span class="go">Pushed ghcr.io/team/app:1.0</span>
+<a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a><span class="go">  digest sha256:e79ba52d8f3013771e01802686c9e7ff54726be037a96e9b0e7d7424165273dc</span>
+<a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a><span class="go">  9 blobs: 1 uploaded (2.1 MiB), 0 mounted, 8 already there</span>
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Argument or option</th>
+<th>Default</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>IMAGE</code></td>
+<td></td>
+<td>an OCI image layout directory, or a <code>.tar</code> archive of one</td>
+</tr>
+<tr>
+<td><code>DESTINATION</code></td>
+<td></td>
+<td><code>[registry/]repository[:tag]</code>, <code>latest</code> when no tag is given; or <code>repository@sha256:...</code> to push by digest, which must be the image's</td>
+</tr>
+<tr>
+<td><code>-p, --platform NAME</code></td>
+<td>the only one</td>
+<td>for an image of several platforms, which one to push</td>
+</tr>
+<tr>
+<td><code>--chunk-size SIZE</code></td>
+<td></td>
+<td>upload each blob larger than <code>SIZE</code> (such as <code>64M</code>, at least <code>1K</code>) in chunks of it (<a href="#chunked-uploads">Chunked uploads</a>)</td>
+</tr>
+<tr>
+<td><code>--format text\|json</code></td>
+<td><code>text</code></td>
+<td><code>json</code> gives the reference, digest, and how many blobs were uploaded, mounted and already there</td>
+</tr>
+</tbody>
+</table>
+<p>Because layers are named by their digest, pushing a rebuilt image sends only the layers that changed: change one
+package and a push sends its layer and the config, nothing else. When the image was built on a base that lives on
+the same registry, the base's layers are mounted from its repository rather than uploaded.</p>
+<h3 id="chunked-uploads">Chunked uploads<a class="headerlink" href="#chunked-uploads" title="Permanent link">&para;</a></h3>
+<p>By default each blob goes up in one request. A proxy in front of a registry, such as nginx with <code>client_max_body_size</code>
+or a corporate gateway in front of Artifactory, often limits a request's size or time, so a large layer fails where
+small ones succeed. <code>--chunk-size 64M</code> sends any blob larger than 64 MiB in 64 MiB <code>PATCH</code> requests and a closing
+<code>PUT</code>, as the OCI distribution spec describes, so no request is larger than the chunk:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a>pixi<span class="w"> </span>oci<span class="w"> </span>push<span class="w"> </span>app.tar<span class="w"> </span>artifactory.example.com/docker-local/app:1.0<span class="w"> </span>--chunk-size<span class="w"> </span>64M
+</code></pre></div>
+<p>A registry that names a smallest chunk (<code>OCI-Chunk-Min-Length</code>) gets chunks of at least that. Chunks are opt-in:
+some registries handle <code>PATCH</code> poorly, and one request each is fastest where nothing limits it.</p>
+<p><strong>Credentials.</strong> pixi-oci uses pixi's own: log in once with <code>pixi auth login</code>, which stores them in the operating
+system's keychain (or <code>~/.rattler/credentials.json</code>), on Windows, macOS and Linux alike. No Docker or Podman is needed
+or read.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a>pixi<span class="w"> </span>auth<span class="w"> </span>login<span class="w"> </span>ghcr.io<span class="w"> </span>--username<span class="w"> </span>&lt;your-user&gt;<span class="w"> </span>--password<span class="w"> </span>&lt;token&gt;
+<a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>pixi<span class="w"> </span>oci<span class="w"> </span>push<span class="w"> </span>app.tar<span class="w"> </span>ghcr.io/&lt;your-user&gt;/app:1.0
+</code></pre></div>
+<p>For GHCR the token is a GitHub personal access token with <code>write:packages</code>; <code>pixi auth login ghcr.io --token &lt;token&gt;</code>
+works as well. In CI, set <code>PIXI_OCI_REGISTRY_USERNAME</code> and <code>PIXI_OCI_REGISTRY_PASSWORD</code> instead: they are given only
+to the push's destination, or to <code>PIXI_OCI_REGISTRY</code> when that is set, never to another registry, such as a base
+image's. In GitHub Actions:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="nt">permissions</span><span class="p">:</span>
+<a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a><span class="w">  </span><span class="nt">contents</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">read</span>
+<a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a><span class="w">  </span><span class="nt">packages</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">write</span>
+<a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a><span class="nt">steps</span><span class="p">:</span>
+<a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">run</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">pixi oci push app.tar ghcr.io/${{ github.repository }}:${{ github.sha }}</span>
+<a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a><span class="w">    </span><span class="nt">env</span><span class="p">:</span>
+<a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a><span class="w">      </span><span class="nt">PIXI_OCI_REGISTRY_USERNAME</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${{ github.actor }}</span>
+<a id="__codelineno-13-8" name="__codelineno-13-8" href="#__codelineno-13-8"></a><span class="w">      </span><span class="nt">PIXI_OCI_REGISTRY_PASSWORD</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${{ secrets.GITHUB_TOKEN }}</span>
+</code></pre></div>
+<h2 id="pixi-oci-inspect"><code>pixi oci inspect</code><a class="headerlink" href="#pixi-oci-inspect" title="Permanent link">&para;</a></h2>
+<p>Shows what an image holds, read from its index, manifest and config, without opening a layer or needing skopeo or
+crane.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="gp">$ </span>pixi<span class="w"> </span>oci<span class="w"> </span>inspect<span class="w"> </span>app.tar
+<a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a><span class="go">Image app:1.0 (app.tar)</span>
+<a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a><span class="go">  platform    linux/amd64</span>
+<a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a><span class="go">  manifest    sha256:9ec8407e4f1860919cd8dd7af6027a9bdcb91a5a008b2c5ea657ed3f300044ef</span>
+<a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a><span class="go">  config      sha256:6ca92a53b6bf0bf0fc05e09b3e22b662af269f9136ff892344073894a1ad1312</span>
+<a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a><span class="go">  created     1970-01-01T00:00:00Z</span>
+<a id="__codelineno-14-7" name="__codelineno-14-7" href="#__codelineno-14-7"></a><span class="go">  env         PATH=/opt/env/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin</span>
+<a id="__codelineno-14-8" name="__codelineno-14-8" href="#__codelineno-14-8"></a><span class="go">              CONDA_PREFIX=/opt/env</span>
+<a id="__codelineno-14-9" name="__codelineno-14-9" href="#__codelineno-14-9"></a><span class="go">  labels      dev.pixi.environment=app</span>
+<a id="__codelineno-14-10" name="__codelineno-14-10" href="#__codelineno-14-10"></a><span class="go">              dev.pixi.platform=linux-64</span>
+<a id="__codelineno-14-11" name="__codelineno-14-11" href="#__codelineno-14-11"></a>
+<a id="__codelineno-14-12" name="__codelineno-14-12" href="#__codelineno-14-12"></a><span class="go">7 layers, 62.6 MiB</span>
+<a id="__codelineno-14-13" name="__codelineno-14-13" href="#__codelineno-14-13"></a>
+<a id="__codelineno-14-14" name="__codelineno-14-14" href="#__codelineno-14-14"></a><span class="gp">  #  </span>Layer<span class="w">              </span>Size<span class="w">      </span>Digest
+<a id="__codelineno-14-15" name="__codelineno-14-15" href="#__codelineno-14-15"></a><span class="go">  1  4 packages         2.1 MiB   sha256:960cbb64893f</span>
+<a id="__codelineno-14-16" name="__codelineno-14-16" href="#__codelineno-14-16"></a><span class="go">  2  libpython 3.13.18  13.9 MiB  sha256:12f0c952f0ec</span>
+<a id="__codelineno-14-17" name="__codelineno-14-17" href="#__codelineno-14-17"></a><span class="go">  3  12 packages        8.3 MiB   sha256:cbef1ccd8e85</span>
+<a id="__codelineno-14-18" name="__codelineno-14-18" href="#__codelineno-14-18"></a><span class="go">  4  tk 8.6.13          4.0 MiB   sha256:74ddf65a7bef</span>
+<a id="__codelineno-14-19" name="__codelineno-14-19" href="#__codelineno-14-19"></a><span class="go">  5  3 packages         1.7 MiB   sha256:a8fb83f0c699</span>
+<a id="__codelineno-14-20" name="__codelineno-14-20" href="#__codelineno-14-20"></a><span class="go">  6  python 3.13.18     32.6 MiB  sha256:a6cd4f82fa1e</span>
+<a id="__codelineno-14-21" name="__codelineno-14-21" href="#__codelineno-14-21"></a><span class="go">  7  six 1.17.0         11.5 KiB  sha256:f0d9c9d4dea1</span>
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Argument or option</th>
+<th>Default</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>IMAGE</code></td>
+<td></td>
+<td>an OCI image layout directory, a <code>.tar</code> archive of one read in place, or an image in a registry (see <a href="#images-in-a-registry">Images in a registry</a>)</td>
+</tr>
+<tr>
+<td><code>-p, --platform NAME</code></td>
+<td>the only one (from a registry's index, the host's Linux)</td>
+<td>for an image of several platforms, which one: <code>linux/arm64/v8</code>, or the conda name <code>linux-aarch64</code></td>
+</tr>
+<tr>
+<td><code>--packages</code></td>
+<td></td>
+<td>list the packages of every layer that holds several</td>
+</tr>
+<tr>
+<td><code>--format text\|json</code></td>
+<td><code>text</code></td>
+<td><code>json</code> gives every field, and each layer's digest, size, media type, <code>diff_id</code>, history line and packages</td>
+</tr>
+<tr>
+<td><code>--raw index\|manifest\|config</code></td>
+<td></td>
+<td>print that stored document exactly, instead of the summary; its sha256 is its digest</td>
+</tr>
+</tbody>
+</table>
+<p>Layer sizes are the compressed sizes the registry stores. The packages of each layer come from the history line
+pixi-oci writes for it; a layer another tool built shows its own history line instead.</p>
+<p>Other OCI tools read the same image: <code>skopeo inspect oci-archive:app.tar</code>, <code>skopeo inspect --config
+oci-archive:app.tar</code>, or <code>crane config</code> and <code>crane manifest</code> on a pushed image (which <code>pixi oci inspect REF</code> reads too).</p>
+<h2 id="environment-variables">Environment variables<a class="headerlink" href="#environment-variables" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>PIXI_OCI_CACHE_DIR</code></td>
+<td>the package cache, when <code>--cache-dir</code> is not given. Otherwise <code>$XDG_CACHE_HOME/pixi-oci</code>, <code>~/.cache/pixi-oci</code> on Linux, <code>~/Library/Caches/pixi-oci</code> on macOS, <code>%LOCALAPPDATA%\pixi-oci</code> on Windows</td>
+</tr>
+<tr>
+<td><code>SOURCE_DATE_EPOCH</code></td>
+<td>seconds since the Unix epoch, the image's <code>created</code> time; <code>0</code> when unset. Files in layers are always stamped 0, so it never changes a layer's digest. The <a href="https://reproducible-builds.org/docs/source-date-epoch/">reproducible-builds</a> convention.</td>
+</tr>
+<tr>
+<td><code>HTTPS_PROXY</code>, <code>HTTP_PROXY</code>, <code>NO_PROXY</code></td>
+<td>the proxy for downloads</td>
+</tr>
+<tr>
+<td><code>PIXI_OCI_REGISTRY_USERNAME</code>, <code>PIXI_OCI_REGISTRY_PASSWORD</code></td>
+<td>credentials for one registry, for CI: <code>push</code>'s destination, or <code>PIXI_OCI_REGISTRY</code></td>
+</tr>
+<tr>
+<td><code>PIXI_OCI_REGISTRY</code></td>
+<td>the registry those credentials are for, such as <code>ghcr.io</code>; set it when a build should also use them to pull its base</td>
+</tr>
+<tr>
+<td><code>PIXI_OCI_NETWORK_TESTS</code></td>
+<td>for development only: <code>1</code> adds the tests that download from conda-forge</td>
+</tr>
+</tbody>
+</table>
+<h2 id="exit-codes">Exit codes<a class="headerlink" href="#exit-codes" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>0</code></td>
+<td>success</td>
+</tr>
+<tr>
+<td><code>1</code></td>
+<td>the command failed, or <code>validate</code> found a problem; the message says why and usually what to do (<a href="../troubleshooting/">Troubleshooting</a>)</td>
+</tr>
+<tr>
+<td><code>2</code></td>
+<td>the command line was wrong: an unknown option or a value that does not parse</td>
+</tr>
+</tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href="../examples/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Examples">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                Examples
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../how-it-works/" class="md-footer__link md-footer__link--next" aria-label="Next: How it works">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                How it works
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Apache-2.0 licensed
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/millsks/pixi-oci" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.sections", "navigation.top", "navigation.footer", "search.highlight", "search.suggest", "content.code.copy", "content.action.edit"], "search": "../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"default": "latest", "provider": "mike"}}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.a5f9d56c.min.js"></script>
+      
+    
+  </body>
+</html>

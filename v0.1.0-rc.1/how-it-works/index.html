@@ -1,0 +1,1422 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="OCI container images straight from pixi.lock, with no Dockerfile, no Docker daemon and no admin rights">
+      
+      
+      
+        <link rel="canonical" href="https://millsks.github.io/pixi-oci/latest/how-it-works/">
+      
+      
+        <link rel="prev" href="../cli/">
+      
+      
+        <link rel="next" href="../troubleshooting/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/favicon.svg">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.1">
+    
+    
+      
+        <title>How it works - pixi-oci</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.57a0d79d.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.fb2fffe2.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,700,700i%7CJetBrains+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  <style>@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&display=swap");
+/* pixi-oci on Material for MkDocs, in the Aesir palette that aesir-oss/pixi-sbom's docs use: emerald on white, and
+   deep emerald when dark. The light page stays white so Deep Emerald links (#07835d) read at 4.76:1 (AA); on the
+   dark ground links are Aesir Emerald (#5ae9b6). */
+:root,
+[data-md-color-scheme="default"] {
+  --md-primary-fg-color: #ffffff;
+  --md-primary-fg-color--light: #f5f6f7;
+  --md-primary-fg-color--dark: #f5f6f7;
+  --md-primary-bg-color: #1a1d20;
+  --md-primary-bg-color--light: #5b636b;
+  --md-accent-fg-color: #2fb889;
+  --md-accent-fg-color--transparent: rgba(47, 184, 137, 0.1);
+  --md-typeset-a-color: #07835d;
+  --md-code-bg-color: #f5f6f7;
+  --md-footer-bg-color: #1a1d20;
+  --md-footer-bg-color--dark: #111315;
+  --oci-rule: #c9ced3;
+}
+
+[data-md-color-scheme="slate"] {
+  --md-default-bg-color: #052620;
+  --md-default-bg-color--light: rgba(5, 38, 32, 0.54);
+  --md-default-bg-color--lighter: rgba(5, 38, 32, 0.26);
+  --md-default-bg-color--lightest: rgba(5, 38, 32, 0.07);
+  --md-default-fg-color: rgba(234, 251, 243, 0.9);
+  --md-default-fg-color--light: rgba(169, 217, 198, 0.9);
+  --md-default-fg-color--lighter: rgba(169, 217, 198, 0.4);
+  --md-default-fg-color--lightest: rgba(169, 217, 198, 0.14);
+  --md-typeset-color: #eafbf3;
+  --md-primary-fg-color: #031915;
+  --md-primary-fg-color--light: #0a3a30;
+  --md-primary-fg-color--dark: #031915;
+  --md-primary-bg-color: #eafbf3;
+  --md-primary-bg-color--light: #a9d9c6;
+  --md-accent-fg-color: #5ae9b6;
+  --md-accent-fg-color--transparent: rgba(90, 233, 182, 0.1);
+  --md-typeset-a-color: #5ae9b6;
+  --md-code-bg-color: #0a3a30;
+  --md-code-fg-color: #eafbf3;
+  --md-footer-bg-color: #031915;
+  --md-footer-bg-color--dark: #021210;
+  --oci-rule: #125244;
+}
+
+/* A white header needs a rule under it and a visible search field. */
+.md-header {
+  box-shadow: 0 1px 0 var(--oci-rule);
+}
+.md-header[data-md-state="shadow"],
+.md-header--shadow {
+  box-shadow: 0 1px 0 var(--oci-rule), 0 0.2rem 0.4rem rgba(0, 0, 0, 0.08);
+}
+[data-md-color-scheme="default"] .md-search__form {
+  background-color: rgba(26, 29, 32, 0.06);
+}
+[data-md-color-scheme="default"] .md-search__form:hover {
+  background-color: rgba(26, 29, 32, 0.1);
+}
+
+/* Headings in Space Grotesk; Inter and JetBrains Mono come from the theme's font setting. */
+.md-typeset h1,
+.md-typeset h2,
+.md-typeset h3 {
+  font-family: "Space Grotesk", var(--md-text-font-family), sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.md-typeset h1 {
+  color: var(--md-typeset-color);
+}
+.md-header__title {
+  font-weight: 700;
+}</style>
+  
+  <script>
+    (function () {
+      try {
+        var key = "__source_fetched_at";
+        var fetched = Number(sessionStorage.getItem(key) || 0);
+        if (Date.now() - fetched > 10 * 60 * 1000) {
+          sessionStorage.removeItem("__source");
+          sessionStorage.setItem(key, String(Date.now()));
+        }
+      } catch (e) {}
+    })();
+  </script>
+
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="custom">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#how-it-works" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="pixi-oci" class="md-header__button md-logo" aria-label="pixi-oci" data-md-component="logo">
+      
+  <img src="../assets/favicon.svg" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            pixi-oci
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              How it works
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="custom"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="custom" data-md-color-accent="custom"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/millsks/pixi-oci" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    millsks/pixi-oci
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="pixi-oci" class="md-nav__button md-logo" aria-label="pixi-oci" data-md-component="logo">
+      
+  <img src="../assets/favicon.svg" alt="logo">
+
+    </a>
+    pixi-oci
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/millsks/pixi-oci" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    millsks/pixi-oci
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../first-image/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Your first image
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../use-cases/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Common use cases
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../windows/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Building on Windows
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../base-images/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Base images
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../private-channels/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Private channels
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../config/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Config files
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../examples/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Examples
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Command-line reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    How it works
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    How it works
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#planning-the-layers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Planning the layers
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#fetching" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fetching
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#writing-a-layer-from-the-archives" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Writing a layer from the archives
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Writing a layer from the archives">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#checked-against-rattler" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Checked against rattler
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#installing-pypi-wheels" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Installing PyPI wheels
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#reproducible-bytes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reproducible bytes
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#memory-and-disk" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Memory and disk
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../roadmap/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_14" >
+        
+          
+          <label class="md-nav__link" for="__nav_14" id="__nav_14_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_14_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_14">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Contributing
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../development/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Development
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../security/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security policy
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#planning-the-layers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Planning the layers
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#fetching" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fetching
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#writing-a-layer-from-the-archives" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Writing a layer from the archives
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Writing a layer from the archives">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#checked-against-rattler" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Checked against rattler
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#installing-pypi-wheels" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Installing PyPI wheels
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#reproducible-bytes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reproducible bytes
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#memory-and-disk" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Memory and disk
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+    <a href="https://github.com/millsks/pixi-oci/edit/main/docs/how-it-works.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+
+
+<h1 id="how-it-works">How it works<a class="headerlink" href="#how-it-works" title="Permanent link">&para;</a></h1>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>pixi.lock ─▶ plan ─▶ fetch ─▶ stream each archive ─▶ tar ─▶ gzip ─▶ blob    (one per layer, several at once)
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>                       │       rewrite paths, place                         │
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>                       │       noarch python, add                           ▼
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>                cache of archives   conda-meta            config ─▶ manifest ─▶ OCI layout, or a .tar of it
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>                named by sha256
+</code></pre></div>
+<h2 id="planning-the-layers">Planning the layers<a class="headerlink" href="#planning-the-layers" title="Permanent link">&para;</a></h2>
+<p><code>plan</code> reads one environment of <code>pixi.lock</code> for one platform and decides the layers.</p>
+<p><strong>By default the environment is one layer.</strong> The image is the base image's layers, one layer holding the whole
+environment, conda and PyPI, and one holding the files <code>--add</code> names. Layers are named by their sha256, so an
+unchanged environment keeps its digest from build to build and is neither uploaded nor pulled again: a commit that
+changes only code moves only the application layer. When <code>pixi.lock</code> changes, the whole environment layer is
+uploaded once more, which for most environments is a few hundred megabytes at most.</p>
+<p><strong><code>--layers grouped</code> splits a large environment.</strong> When the environment is large and its packages change often, a
+package upgrade that re-uploads gigabytes costs more than extra layers do. Grouping re-uploads only the layers that
+hold the changed packages:</p>
+<ol>
+<li><strong>Large packages alone, small ones grouped.</strong> A conda package of 4 MiB or more gets a layer of its own: those are
+   the ones worth re-uploading alone. Smaller ones are grouped, from about 1 MiB to 8 MiB a group, so a few hundred
+   packages do not each spend a layer on a few kilobytes. A group ends after a package whose name hashes to a cut
+   point (about one name in four) once it holds 1 MiB, or at 8 MiB whatever the names. Because the cut points belong
+   to names, not positions, adding or removing a package changes only the group it lands in, and the layers above
+   keep their digests. A group still under 1 MiB when a large package comes along stays open past it, rather than
+   become a tiny layer of its own.</li>
+<li><strong>Dependencies first.</strong> The packages everything rests on (<code>libgcc</code>, <code>openssl</code>, <code>python</code>) sit at the bottom, where
+   they change least often. Ties go by name, so the order is the same on every run; a dependency cycle (<code>python</code> and
+   <code>pip</code>) is broken at its alphabetically first package.</li>
+<li><strong>Capped.</strong> Overlay file systems limit the layer count (Docker's overlay2 refuses an image of more than about
+   128), so past <code>--max-layers</code> (100) the layers at the top of the order, the ones fewest others depend on, are
+   merged into the last conda layer. Grouping keeps even a few hundred packages well under it: a 385-package
+   data-science and Jupyter environment plans into 84 layers.</li>
+<li><strong>PyPI on top.</strong> All PyPI packages share the top layer: they install into one site-packages and are usually what
+   changes most.</li>
+</ol>
+<p>Grouped layers also keep each upload small, which helps where a proxy in front of the registry limits the size of a
+request. <code>--layers per-package</code> gives every conda package a layer of its own, as long as the cap allows.
+<code>plan --packages</code> lists what each shared layer holds.</p>
+<p>Conda packages pixi builds from source have no archive yet, so an environment with them is refused, by name; so are
+PyPI packages that are not wheels (sdists, git and path checkouts), which would have to be built. The workspace's own
+package, a PyPI path or editable dependency, is one of those until
+<a href="https://github.com/millsks/pixi-oci/issues/34">#34</a>; add its source with <code>--add</code> meanwhile.</p>
+<h2 id="fetching">Fetching<a class="headerlink" href="#fetching" title="Permanent link">&para;</a></h2>
+<p>Every archive of the plan is fetched before any layer is written, one at a time, so a failed download stops the build
+early. Each is checked against the sha256 the lockfile recorded, and kept in the cache named by that hash. A file
+whose bytes are not the ones locked never reaches the cache, and two lockfiles that lock the same file share it.
+Local archives (a <code>file://</code> URL or a path) are read where they are, and still checked.</p>
+<h2 id="writing-a-layer-from-the-archives">Writing a layer from the archives<a class="headerlink" href="#writing-a-layer-from-the-archives" title="Permanent link">&para;</a></h2>
+<p>A layer is written straight from its packages' archives, never unpacked on the host. For each package, its
+<code>info/index.json</code>, <code>info/paths.json</code> and (for <code>noarch: python</code>) <code>info/link.json</code> are read first, then its content is
+streamed in the archive's own order: the <code>pkg-*.tar.zst</code> inside a <code>.conda</code>, or the whole <code>.tar.bz2</code>. Only what
+<code>paths.json</code> lists is installed.</p>
+<p>Each entry is placed as rattler, pixi's own installer, would place it, under the image's prefix (<code>/opt/env</code>):</p>
+<table>
+<thead>
+<tr>
+<th>Entry</th>
+<th>In the layer</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A file with no placeholder</td>
+<td>copied into the tar in 64 KiB chunks</td>
+</tr>
+<tr>
+<td>A file with the build-time placeholder prefix</td>
+<td>rewritten for the image's prefix with rattler's own replacement functions, text or binary as <code>paths.json</code> says</td>
+</tr>
+<tr>
+<td>A symlink</td>
+<td>the archive's link target, as is</td>
+</tr>
+<tr>
+<td>An empty directory</td>
+<td>a directory entry</td>
+</tr>
+<tr>
+<td>A <code>noarch: python</code> file</td>
+<td>moved from <code>site-packages/</code> to <code>lib/python3.X/site-packages/</code>, and <code>python-scripts/</code> to <code>bin/</code></td>
+</tr>
+</tbody>
+</table>
+<p>After the content come the package's entry-point scripts (for <code>noarch: python</code>) and its <code>conda-meta/&lt;name&gt;.json</code>
+record, built the way rattler builds it; the bottom layer also carries the environment's empty <code>conda-meta/history</code>.
+Where two packages in one layer install the same path, the later one wins, as it would installing one after the
+other.</p>
+<p>A package that would place a file outside the prefix (a path with <code>..</code>, a root or a drive) is refused before any of
+its layer is written.</p>
+<h3 id="checked-against-rattler">Checked against rattler<a class="headerlink" href="#checked-against-rattler" title="Permanent link">&para;</a></h3>
+<p>The test suite keeps rattler's own installer as a reference: it installs every test plan into a directory with
+<code>rattler::install::link_package_sync</code>, builds the same plan the streamed way, and requires the same files, modes,
+symlink targets and <code>conda-meta</code> records. It does so for generated packages that cover text and binary placeholders,
+symlinks, case-only names, both archive formats, entry points and very large files, and for real conda-forge
+environments. A numpy, pandas, scipy and scikit-learn environment matches too: 15,888 entries, none different.</p>
+<h2 id="installing-pypi-wheels">Installing PyPI wheels<a class="headerlink" href="#installing-pypi-wheels" title="Permanent link">&para;</a></h2>
+<p>A wheel is a zip archive, read in place and written into the layer as pip and uv install one into a conda
+environment's python:</p>
+<table>
+<thead>
+<tr>
+<th>In the wheel</th>
+<th>In the image</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>its root, <code>.data/purelib</code>, <code>.data/platlib</code></td>
+<td><code>lib/pythonX.Y/site-packages</code></td>
+</tr>
+<tr>
+<td><code>.data/scripts</code></td>
+<td><code>bin</code>, executable, with a <code>#!python</code> first line pointed at the environment's python</td>
+</tr>
+<tr>
+<td><code>.data/headers</code></td>
+<td><code>include/pythonX.Y/&lt;name&gt;</code></td>
+</tr>
+<tr>
+<td><code>.data/data</code></td>
+<td>the prefix</td>
+</tr>
+<tr>
+<td><code>console_scripts</code> and <code>gui_scripts</code> entry points</td>
+<td>a launcher each in <code>bin</code>, as pip writes them</td>
+</tr>
+</tbody>
+</table>
+<p>Every file is checked against the wheel's own <code>RECORD</code> as it is written, and every path must stay inside the prefix.
+The installed <code>RECORD</code> lists where each file went, relative to <code>site-packages</code>, and <code>INSTALLER</code> says <code>pixi-oci</code>.
+Where a wheel installs a path a conda package of the same layer also installs, the wheel's file wins, as it would
+installing the wheels after the conda packages. Bytecode is not compiled into the image; python writes it on first
+import where it can. CI installs the same lockfile with <code>pixi install</code> and checks that site-packages holds the same
+files with the same bytes.</p>
+<h2 id="reproducible-bytes">Reproducible bytes<a class="headerlink" href="#reproducible-bytes" title="Permanent link">&para;</a></h2>
+<p>The same lockfile gives the same image digest on any machine:</p>
+<ul>
+<li>every entry is owned by root (uid and gid 0) and stamped with one time, the Unix epoch, so a layer's digest
+  depends only on its packages: a build at a later commit, or with <code>SOURCE_DATE_EPOCH</code> set to the commit's time,
+  reuses every layer whose packages did not change</li>
+<li>every mode is 0755 (directories, symlinks, executables) or 0644: only whether a file is executable is kept, so no
+  umask reaches the image</li>
+<li>entries keep the archives' order, which the lockfile's hashes fix</li>
+<li>the gzip header carries no time and no file name</li>
+<li>the config's <code>created</code> time, and its history's, is <code>SOURCE_DATE_EPOCH</code>, or 0; it changes the config's digest,
+  never a layer's</li>
+</ul>
+<p>Layers are tar archives in GNU format, compressed with gzip, so every container runtime and registry reads them. CI
+builds a test image on Linux, macOS and Windows on every change and fails if the digests differ; <code>pixi oci validate</code>,
+<code>crane validate</code>, <code>umoci unpack</code> and <code>skopeo copy</code> all accept the result.</p>
+<h2 id="memory-and-disk">Memory and disk<a class="headerlink" href="#memory-and-disk" title="Permanent link">&para;</a></h2>
+<p>"In memory" means one entry at a time, not the whole image. Entries flow from the archive through the tar and gzip
+writers to a blob on disk:</p>
+<ul>
+<li>A file without the placeholder passes through in 64 KiB chunks, however large.</li>
+<li>A file with the placeholder is held whole while it is rewritten, up to a limit: an eighth of <code>--max-memory</code>,
+  between 1 and 16 MiB.</li>
+<li>A larger one is copied to a temporary file and rewritten in pieces of up to 4 MiB, each cut where no replacement can
+  cross: right after a NUL byte in a binary file (a placeholder sits in a C string, which a NUL ends), right after a
+  newline in a text file (but not before a line starting <code>#!</code>). The bytes are the same as a whole-file rewrite, and
+  the tests check it.</li>
+</ul>
+<p><code>--max-memory</code> (512M by default) also sets how many layers are written at once: as many as fit, allowing for the
+in-memory limit twice per layer and about 16 MiB of decompression and compression buffers, and no more than the
+machine has cores. It never changes the image.</p>
+<p>Measured with a warm cache on 2 cores:</p>
+<table>
+<thead>
+<tr>
+<th>linux-64 image</th>
+<th>Packages</th>
+<th>Unpacked</th>
+<th>Time</th>
+<th>Peak memory</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>python and six</td>
+<td>23</td>
+<td>317 MiB</td>
+<td>2.9 s</td>
+<td>48 MiB; 28 MiB with <code>--max-memory 16M</code></td>
+</tr>
+<tr>
+<td>python, numpy, pandas, scipy, scikit-learn</td>
+<td>39</td>
+<td>460 MiB</td>
+<td>5.3 s</td>
+<td>45 MiB</td>
+</tr>
+</tbody>
+</table>
+<p>On disk, plan for the cache (the compressed archives, about the size of the download), the output (the layers,
+somewhat larger, since gzip compresses less than conda's zstd), and while a <code>.tar</code> is assembled, the layers twice.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href="../cli/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Command-line reference">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                Command-line reference
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../troubleshooting/" class="md-footer__link md-footer__link--next" aria-label="Next: Troubleshooting">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                Troubleshooting
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Apache-2.0 licensed
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/millsks/pixi-oci" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.sections", "navigation.top", "navigation.footer", "search.highlight", "search.suggest", "content.code.copy", "content.action.edit"], "search": "../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"default": "latest", "provider": "mike"}}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.a5f9d56c.min.js"></script>
+      
+    
+  </body>
+</html>
