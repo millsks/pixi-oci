@@ -1012,6 +1012,10 @@
 <td>A base image pulled from a registry, pinned by digest: the platform's manifest from an index, its config and layers, each checked against its digest and cached by it. Anonymous or with docker's and podman's credentials, through bearer tokens or basic auth.</td>
 </tr>
 <tr>
+<td><code>manifest.rs</code></td>
+<td>The workspace's <code>pixi.toml</code>, or <code>[tool.pixi]</code> of <code>pyproject.toml</code> (the <code>toml</code> crate): an environment's features and targets in order, its static <code>[activation.env]</code>, and a task as an image command (words, or <code>/bin/sh -c</code> for shell syntax).</td>
+</tr>
+<tr>
 <td><code>add.rs</code></td>
 <td><code>--add</code>: files and directories from the host, walked with <code>.gitignore</code>, <code>.pixi-oci-ignore</code> and the workspace's <code>.dockerignore</code> (the <code>ignore</code> crate), written as one application layer whose modes come from content (<code>#!</code>, ELF), never the host's bits.</td>
 </tr>
