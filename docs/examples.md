@@ -24,6 +24,27 @@ By default each environment is one layer on top of the base image's. The counts 
 a base image: a base adds its own (one for UBI 9 minimal and Debian 12 slim). Even the largest, 385 packages, plans
 into 84 grouped layers, well under the limit.
 
+## With an application
+
+Eight of them carry a small application of their own, added with [`--add`](cli.md#your-applications-files) into one
+layer above the environment. Each README has the full build command; they go from one file to several sources with
+ignore files:
+
+| Example | Application | What it shows |
+|---|---|---|
+| `01-hello-python` | `hello.py` | one file into a directory: `--add hello.py:/app/` |
+| `05-native-binary` | `search.sh`, using `rg` and `jq` | a script made executable by its `#!`, whatever its mode on disk |
+| `03-flask` | `app/` with `templates/` and `static/` | a directory tree, `--workdir` so gunicorn imports it |
+| `04-fastapi` | `app/main.py` | a service run by uvicorn; `.gitignore` keeps `__pycache__` out |
+| `06-r-analysis` | `analysis.R` and `data/sales.csv` | code and data as two `--add`s |
+| `09-streamlit-dashboard` | `dashboard.py` and `.streamlit/config.toml` | a dot directory kept |
+| `08-data-analysis` | a `report` package, its config and its data | three destinations; `.dockerignore` and `.pixi-oci-ignore` leaving raw data and notebooks out |
+| `11-machine-learning` | `train.py`, `predict.py` and their data | `--user 1000:1000` with root-owned code, writing only to `/tmp` or a mount |
+
+`tests/examples.rs` collects each one as a build does and checks what is in it and what its ignore files leave out.
+
+## Building them
+
 From a clone, plan them all, or build one on a base and check it:
 
 ```sh
@@ -31,6 +52,8 @@ pixi run examples-plan
 pixi run examples-build 03-flask gunicorn
 ```
 
-On `debian:bookworm-slim`, the default base of `examples-build`, the examples [`check`](cli.md#pixi-oci-check) clean,
-except the R and Node.js ones, whose packages ship a few things `check` rightly names; each example's README says
-what. Every python example includes `xorg-libx11`, since conda-forge's python depends on tk, which links to X11.
+On `debian:bookworm-slim`, the default base of `examples-build`, `01`, `02`, `03`, `04`, `05` and `13`
+[`check`](cli.md#pixi-oci-check) clean. The others' environments carry things `check` rightly names, in optional
+parts the examples do not use: PySide6's optional Qt modules, pyarrow's Flight and Gandiva, R's compilers, npm's
+python scripts, and placeholders their packages do not declare. Each README says what, and no application layer has
+a problem. Every python example includes `xorg-libx11`, since conda-forge's python depends on tk, which links to X11.

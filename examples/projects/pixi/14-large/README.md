@@ -25,6 +25,13 @@ podman run --rm 14-large:latest --version
 
 ## What `check` reports
 
-Nothing, on `debian:bookworm-slim`. The environment includes `xorg-libx11`: conda-forge's python depends on tk, which links to X11, and without it `check` would report `libX11.so.6`.
+On `debian:bookworm-slim`, 28 problems, all in optional parts of the environment:
+
+- **24 `library` problems from PySide6.** `matplotlib`, unlike `matplotlib-base`, brings the Qt backend, and PySide6's bindings for optional Qt modules (Qt 3D, Charts, Graphs, Multimedia, PDF, WebEngine and others) link to libraries `qt6-main` does not ship. Only `import PySide6.Qt3DCore` and the like would fail.
+- **pyarrow's Flight and Gandiva modules** link to `libarrow_flight.so` and `libgandiva.so`, which conda-forge ships as their own packages (`libarrow-flight`, `libgandiva`); the environment does not include them. Only `import pyarrow.flight` and `import pyarrow.gandiva` would fail.
+- **`libzmq.so.5`, for pyzmq: a false positive** ([#62](https://github.com/millsks/pixi-oci/issues/62)). The library is in `/opt/env/lib`, and the loader finds it through python's own RPATH; `check` does not follow that yet.
+- **A `placeholder` problem:** 70 files in scipy (42), scikit-learn (15) and statsmodels (11) still hold a conda build placeholder their packages do not declare; a placeholder matters only where a file's path text is read at run time.
+
+The environment includes `xorg-libx11`: conda-forge's python depends on tk, which links to X11, and without it `check` would also report `libX11.so.6`.
 
 Built on `ubi9/ubi-minimal` instead, which has no perl, openssl's perl scripts (`c_rehash`, `CA.pl`, `tsget.pl`) are reported as `shebang` problems too; `debian:bookworm-slim` has perl. They matter only if you run them.

@@ -25,6 +25,8 @@ podman run --rm 12-deep-learning:latest -c "import torch; print(torch.__version_
 
 ## What `check` reports
 
-Nothing, on `debian:bookworm-slim`. The environment includes `xorg-libx11`: conda-forge's python depends on tk, which links to X11, and without it `check` would report `libX11.so.6`.
+On `debian:bookworm-slim`, one `placeholder` problem: `lib/libtorch_cpu.so` still holds a conda build placeholder its package does not declare, so installing does not replace it. It is a string inside the library; a placeholder matters only where a file's path text is used at run time.
+
+The environment includes `xorg-libx11`: conda-forge's python depends on tk, which links to X11, and without it `check` would also report `libX11.so.6`.
 
 Built on `ubi9/ubi-minimal` instead, which has no perl, openssl's perl scripts (`c_rehash`, `CA.pl`, `tsget.pl`) are reported as `shebang` problems too; `debian:bookworm-slim` has perl. They matter only if you run them.

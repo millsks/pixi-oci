@@ -1,0 +1,4 @@
+# Added to /etc/report/ by itself: --add config/report.toml:/etc/report/
+input = "/data/sales.csv"
+group_by = "region"
+output = "/tmp/report/summary.csv"
