@@ -100,6 +100,7 @@ and 15.9 s for the same two images.
 | `--env KEY=VALUE` | | an environment variable; repeatable |
 | `--entrypoint`, `--cmd` | | a JSON array (`["python", "-m", "http.server"]`) or words |
 | `--workdir PATH` | | the working directory |
+| `--task NAME` | | a pixi task as the entrypoint, its `cwd` the working directory; `[activation.env]` is always set |
 | `--add SRC:DEST` | | a file or directory in the application layer, as `COPY`; `.gitignore`, `.dockerignore` and `.pixi-oci-ignore` apply |
 | `--label KEY=VALUE`, `--annotation KEY=VALUE` | | labels in the config, annotations on the manifest; repeat for more |
 | `--user`, `--expose PORT[/PROTOCOL]`, `--stop-signal` | | as a Dockerfile's `USER`, `EXPOSE` and `STOPSIGNAL` |
@@ -233,7 +234,7 @@ Every item has an issue labelled [`roadmap`](https://github.com/millsks/pixi-oci
 - [ ] `run`: rootless containers on Linux and in CI ([#14](https://github.com/millsks/pixi-oci/issues/14))
 - [ ] `diff`: two images compared layer by layer ([#26](https://github.com/millsks/pixi-oci/issues/26))
 - [ ] Multi-platform image indexes ([#15](https://github.com/millsks/pixi-oci/issues/15))
-- [ ] pixi's activation variables and an entrypoint from a task
+- [x] pixi's activation variables and an entrypoint from a task
       ([#16](https://github.com/millsks/pixi-oci/issues/16))
 - [x] Private channels with pixi's credentials ([#18](https://github.com/millsks/pixi-oci/issues/18))
 - [x] pixi's mirrors, and S3 and GCS channels ([#51](https://github.com/millsks/pixi-oci/issues/51))

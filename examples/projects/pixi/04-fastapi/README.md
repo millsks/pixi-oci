@@ -12,12 +12,13 @@ From the repository's root:
 pixi oci plan --lockfile examples/projects/pixi/04-fastapi/pixi.lock -p linux-64
 pixi oci build --lockfile examples/projects/pixi/04-fastapi/pixi.lock -p linux-64 \
   --base debian:bookworm-slim@sha256:734a72b3d6142a71993b4bc580ca01d8ca687f77a2c422d96a961d3376b179bc \
-  --add examples/projects/pixi/04-fastapi/app:/app --workdir /app \
-  --entrypoint uvicorn --cmd "main:app --host 0.0.0.0 --port 8000" --expose 8000 \
+  --add examples/projects/pixi/04-fastapi/app:/app --task serve --expose 8000 \
   -t 04-fastapi:latest -o 04-fastapi.tar
 pixi oci check 04-fastapi.tar
 pixi oci inspect 04-fastapi.tar
 ```
+
+`--task serve` starts the image the way `pixi run serve` starts the service here: the task's command is the entrypoint, and its `cwd = "app"` becomes `/app`, where `--add` put the code. `[activation.env]` in `pixi.toml` sets `PYTHONUNBUFFERED=1` in the image, as `pixi run` sets it. Without `--task`, `--workdir /app --entrypoint uvicorn --cmd "main:app --host 0.0.0.0 --port 8000"` gives the same image settings.
 
 `app/.gitignore` keeps `__pycache__` out of the image. Change `app/main.py` and build again: only the application layer's digest changes, so a push uploads only that layer.
 

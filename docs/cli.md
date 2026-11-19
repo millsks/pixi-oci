@@ -34,6 +34,7 @@ Builds an image of an environment. It takes `plan`'s `--lockfile`, `-e`, `-p`, `
 | `--entrypoint COMMAND` | | the entrypoint: a JSON array (`'["python", "-m", "http.server"]'`) or words (`python -m http.server`) |
 | `--cmd ARGS` | | the default arguments, in the same two forms |
 | `--workdir PATH` | | the working directory processes start in |
+| `--task NAME` | | a pixi task from the workspace's manifest as the entrypoint ([A pixi task as the entrypoint](#a-pixi-task-as-the-entrypoint)) |
 | `--add SRC:DEST` | | a file or directory to put in the image, such as `src:/app`; repeat for more. Every `--add` goes into one application layer above the environment ([Your application's files](#your-applications-files)) |
 | `--label KEY=VALUE` | | a label in the image config; repeat for more. pixi-oci's own `dev.pixi.*` labels win |
 | `--annotation KEY=VALUE` | | an annotation on the manifest, such as `org.opencontainers.image.source`; repeat for more |
@@ -52,7 +53,7 @@ What a Dockerfile would say, `build` takes as options:
 | `ENV KEY=VALUE` | `--env KEY=VALUE` |
 | `ENTRYPOINT`, `CMD` | `--entrypoint`, `--cmd` |
 | `COPY src /app` | `--add src:/app` |
-| `WORKDIR` | `--workdir` |
+| `WORKDIR` | `--workdir`, or a task's `cwd` with `--task` |
 | `LABEL KEY=VALUE` | `--label KEY=VALUE` |
 | `USER` | `--user` |
 | `EXPOSE 8000` | `--expose 8000` |
@@ -62,6 +63,42 @@ What a Dockerfile would say, `build` takes as options:
 `HEALTHCHECK`, `SHELL` and `ONBUILD` are Docker's own, not part of the OCI image spec, and container runtimes such
 as podman and Kubernetes ignore them. `RUN` has no equivalent: the environment is what the lockfile describes, and
 nothing runs during a build.
+
+### A pixi task as the entrypoint
+
+`--task NAME` starts the image the way `pixi run NAME` starts the task in that environment. pixi-oci reads the
+manifest beside the lockfile: `pixi.toml`, or `[tool.pixi]` in `pyproject.toml`. It looks the task up in the
+environment's features in order, the platform's `[target]` tables winning.
+
+```toml title="pixi.toml"
+[tasks]
+serve = { cmd = "uvicorn main:app --host 0.0.0.0 --port 8000", cwd = "app", env = { WORKERS = "2" } }
+```
+
+```sh
+pixi oci build --add app:/app --task serve ...
+```
+
+- **The command becomes the entrypoint.** A task written as a list runs as written. A plain command line is split into
+  words. One with shell syntax (`&&`, `|`, `;`, `$VAR`, quotes, redirections, globs, a leading `VAR=value`) runs as
+  `["/bin/sh", "-c", "..."]`, so the base image must have `/bin/sh`; `pixi oci check` says when it does not.
+- **`cwd` becomes the working directory**, from `/`: the workspace's root is `/` in the image, so `cwd = "app"` is
+  `/app`. Put the files there with `--add app:/app`.
+- **`env` is added** to the image's environment.
+- **`args` take their defaults**; a task with an argument that has none is refused.
+- **`depends-on` is refused**: nothing runs before an image's entrypoint.
+
+`--entrypoint`, `--workdir` and `--env` win over what the task gives, and `--cmd` adds default arguments to it.
+
+### pixi's activation variables
+
+Every build sets the environment's static `[activation.env]` variables in the image, as `pixi run` sets them: the
+default feature's (unless the environment has `no-default-feature`) and then its own features', the platform's
+`[target]` tables winning, sorted by name. `$CONDA_PREFIX` in a value becomes the image's prefix; any other `$VAR`
+is written as given, since an image's environment is not expanded. `--env` wins over them.
+
+Activation scripts (`[activation] scripts = [...]`, and the `etc/conda/activate.d` scripts some packages ship) are
+not run: a build runs nothing. pixi-oci says so on stderr when the environment has them.
 
 ### Your application's files
 

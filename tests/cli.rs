@@ -581,3 +581,27 @@ fn default_arguments_may_start_with_a_dash() {
         .failure()
         .stderr(predicate::str::contains("does not exist"));
 }
+
+#[test]
+fn build_refuses_a_task_it_cannot_find_before_downloading() {
+    let dir = tempfile::tempdir().unwrap();
+    let build = |lockfile: &std::path::Path| {
+        pixi_oci()
+            .args(["build", "--lockfile"])
+            .arg(lockfile)
+            .args(["-e", "app", "--platform", "linux-64", "--task", "serve", "--output"])
+            .arg(dir.path().join("image.tar"))
+            .arg("--cache-dir")
+            .arg(dir.path().join("cache"))
+            .assert()
+            .failure()
+    };
+    // The fixture's manifest has no tasks.
+    build(std::path::Path::new(LOCKFILE)).stderr(predicate::str::contains("environment `app` has no task `serve`"));
+    // A lockfile alone has no manifest to read tasks from.
+    let alone = dir.path().join("alone");
+    std::fs::create_dir_all(&alone).unwrap();
+    std::fs::copy(LOCKFILE, alone.join("pixi.lock")).unwrap();
+    build(&alone.join("pixi.lock")).stderr(predicate::str::contains("--task needs the workspace's manifest"));
+    assert!(!dir.path().join("cache").exists());
+}
