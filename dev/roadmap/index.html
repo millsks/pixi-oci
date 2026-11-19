@@ -514,6 +514,33 @@
   
   
     <li class="md-nav__item">
+      <a href="../config/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Config files
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../examples/" class="md-nav__link">
         
   
@@ -753,10 +780,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_12" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_13" >
         
           
-          <label class="md-nav__link" for="__nav_12" id="__nav_12_label" tabindex="">
+          <label class="md-nav__link" for="__nav_13" id="__nav_13_label" tabindex="">
             
   
   
@@ -774,8 +801,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_12_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_12">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_13_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_13">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -995,6 +1022,8 @@ scope and acceptance criteria live and its pull requests are linked. Comment the
       <code>.dockerignore</code> and <code>.pixi-oci-ignore</code> applied (<a href="https://github.com/millsks/pixi-oci/issues/40">#40</a>)</li>
 <li>[x] <strong><code>--task</code> and activation variables</strong>: a pixi task as the entrypoint, and <code>[activation.env]</code> in every image
       (<a href="https://github.com/millsks/pixi-oci/issues/16">#16</a>)</li>
+<li>[x] <strong>Config files</strong>: images defined in <code>[tool.pixi-oci]</code> of <code>pixi.toml</code> or <code>pyproject.toml</code>, or <code>pixi-oci.toml</code>,
+      built by name (<a href="https://github.com/millsks/pixi-oci/issues/59">#59</a>)</li>
 <li>[x] <strong><code>validate</code></strong>: an image checked against the OCI image spec on any OS, every blob, digest, size and <code>diff_id</code>
       (<a href="https://github.com/millsks/pixi-oci/issues/25">#25</a>)</li>
 <li>[x] <strong><code>inspect</code></strong>: an image's settings and layers, with the packages each layer holds, as text, JSON or the exact

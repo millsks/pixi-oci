@@ -514,6 +514,33 @@
   
   
     <li class="md-nav__item">
+      <a href="../config/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Config files
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../examples/" class="md-nav__link">
         
   
@@ -664,10 +691,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_12" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_13" checked>
         
           
-          <label class="md-nav__link" for="__nav_12" id="__nav_12_label" tabindex="">
+          <label class="md-nav__link" for="__nav_13" id="__nav_13_label" tabindex="">
             
   
   
@@ -685,8 +712,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_12_label" aria-expanded="true">
-          <label class="md-nav__title" for="__nav_12">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_13_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_13">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1010,6 +1037,10 @@
 <tr>
 <td><code>registry.rs</code></td>
 <td>A base image pulled from a registry, pinned by digest: the platform's manifest from an index, its config and layers, each checked against its digest and cached by it. Anonymous or with docker's and podman's credentials, through bearer tokens or basic auth.</td>
+</tr>
+<tr>
+<td><code>config.rs</code></td>
+<td>Images defined in a file: <code>[tool.pixi-oci.images]</code> in the manifest, else <code>pixi-oci.toml</code>, or <code>--config</code>; serde with unknown keys refused; each key applied to the build's options unless the command line gave that option (clap's value source).</td>
 </tr>
 <tr>
 <td><code>manifest.rs</code></td>

@@ -514,6 +514,33 @@
   
   
     <li class="md-nav__item">
+      <a href="../config/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Config files
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../examples/" class="md-nav__link">
         
   
@@ -875,10 +902,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_12" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_13" >
         
           
-          <label class="md-nav__link" for="__nav_12" id="__nav_12_label" tabindex="">
+          <label class="md-nav__link" for="__nav_13" id="__nav_13_label" tabindex="">
             
   
   
@@ -896,8 +923,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_12_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_12">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_13_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_13">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1269,6 +1296,28 @@
 everywhere else.</p>
 <h2 id="pixi-oci-build"><code>pixi oci build</code><a class="headerlink" href="#pixi-oci-build" title="Permanent link">&para;</a></h2>
 <p>Builds an image of an environment. It takes <code>plan</code>'s <code>--lockfile</code>, <code>-e</code>, <code>-p</code>, <code>--layers</code> and <code>--max-layers</code>, and:</p>
+<table>
+<thead>
+<tr>
+<th>Argument</th>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>IMAGE</code></td>
+<td></td>
+<td>an image a <a href="../config/">config file</a> defines; without one, every image it defines. With no config file, the flags alone describe the image</td>
+</tr>
+<tr>
+<td><code>--config PATH</code></td>
+<td></td>
+<td>the config file to read, and no other; by default the manifest's <code>[tool.pixi-oci]</code> beside the lockfile, else <code>pixi-oci.toml</code> there</td>
+</tr>
+</tbody>
+</table>
+<p>Every option below can also be a key in a config file, where the flag wins.</p>
 <table>
 <thead>
 <tr>
