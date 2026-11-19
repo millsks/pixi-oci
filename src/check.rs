@@ -468,14 +468,28 @@ impl Fs {
         }
     }
 
+    /// The python that loads a file under an environment's `lib/pythonX.Y/`, and its ELF facts: `bin/pythonX.Y`, else
+    /// `bin/python3`, beside that `lib`.
+    fn python_for(&self, real: &str) -> Option<(String, &ElfFacts)> {
+        let at = real.find("/lib/python")?;
+        let (prefix, rest) = (&real[..at], &real[at + "/lib/".len()..]);
+        let version = rest.split('/').next()?;
+        [version, "python3"].into_iter().find_map(|name| {
+            let (path, facts) = self.file(&format!("{prefix}/bin/{name}"))?;
+            match &facts.elf {
+                Some(Ok(elf)) => Some((path, elf)),
+                _ => None,
+            }
+        })
+    }
+
     /// Where the loader would find the library `name` needed by the ELF file at `real` (a real path).
     fn find_library(&self, name: &str, real: &str, facts: &ElfFacts, context: &Context) -> bool {
         if name.contains('/') {
             return self.file(&join(parent(real), name)).is_some();
         }
-        let origin = parent(real);
         let lib = if facts.class64 { "lib64" } else { "lib" };
-        let expand = |dir: &String| -> Option<String> {
+        let expand_from = |origin: &str, dir: &String| -> Option<String> {
             if dir.contains("$PLATFORM") || dir.contains("${PLATFORM}") {
                 return None;
             }
@@ -490,6 +504,8 @@ impl Fs {
                 join(&context.workdir, &dir)
             })
         };
+        let origin = parent(real);
+        let expand = |dir: &String| expand_from(origin, dir);
         let triplet = match context.architecture.as_str() {
             "amd64" => "x86_64-linux-gnu",
             "arm64" => "aarch64-linux-gnu",
@@ -501,6 +517,20 @@ impl Fs {
         let mut dirs: Vec<String> = Vec::new();
         if facts.runpath.is_empty() {
             dirs.extend(facts.rpath.iter().filter_map(expand));
+            // Without a RUNPATH of its own, the loader also searches the DT_RPATH of the objects that loaded this one,
+            // up to the program. A Python extension module is loaded by its environment's python, so that is searched
+            // too, unless it has a RUNPATH, which is never inherited.
+            if let Some((python, python_facts)) = self.python_for(real)
+                && python_facts.runpath.is_empty()
+            {
+                let python_origin = parent(&python).to_string();
+                dirs.extend(
+                    python_facts
+                        .rpath
+                        .iter()
+                        .filter_map(|dir| expand_from(&python_origin, dir)),
+                );
+            }
         }
         dirs.extend(context.ld_library_path.iter().filter_map(expand));
         dirs.extend(facts.runpath.iter().filter_map(expand));
@@ -1271,6 +1301,65 @@ pub(crate) mod tests {
         assert_eq!(kinds(&without.findings(&context(Some("tool"))).0), ["library"]);
         assert!(without.findings(&wide).0.is_empty());
         assert!(fs.findings(&wide).0.is_empty());
+    }
+
+    #[test]
+    fn an_extension_finds_libraries_through_pythons_rpath() {
+        // pyzmq's extension: its own RPATH, written for the archive's layout, misses once it is installed.
+        let extension = |runpath: Option<&'static str>| {
+            elf_file(&Elf {
+                machine: X86_64,
+                needed: &["libzmq.so.5", "libc.so.6"],
+                rpath: runpath.is_none().then_some("$ORIGIN/../../../../lib"),
+                runpath,
+                ..Elf::default()
+            })
+        };
+        let python = |rpath: Option<&'static str>, runpath: Option<&'static str>| {
+            elf_file(&Elf {
+                machine: X86_64,
+                interpreter: Some("/lib64/ld-linux-x86-64.so.2"),
+                needed: &["libc.so.6"],
+                rpath,
+                runpath,
+            })
+        };
+        let lib = libthing();
+        let image = |python: Vec<u8>, extension: Vec<u8>| {
+            fs_of(&[
+                glibc(),
+                layer(&[
+                    ("opt/env/bin/python3.13", Entry::File(&python, 0o755)),
+                    ("opt/env/lib/libzmq.so.5", Entry::File(&lib, 0o755)),
+                    (
+                        "opt/env/lib/python3.13/site-packages/zmq/backend/cython/_zmq.abi3.so",
+                        Entry::File(&extension, 0o755),
+                    ),
+                ]),
+            ])
+        };
+        let missing = |fs: &Fs| {
+            let (problems, _) = fs.findings(&context(None));
+            problems.iter().filter(|problem| problem.kind == "library").count()
+        };
+        // Python's DT_RPATH is searched for what its extension needs, as the loader does.
+        assert_eq!(
+            missing(&image(python(Some("$ORIGIN/../lib"), None), extension(None))),
+            0
+        );
+        // A RUNPATH is never inherited: python's does not reach the extension's needs.
+        assert_eq!(
+            missing(&image(python(None, Some("$ORIGIN/../lib")), extension(None))),
+            1
+        );
+        // And an extension with a RUNPATH of its own searches only its own paths.
+        assert_eq!(
+            missing(&image(
+                python(Some("$ORIGIN/../lib"), None),
+                extension(Some("$ORIGIN/nowhere"))
+            )),
+            1
+        );
     }
 
     #[test]
