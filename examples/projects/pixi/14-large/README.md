@@ -1,16 +1,16 @@
 # A large environment
 
-Data science, machine learning, geospatial and Jupyter in one environment: pandas, polars, scikit-learn, pytorch, dask, gdal, jupyterlab and more, a few hundred packages. It shows grouping at scale: the big packages each on a layer, the rest grouped, well under the layer limit.
+Data science, machine learning, geospatial and Jupyter in one environment: pandas, polars, scikit-learn, pytorch, dask, gdal, jupyterlab and more, a few hundred packages. It shows `--layers grouped` at scale: the big packages each on a layer, the rest grouped, well under the layer limit, so a package upgrade re-uploads only the layers that hold it.
 
-`pixi.toml` lists what the environment asks for; `pixi.lock` is what pixi locked for `linux-64` and `linux-aarch64`, written by `pixi lock` and never edited. On `linux-64` it is 385 conda packages, 764.0 MiB to download, planned into 84 layers.
+`pixi.toml` lists what the environment asks for; `pixi.lock` is what pixi locked for `linux-64` and `linux-aarch64`, written by `pixi lock` and never edited. On `linux-64` it is 385 conda packages, 764.0 MiB to download: one layer by default, 84 with `--layers grouped`.
 
 ## Build it
 
 From the repository's root:
 
 ```sh
-pixi oci plan --lockfile examples/projects/pixi/14-large/pixi.lock -p linux-64
-pixi oci build --lockfile examples/projects/pixi/14-large/pixi.lock -p linux-64 \
+pixi oci plan --lockfile examples/projects/pixi/14-large/pixi.lock -p linux-64 --layers grouped
+pixi oci build --lockfile examples/projects/pixi/14-large/pixi.lock -p linux-64 --layers grouped \
   --base debian:bookworm-slim@sha256:734a72b3d6142a71993b4bc580ca01d8ca687f77a2c422d96a961d3376b179bc \
   --entrypoint jupyter-lab -t 14-large:latest -o 14-large.tar
 pixi oci check 14-large.tar

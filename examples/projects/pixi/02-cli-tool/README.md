@@ -2,7 +2,7 @@
 
 A command-line tool from conda-forge, [HTTPie](https://httpie.io): a `noarch: python` package, so its `http` and `https` commands are entry points written into `bin` for the image's python.
 
-`pixi.toml` lists what the environment asks for; `pixi.lock` is what pixi locked for `linux-64` and `linux-aarch64`, written by `pixi lock` and never edited. On `linux-64` it is 46 conda packages, 50.0 MiB to download, planned into 8 layers.
+`pixi.toml` lists what the environment asks for; `pixi.lock` is what pixi locked for `linux-64` and `linux-aarch64`, written by `pixi lock` and never edited. On `linux-64` it is 46 conda packages, 50.0 MiB to download: one layer by default, 8 with `--layers grouped`.
 
 ## Build it
 

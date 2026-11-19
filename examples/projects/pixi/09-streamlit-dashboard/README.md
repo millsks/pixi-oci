@@ -2,7 +2,7 @@
 
 A [Streamlit](https://streamlit.io) dashboard's environment, with altair and pandas. Serve your app with `streamlit run app.py --server.address 0.0.0.0`.
 
-`pixi.toml` lists what the environment asks for; `pixi.lock` is what pixi locked for `linux-64` and `linux-aarch64`, written by `pixi lock` and never edited. On `linux-64` it is 156 conda packages, 162.4 MiB to download, planned into 34 layers.
+`pixi.toml` lists what the environment asks for; `pixi.lock` is what pixi locked for `linux-64` and `linux-aarch64`, written by `pixi lock` and never edited. On `linux-64` it is 156 conda packages, 162.4 MiB to download: one layer by default, 34 with `--layers grouped`.
 
 ## Build it
 

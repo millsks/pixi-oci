@@ -2,7 +2,7 @@
 
 Compiled tools only, no python: [ripgrep](https://github.com/BurntSushi/ripgrep) and [jq](https://jqlang.org). The environment is a handful of packages and two layers; on a base image, nearly all of the image is the base.
 
-`pixi.toml` lists what the environment asks for; `pixi.lock` is what pixi locked for `linux-64` and `linux-aarch64`, written by `pixi lock` and never edited. On `linux-64` it is 6 conda packages, 4.0 MiB to download, planned into 2 layers.
+`pixi.toml` lists what the environment asks for; `pixi.lock` is what pixi locked for `linux-64` and `linux-aarch64`, written by `pixi lock` and never edited. On `linux-64` it is 6 conda packages, 4.0 MiB to download: one layer by default, 2 with `--layers grouped`.
 
 ## Build it
 

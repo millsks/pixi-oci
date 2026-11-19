@@ -2,7 +2,7 @@
 
 Python 3.13 and nothing else: the interpreter, its standard library and the libraries it links to. The smallest useful image, and the base the other Python examples grow from.
 
-`pixi.toml` lists what the environment asks for; `pixi.lock` is what pixi locked for `linux-64` and `linux-aarch64`, written by `pixi lock` and never edited. On `linux-64` it is 27 conda packages, 46.1 MiB to download, planned into 7 layers.
+`pixi.toml` lists what the environment asks for; `pixi.lock` is what pixi locked for `linux-64` and `linux-aarch64`, written by `pixi lock` and never edited. On `linux-64` it is 27 conda packages, 46.1 MiB to download: one layer by default, 7 with `--layers grouped`.
 
 ## Build it
 

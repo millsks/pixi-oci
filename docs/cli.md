@@ -12,7 +12,7 @@ Shows the layers an image of an environment would be built from, without downloa
 | `--lockfile PATH` | `pixi.lock` | the lockfile to read |
 | `-e, --environment NAME` | `default` | the environment to put in the image |
 | `-p, --platform NAME` | Linux on the host's architecture | a `linux-*` conda platform: `linux-64`, `linux-aarch64`, `linux-ppc64le`, ... |
-| `--layers grouped\|per-package\|single` | `grouped` | how to split the environment into layers: packages of 4 MiB or more alone and smaller ones grouped, a layer per package, or the whole environment in one layer. See [Planning the layers](how-it-works.md#planning-the-layers). |
+| `--layers single\|grouped\|per-package` | `single` | how to split the environment into layers: the whole environment in one layer, packages of 4 MiB or more alone and smaller ones grouped, or a layer per package. See [Planning the layers](how-it-works.md#planning-the-layers). |
 | `--max-layers N` | `100` | the most layers to use; past it, the layers of the packages fewest others depend on are merged into the last conda layer. At least 2, except with `--layers single`. |
 | `--packages` | | list the packages of every layer that holds several |
 | `--format text\|json` | `text` | `json` carries every package's kind, URL, sha256 and size |

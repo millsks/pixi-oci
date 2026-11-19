@@ -2,7 +2,7 @@
 
 Gradient boosting and classic machine learning: xgboost, lightgbm and scikit-learn.
 
-`pixi.toml` lists what the environment asks for; `pixi.lock` is what pixi locked for `linux-64` and `linux-aarch64`, written by `pixi lock` and never edited. On `linux-64` it is 53 conda packages, 138.2 MiB to download, planned into 17 layers.
+`pixi.toml` lists what the environment asks for; `pixi.lock` is what pixi locked for `linux-64` and `linux-aarch64`, written by `pixi lock` and never edited. On `linux-64` it is 53 conda packages, 138.2 MiB to download: one layer by default, 17 with `--layers grouped`.
 
 ## Build it
 

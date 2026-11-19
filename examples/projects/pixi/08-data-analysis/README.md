@@ -2,7 +2,7 @@
 
 The everyday data analysis stack: pandas, polars, scipy, scikit-learn and matplotlib, with OpenBLAS and the compiled libraries under them.
 
-`pixi.toml` lists what the environment asks for; `pixi.lock` is what pixi locked for `linux-64` and `linux-aarch64`, written by `pixi lock` and never edited. On `linux-64` it is 149 conda packages, 367.5 MiB to download, planned into 37 layers.
+`pixi.toml` lists what the environment asks for; `pixi.lock` is what pixi locked for `linux-64` and `linux-aarch64`, written by `pixi lock` and never edited. On `linux-64` it is 149 conda packages, 367.5 MiB to download: one layer by default, 37 with `--layers grouped`.
 
 ## Build it
 

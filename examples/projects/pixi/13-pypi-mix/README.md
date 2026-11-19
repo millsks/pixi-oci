@@ -2,7 +2,7 @@
 
 conda python and requests, with PyPI wheels on top: httpx (pure python), rich-cli (a console script, so a launcher in `bin`) and ruff (a binary under the wheel's `.data/scripts`). The wheels share the top layer.
 
-`pixi.toml` lists what the environment asks for; `pixi.lock` is what pixi locked for `linux-64` and `linux-aarch64`, written by `pixi lock` and never edited. On `linux-64` it is 35 conda packages and 14 PyPI wheels, 46.8 MiB to download, planned into 9 layers.
+`pixi.toml` lists what the environment asks for; `pixi.lock` is what pixi locked for `linux-64` and `linux-aarch64`, written by `pixi lock` and never edited. On `linux-64` it is 35 conda packages and 14 PyPI wheels, 46.8 MiB to download: one layer by default, 9 with `--layers grouped`.
 
 ## Build it
 
