@@ -54,6 +54,7 @@ option is repeated:
 | `output` | `-o` | a path; `NAME.tar` beside the file by default |
 | `force` | `--force` | `true` |
 | `base` | `--base` | an image pinned by digest |
+| `allow-unpinned` | `--allow-unpinned` | `true`: `base` may be a tag alone |
 | `prefix` | `--prefix` | `"/opt/env"` |
 | `env` | `--env` | a table: `{ LOG_LEVEL = "info" }` |
 | `entrypoint`, `cmd` | `--entrypoint`, `--cmd` | a list of words, or one command line |

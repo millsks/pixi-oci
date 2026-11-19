@@ -49,6 +49,7 @@ pub struct ImageSpec {
     tag: Option<String>,
     output: Option<PathBuf>,
     force: Option<bool>,
+    allow_unpinned: Option<bool>,
     prefix: Option<String>,
     env: Option<BTreeMap<String, String>>,
     entrypoint: Option<Words>,
@@ -317,6 +318,11 @@ pub fn apply_build(
     if !given("base") && spec.base.is_some() {
         args.base = spec.base.clone();
     }
+    if !given("allow_unpinned")
+        && let Some(allow) = spec.allow_unpinned
+    {
+        args.allow_unpinned = allow;
+    }
 
     // Lists: the file's first, then the flags', which win where a key repeats.
     let mut env = Vec::new();
@@ -528,6 +534,21 @@ task = "work"
             config.select(Some("web")),
             Err(ConfigError::NoImage { available, .. }) if available == ["api"]
         ));
+    }
+
+    #[test]
+    fn allow_unpinned_is_a_key_too() {
+        let dir = tempfile::tempdir().unwrap();
+        write(
+            dir.path(),
+            "pixi-oci.toml",
+            "[images.api]\nbase = \"debian:bookworm-slim\"\nallow-unpinned = true\n",
+        );
+        let config = locate(None, dir.path()).unwrap().unwrap();
+        let (args, matches) = parse(&[]);
+        let args = apply_build(&config, "api", &config.images["api"], args, &given(&matches)).unwrap();
+        assert!(args.allow_unpinned);
+        assert_eq!(args.base.as_deref(), Some("debian:bookworm-slim"));
     }
 
     #[test]

@@ -440,9 +440,39 @@ fn build_refuses_a_base_that_is_not_pinned_before_downloading() {
     let unpinned = build("debian:bookworm-slim");
     assert!(unpinned.contains("is not pinned to a digest"), "{unpinned}");
     assert!(unpinned.contains("crane digest"), "{unpinned}");
+    assert!(unpinned.contains("--allow-unpinned"), "{unpinned}");
     let bad = build("Not A Reference");
     assert!(bad.contains("is not an image reference"), "{bad}");
     assert!(!dir.path().join("cache").exists());
+}
+
+#[test]
+fn allow_unpinned_lets_a_tag_through_to_the_registry() {
+    let dir = tempfile::tempdir().unwrap();
+    let output = pixi_oci()
+        .args([
+            "build",
+            "--lockfile",
+            LOCKFILE,
+            "-e",
+            "app",
+            "--platform",
+            "linux-64",
+            "--base",
+            "127.0.0.1:9/team/base:1",
+            "--allow-unpinned",
+        ])
+        .arg("--output")
+        .arg(dir.path().join("image.tar"))
+        .arg("--cache-dir")
+        .arg(dir.path().join("cache"))
+        .output()
+        .unwrap();
+    assert!(!output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    // Past the pinning check: the tag is looked up, and nothing listens there.
+    assert!(!stderr.contains("is not pinned"), "{stderr}");
+    assert!(stderr.contains("127.0.0.1:9"), "{stderr}");
 }
 
 #[test]

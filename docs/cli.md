@@ -49,6 +49,7 @@ Every option below can also be a key in a config file, where the flag wins.
 | `--expose PORT[/PROTOCOL]` | | a port the image listens on, `tcp` unless `udp` or `sctp` is given; repeat for more; added to the base's |
 | `--stop-signal SIGNAL` | the base's | the signal that stops the container: `SIGTERM`, `TERM` or a number |
 | `--base IMAGE@DIGEST` | | an image to build on, pinned by digest, for glibc and a shell: its layers go under the environment's and its config is where the image's starts ([Base images](base-images.md)) |
+| `--allow-unpinned` | | accept a `--base` given by tag alone, resolved to the digest the registry serves now ([A base by tag](base-images.md#a-base-by-tag)) |
 | `--max-memory SIZE` | `512M` | roughly how much memory the build's buffers may use, such as `128M` or `2G`; at least `16M`. Less means fewer layers at once and large files waiting on disk; the image is the same. |
 | `--cache-dir PATH` | see below | where downloaded package archives are kept, named by their sha256 |
 

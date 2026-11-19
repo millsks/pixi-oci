@@ -9,6 +9,7 @@ digests CI tests; `pixi oci digest IMAGE:TAG --pinned` prints a current one ([Ba
 | Run a Python app in a container | [An application image](#an-application-image) |
 | Keep the image's settings beside the code | [An image defined in pixi.toml](#an-image-defined-in-pixitoml) |
 | Start the app the way `pixi run` does | [A pixi task as the command](#a-pixi-task-as-the-command) |
+| Try a base without looking up its digest | [Trying a base by tag](#trying-a-base-by-tag) |
 | Run it locally with Docker or Podman | [Load and run it](#load-and-run-it) |
 | Know it will run before shipping it | [Check it without running it](#check-it-without-running-it) |
 | Build and push in CI | [GitHub Actions](#github-actions) and [GitLab CI](#gitlab-ci) |
@@ -84,6 +85,16 @@ pixi oci build -p linux-64 --base debian:bookworm-slim@sha256:734a... --add app:
 
 `[activation.env]` variables are set in every image, as `pixi run` sets them. A task with `depends-on` is refused,
 since nothing runs before an entrypoint ([A pixi task as the entrypoint](cli.md#a-pixi-task-as-the-entrypoint)).
+
+## Trying a base by tag
+
+While choosing a base, skip the digest and let pixi-oci look the tag up:
+
+```sh
+pixi oci build -p linux-64 --base debian:bookworm-slim --allow-unpinned --add src:/app --entrypoint python -o try.tar
+```
+
+It warns, and prints the digest it used; pin that once you settle on the base ([A base by tag](base-images.md#a-base-by-tag)).
 
 ## Load and run it
 
