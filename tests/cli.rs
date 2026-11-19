@@ -644,45 +644,61 @@ fn plan_reads_an_image_from_the_config_and_flags_win() {
     );
     assert_eq!(flagged["environment"], "slim");
 
-    pixi_oci()
+    let output = pixi_oci()
         .args(["plan", "web", "--lockfile"])
         .arg(&lockfile)
-        .assert()
-        .failure()
-        .stderr(predicate::str::contains("no image `web`"))
-        .stderr(predicate::str::contains("its images: app, slim"));
+        .output()
+        .unwrap();
+    assert!(!output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr)
+        .replace(['│', '×'], " ")
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ");
+    assert!(
+        stderr.contains("no image `web`") && stderr.contains("its images: app, slim"),
+        "{stderr}"
+    );
 }
 
 #[test]
 fn build_refuses_config_mistakes_before_downloading() {
     let dir = workspace_with_config("[images.slim]\nenvironment = \"slim\"\n\n[images.app]\nenvironment = \"app\"\n");
     let lockfile = dir.path().join("pixi.lock");
-    let build = |args: &[&str]| {
-        pixi_oci()
+    // The error, as one line: miette wraps it at 80 columns, behind a border.
+    let build = |args: &[&str]| -> String {
+        let output = pixi_oci()
             .arg("build")
             .args(args)
             .arg("--lockfile")
             .arg(&lockfile)
             .arg("--cache-dir")
             .arg(dir.path().join("cache"))
-            .assert()
-            .failure()
+            .output()
+            .unwrap();
+        assert!(!output.status.success());
+        String::from_utf8_lossy(&output.stderr)
+            .replace(['│', '×'], " ")
+            .split_whitespace()
+            .collect::<Vec<_>>()
+            .join(" ")
     };
+    let says = |stderr: String, text: &str| assert!(stderr.contains(text), "{stderr}");
     // Two images, one --tag.
-    build(&["--tag", "one:1"]).stderr(predicate::str::contains("2 images would be built, so --tag"));
+    says(build(&["--tag", "one:1"]), "2 images would be built, so --tag");
     // Images in both the manifest and pixi-oci.toml.
     std::fs::write(
         dir.path().join("pixi.toml"),
         "[workspace]\nname = \"x\"\n\n[tool.pixi-oci.images.api]\nenvironment = \"app\"\n",
     )
     .unwrap();
-    build(&["slim"]).stderr(predicate::str::contains("images are defined in both"));
+    says(build(&["slim"]), "images are defined in both");
     // An unknown key.
     std::fs::remove_file(dir.path().join("pixi.toml")).unwrap();
     std::fs::write(dir.path().join("pixi-oci.toml"), "[images.slim]\nlayer = \"single\"\n").unwrap();
-    build(&["slim"]).stderr(predicate::str::contains("unknown field `layer`"));
+    says(build(&["slim"]), "unknown field `layer`");
     // A name with no config at all.
     std::fs::remove_file(dir.path().join("pixi-oci.toml")).unwrap();
-    build(&["slim"]).stderr(predicate::str::contains("no image `slim`"));
+    says(build(&["slim"]), "no image `slim`");
     assert!(!dir.path().join("cache").exists());
 }
