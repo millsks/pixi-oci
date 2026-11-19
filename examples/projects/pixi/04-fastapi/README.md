@@ -2,7 +2,7 @@
 
 A [FastAPI](https://fastapi.tiangolo.com) service's environment, run by uvicorn: pydantic's compiled core, uvloop and the rest. Run your application with `uvicorn yourapp:app --host 0.0.0.0`.
 
-`pixi.toml` lists what the environment asks for; `pixi.lock` is what pixi locked for `linux-64` and `linux-aarch64`, written by `pixi lock` and never edited. On `linux-64` it is 102 conda packages, 63.8 MiB to download, planned into 15 layers.
+`pixi.toml` lists what the environment asks for; `pixi.lock` is what pixi locked for `linux-64` and `linux-aarch64`, written by `pixi lock` and never edited. On `linux-64` it is 102 conda packages, 63.8 MiB to download: one layer by default, 15 with `--layers grouped`.
 
 ## Build it
 

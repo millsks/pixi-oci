@@ -2,7 +2,7 @@
 
 [PyTorch](https://pytorch.org) on the CPU with torchvision: a few very large packages (libtorch, the BLAS behind it), each on a layer of its own.
 
-`pixi.toml` lists what the environment asks for; `pixi.lock` is what pixi locked for `linux-64` and `linux-aarch64`, written by `pixi lock` and never edited. On `linux-64` it is 84 conda packages, 328.0 MiB to download, planned into 25 layers.
+`pixi.toml` lists what the environment asks for; `pixi.lock` is what pixi locked for `linux-64` and `linux-aarch64`, written by `pixi lock` and never edited. On `linux-64` it is 84 conda packages, 328.0 MiB to download: one layer by default, 25 with `--layers grouped`.
 
 ## Build it
 

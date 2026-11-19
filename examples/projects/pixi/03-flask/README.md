@@ -2,7 +2,7 @@
 
 A [Flask](https://flask.palletsprojects.com) web application's environment, served by gunicorn. Your application goes in as a package of its own; the entrypoint then becomes `gunicorn yourapp:app --bind 0.0.0.0:8000`.
 
-`pixi.toml` lists what the environment asks for; `pixi.lock` is what pixi locked for `linux-64` and `linux-aarch64`, written by `pixi lock` and never edited. On `linux-64` it is 37 conda packages, 47.9 MiB to download, planned into 7 layers.
+`pixi.toml` lists what the environment asks for; `pixi.lock` is what pixi locked for `linux-64` and `linux-aarch64`, written by `pixi lock` and never edited. On `linux-64` it is 37 conda packages, 47.9 MiB to download: one layer by default, 7 with `--layers grouped`.
 
 ## Build it
 

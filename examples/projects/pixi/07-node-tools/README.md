@@ -2,7 +2,7 @@
 
 Node.js 22 with npm and pnpm.
 
-`pixi.toml` lists what the environment asks for; `pixi.lock` is what pixi locked for `linux-64` and `linux-aarch64`, written by `pixi lock` and never edited. On `linux-64` it is 11 conda packages, 51.8 MiB to download, planned into 6 layers.
+`pixi.toml` lists what the environment asks for; `pixi.lock` is what pixi locked for `linux-64` and `linux-aarch64`, written by `pixi lock` and never edited. On `linux-64` it is 11 conda packages, 51.8 MiB to download: one layer by default, 6 with `--layers grouped`.
 
 ## Build it
 

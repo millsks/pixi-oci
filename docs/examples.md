@@ -3,7 +3,7 @@
 The repository's [`examples/`](https://github.com/millsks/pixi-oci/tree/main/examples) directory holds real pixi
 workspaces, small to large, each with its lockfile and a README on how to build, check and run it.
 
-| Example | What it shows | Packages (linux-64) | Layers | Download | Entrypoint |
+| Example | What it shows | Packages (linux-64) | Grouped layers | Download | Entrypoint |
 |---|---|---|---|---|---|
 | [`01-hello-python`](https://github.com/millsks/pixi-oci/tree/main/examples/projects/pixi/01-hello-python) | python alone | 27 conda | 7 | 46.1 MiB | `python` |
 | [`02-cli-tool`](https://github.com/millsks/pixi-oci/tree/main/examples/projects/pixi/02-cli-tool) | a noarch python CLI with entry points (HTTPie) | 46 conda | 8 | 50.0 MiB | `http` |
@@ -20,8 +20,9 @@ workspaces, small to large, each with its lockfile and a README on how to build,
 | [`13-pypi-mix`](https://github.com/millsks/pixi-oci/tree/main/examples/projects/pixi/13-pypi-mix) | conda python with PyPI wheels on top (httpx, rich-cli, ruff) | 35 conda + 14 PyPI | 9 | 46.8 MiB | `ruff` |
 | [`14-large`](https://github.com/millsks/pixi-oci/tree/main/examples/projects/pixi/14-large) | data science, ML, geospatial and Jupyter together | 385 conda | 84 | 764.0 MiB | `jupyter-lab` |
 
-Layer counts are the default grouped layout's, without a base image: a base adds its own (one for UBI 9 minimal and
-Debian 12 slim). Even the largest, 385 packages, plans into 84 layers, well under the limit.
+By default each environment is one layer on top of the base image's. The counts are for `--layers grouped`, without
+a base image: a base adds its own (one for UBI 9 minimal and Debian 12 slim). Even the largest, 385 packages, plans
+into 84 grouped layers, well under the limit.
 
 From a clone, plan them all, or build one on a base and check it:
 

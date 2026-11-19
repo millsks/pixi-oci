@@ -10,29 +10,38 @@ pixi.lock ─▶ plan ─▶ fetch ─▶ stream each archive ─▶ tar ─▶ 
 
 ## Planning the layers
 
-`plan` reads one environment of `pixi.lock` for one platform and decides the layers:
+`plan` reads one environment of `pixi.lock` for one platform and decides the layers.
 
-1. **Large packages alone, small ones grouped.** Layers are named by their sha256, so a change to one package
-   re-uploads only the layer that holds it, and images built from the same packages share layers in the registry. A
-   conda package of 4 MiB or more gets a layer of its own: those are the ones worth re-uploading alone. Smaller ones
-   are grouped, from about 1 MiB to 8 MiB a group, so a few hundred packages do not each spend a layer on a few
-   kilobytes. A group ends after a package whose name hashes to a cut point (about one name in four) once it holds 1
-   MiB, or at 8 MiB whatever the names. Because the cut points belong to names, not positions, adding or removing a
-   package changes only the group it lands in, and the layers above keep their digests. A group still under 1 MiB
-   when a large package comes along stays open past it, rather than become a tiny layer of its own.
+**By default the environment is one layer.** The image is the base image's layers and one layer holding the whole
+environment, conda and PyPI; the application's own layer will go on top
+([#40](https://github.com/millsks/pixi-oci/issues/40)). Layers are named by their sha256, so an unchanged
+environment keeps its digest from build to build and is neither uploaded nor pulled again. When `pixi.lock` changes, the whole environment layer is uploaded once more,
+which for most environments is a few hundred megabytes at most.
+
+**`--layers grouped` splits a large environment.** When the environment is large and its packages change often, a
+package upgrade that re-uploads gigabytes costs more than extra layers do. Grouping re-uploads only the layers that
+hold the changed packages:
+
+1. **Large packages alone, small ones grouped.** A conda package of 4 MiB or more gets a layer of its own: those are
+   the ones worth re-uploading alone. Smaller ones are grouped, from about 1 MiB to 8 MiB a group, so a few hundred
+   packages do not each spend a layer on a few kilobytes. A group ends after a package whose name hashes to a cut
+   point (about one name in four) once it holds 1 MiB, or at 8 MiB whatever the names. Because the cut points belong
+   to names, not positions, adding or removing a package changes only the group it lands in, and the layers above
+   keep their digests. A group still under 1 MiB when a large package comes along stays open past it, rather than
+   become a tiny layer of its own.
 2. **Dependencies first.** The packages everything rests on (`libgcc`, `openssl`, `python`) sit at the bottom, where
    they change least often. Ties go by name, so the order is the same on every run; a dependency cycle (`python` and
    `pip`) is broken at its alphabetically first package.
-3. **Capped.** Overlay file systems limit the layer count (Docker's overlay2 refuses an image of more than about 128), so past
-   `--max-layers` (100) the layers at the top of the order, the ones fewest others depend on, are merged into the last
-   conda layer. Grouping keeps even a few hundred packages well under it: a 385-package data-science and Jupyter
-   environment plans into 84 layers.
+3. **Capped.** Overlay file systems limit the layer count (Docker's overlay2 refuses an image of more than about
+   128), so past `--max-layers` (100) the layers at the top of the order, the ones fewest others depend on, are
+   merged into the last conda layer. Grouping keeps even a few hundred packages well under it: a 385-package
+   data-science and Jupyter environment plans into 84 layers.
 4. **PyPI on top.** All PyPI packages share the top layer: they install into one site-packages and are usually what
    changes most.
 
-`--layers` chooses another layout: `per-package` gives every conda package a layer of its own, as long as the cap
-allows, and `single` puts the whole environment, conda and PyPI, in one layer, which suits an image built once and
-never updated. `plan --packages` lists what each shared layer holds.
+Grouped layers also keep each upload small, which helps where a proxy in front of the registry limits the size of a
+request. `--layers per-package` gives every conda package a layer of its own, as long as the cap allows.
+`plan --packages` lists what each shared layer holds.
 
 Conda packages pixi builds from source have no archive yet, so an environment with them is refused, by name; so are
 PyPI packages that are not wheels (sdists, git and path checkouts), which would have to be built.

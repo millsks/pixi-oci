@@ -96,8 +96,16 @@ fn kinds(plan: &serde_json::Value) -> Vec<&str> {
 }
 
 #[test]
-fn layers_are_grouped_by_default() {
+fn the_environment_is_one_layer_by_default() {
     let plan = plan_json(&["--platform", "linux-64"]);
+    assert_eq!(plan["layering"], "single");
+    assert_eq!(kinds(&plan), ["environment"]);
+    assert_eq!(layer_names(&plan)[0].len(), 23);
+}
+
+#[test]
+fn grouped_layers_put_large_packages_alone() {
+    let plan = plan_json(&["--platform", "linux-64", "--layers", "grouped"]);
     assert_eq!(plan["layering"], "grouped");
     let kinds = kinds(&plan);
     assert!(kinds.contains(&"conda-group"), "{kinds:?}");
@@ -120,11 +128,28 @@ fn single_puts_everything_in_one_layer() {
 #[test]
 fn packages_lists_each_shared_layer() {
     let plain = pixi_oci()
-        .args(["plan", "--lockfile", LOCKFILE, "--platform", "linux-64"])
+        .args([
+            "plan",
+            "--lockfile",
+            LOCKFILE,
+            "--platform",
+            "linux-64",
+            "--layers",
+            "grouped",
+        ])
         .output()
         .unwrap();
     let listed = pixi_oci()
-        .args(["plan", "--lockfile", LOCKFILE, "--platform", "linux-64", "--packages"])
+        .args([
+            "plan",
+            "--lockfile",
+            LOCKFILE,
+            "--platform",
+            "linux-64",
+            "--layers",
+            "grouped",
+            "--packages",
+        ])
         .output()
         .unwrap();
     let plain = String::from_utf8(plain.stdout).unwrap();
@@ -241,6 +266,8 @@ fn one_layer_is_too_few() {
             "plan",
             "--lockfile",
             LOCKFILE,
+            "--layers",
+            "grouped",
             "--max-layers",
             "1",
             "--platform",

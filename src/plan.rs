@@ -4,15 +4,17 @@
 //! shares layers with every other image built from the same packages. Conda packages are ordered dependencies first:
 //! the packages everything rests on (`libgcc`, `openssl`, `python`) sit at the bottom, where they change least often.
 //!
-//! [`Layering::Grouped`], the default, gives each package of [`OWN_LAYER`] or more a layer of its own and groups the
-//! small ones, so a large environment's layers go to the packages worth re-uploading alone. A group ends after a
-//! package whose name hashes to a cut point, never at a position, so adding or removing a package changes only the
-//! group it lands in. [`Layering::PerPackage`] gives every package a layer; [`Layering::Single`] puts the whole
-//! environment in one.
+//! [`Layering::Single`], the default, puts the whole environment in one layer above the base image's, so an image
+//! is a base, an environment and an application.
+//!
+//! [`Layering::Grouped`] gives each package of [`OWN_LAYER`] or more a layer of its own and groups the small ones,
+//! for a large environment that changes often, where re-uploading only the changed packages pays for the extra
+//! layers. A group ends after a package whose name hashes to a cut point, never at a position, so adding or removing
+//! a package changes only the group it lands in. [`Layering::PerPackage`] gives every package a layer.
 //!
 //! Overlay filesystems limit how many layers an image can have, so past `max_layers` the layers at the top of the
-//! order, the ones least depended on, are merged into the last. All PyPI packages share one layer above the conda
-//! ones: they are installed into the same site-packages and are usually what changes most.
+//! order, the ones least depended on, are merged into the last. With more than one layer, all PyPI packages share
+//! one above the conda ones: they are installed into the same site-packages and are usually what changes most.
 
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -42,11 +44,11 @@ const CUT_ONE_IN: u64 = 4;
 #[serde(rename_all = "kebab-case")]
 pub enum Layering {
     /// Packages of 4 MiB or more alone, smaller ones in groups.
-    #[default]
     Grouped,
     /// One layer per package.
     PerPackage,
     /// The whole environment in one layer.
+    #[default]
     Single,
 }
 

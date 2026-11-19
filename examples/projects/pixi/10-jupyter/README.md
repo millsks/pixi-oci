@@ -2,7 +2,7 @@
 
 JupyterLab with pandas, matplotlib and ipywidgets: a few hundred small packages, most of them noarch python, which grouping keeps to a few dozen layers.
 
-`pixi.toml` lists what the environment asks for; `pixi.lock` is what pixi locked for `linux-64` and `linux-aarch64`, written by `pixi lock` and never edited. On `linux-64` it is 246 conda packages, 337.2 MiB to download, planned into 44 layers.
+`pixi.toml` lists what the environment asks for; `pixi.lock` is what pixi locked for `linux-64` and `linux-aarch64`, written by `pixi lock` and never edited. On `linux-64` it is 246 conda packages, 337.2 MiB to download: one layer by default, 44 with `--layers grouped`.
 
 ## Build it
 

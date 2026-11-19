@@ -2,7 +2,7 @@
 
 R 4.5 with dplyr, ggplot2 and readr from conda-forge: R itself, its compiled packages and the system libraries they link to.
 
-`pixi.toml` lists what the environment asks for; `pixi.lock` is what pixi locked for `linux-64` and `linux-aarch64`, written by `pixi lock` and never edited. On `linux-64` it is 129 conda packages, 299.5 MiB to download, planned into 35 layers.
+`pixi.toml` lists what the environment asks for; `pixi.lock` is what pixi locked for `linux-64` and `linux-aarch64`, written by `pixi lock` and never edited. On `linux-64` it is 129 conda packages, 299.5 MiB to download: one layer by default, 35 with `--layers grouped`.
 
 ## Build it
 

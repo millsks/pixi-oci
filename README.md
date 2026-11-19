@@ -19,9 +19,10 @@ The lockfile already names every package, its exact URL and its hash. pixi-oci b
 
 - **Daemonless.** It writes the image layers itself, so it runs on a plain CI runner or an OpenShift build pod.
 - **Reproducible.** The same lockfile gives the same layers and the same image digest.
-- **Cache-friendly.** Large packages get layers of their own and small ones are grouped, dependencies at the bottom,
-  so changing one package re-uploads one small layer, and images built from the same packages share layers in the
-  registry.
+- **An application image.** The base image's layers and one layer for the pixi environment, with the application's
+  own layer to go on top ([#40](https://github.com/millsks/pixi-oci/issues/40)); an unchanged environment keeps its
+  digest, so it is never uploaded twice. `--layers grouped` splits a large environment so a package upgrade
+  re-uploads only the layers that hold it.
 - **Private-channel ready.** Channels and registries are whatever your lockfile and your credentials point at.
 
 ## Install
@@ -134,7 +135,7 @@ Environment default on linux-64 (image platform linux/amd64)
 | `--lockfile PATH` | `pixi.lock` | the lockfile to read |
 | `-e, --environment NAME` | `default` | the environment to put in the image |
 | `-p, --platform NAME` | Linux on the host's architecture | a `linux-*` conda platform |
-| `--layers grouped\|per-package\|single` | `grouped` | large packages alone and small ones grouped, a layer per package, or one layer |
+| `--layers single\|grouped\|per-package` | `single` | the environment in one layer, large packages alone and small ones grouped, or a layer per package |
 | `--max-layers N` | `100` | past it, the layers of the packages fewest others depend on are merged into the last |
 | `--packages` | | list the packages of every layer that holds several |
 | `--format text\|json` | `text` | JSON carries every package's URL, hash and size |
@@ -191,9 +192,10 @@ $ pixi oci inspect app.tar --packages
 
 ## How layers are planned
 
-1. A conda package of 4 MiB or more gets its own layer; smaller ones are grouped, about 1 to 8 MiB a group. A group
+1. By default the whole environment, conda and PyPI, is one layer above the base image's. With `--layers grouped`, a
+   conda package of 4 MiB or more gets its own layer and smaller ones are grouped, about 1 to 8 MiB a group; a group
    ends after a package whose name hashes to a cut point, so adding or removing a package changes only its own group.
-   `--layers per-package` gives every package a layer, and `--layers single` puts the environment in one.
+   `--layers per-package` gives every package a layer.
 2. Layers are ordered dependencies first, ties broken by name, so `libgcc` and `openssl` sit under `python` and the
    order is the same on every run. Dependency cycles (`python` and `pip`) are broken at their alphabetically first
    package.

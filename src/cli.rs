@@ -54,8 +54,8 @@ pub struct Selection {
 /// How the environment is split into layers.
 #[derive(Debug, Args)]
 pub struct LayerArgs {
-    /// How to split the environment into layers.
-    #[arg(long, value_enum, default_value_t = Layering::Grouped)]
+    /// How to split the environment into layers: by default the whole environment in one, on top of the base's.
+    #[arg(long, value_enum, default_value_t = Layering::Single)]
     pub layers: Layering,
 
     /// The most layers to use. Past it, the layers of the packages fewest others depend on are merged into the last
