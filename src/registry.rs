@@ -37,7 +37,8 @@ pub enum RegistryError {
     #[error("{reference} is not pinned to a digest")]
     #[diagnostic(help(
         "a base image is pinned so the same lockfile builds the same image: add @sha256:<digest>, \
-        which `pixi oci digest {reference}` prints (as do `crane digest` and `skopeo inspect`)"
+        which `pixi oci digest {reference}` prints (as do `crane digest` and `skopeo inspect`), or pass \
+        --allow-unpinned to build on whatever the tag points to now"
     ))]
     NotPinned { reference: String },
 
@@ -452,6 +453,24 @@ impl Registry {
         let hex = digest.strip_prefix("sha256:")?;
         crate::read::blob_path(digest)?;
         Some(self.root.join("blobs").join("sha256").join(hex))
+    }
+
+    /// `reference` pinned to a digest: as given when it has one, else, when `allow_unpinned`, its tag resolved to the
+    /// digest the registry serves now.
+    pub fn pin(&self, reference: ImageRef, allow_unpinned: bool) -> Result<ImageRef, RegistryError> {
+        if reference.digest.is_some() {
+            return Ok(reference);
+        }
+        if !allow_unpinned {
+            return Err(RegistryError::NotPinned {
+                reference: reference.to_string(),
+            });
+        }
+        let digest = self.resolve(&reference)?;
+        Ok(ImageRef {
+            digest: Some(digest),
+            ..reference
+        })
     }
 
     /// The digest of what `reference` names: its own digest when it is pinned, else what the registry serves for its
@@ -1413,6 +1432,32 @@ mod tests {
         );
         assert!(registry.blob_file(&sha(&base.layer)).is_some_and(|file| !file.exists()));
         assert!(registry.blob_file(&other).is_some_and(|file| !file.exists()));
+    }
+
+    #[test]
+    fn a_tag_is_pinned_only_when_allowed() {
+        let dir = tempfile::tempdir().unwrap();
+        let base = image("amd64", false);
+        let mut routes = routes(&[&base]);
+        routes.insert(
+            "/v2/team/base/manifests/1".to_string(),
+            (OCI_MANIFEST.to_string(), base.manifest.clone()),
+        );
+        let server = fake(routes, Auth::default());
+        let registry = client(dir.path(), None);
+        let tagged = ImageRef::parse(&format!("{}/team/base:1", server.host)).unwrap();
+        let err = registry.pin(tagged.clone(), false).unwrap_err();
+        assert!(matches!(err, RegistryError::NotPinned { .. }), "{err}");
+        assert!(err.to_string().contains("is not pinned"), "{err}");
+
+        let pinned = registry.pin(tagged, true).unwrap();
+        assert_eq!(pinned.digest.as_deref(), Some(sha(&base.manifest).as_str()));
+        assert_eq!(pinned.tag.as_deref(), Some("1"));
+        assert!(!registry.pull(&pinned, &amd64()).unwrap().layers.is_empty());
+
+        // A pinned reference is kept as given, without asking the registry.
+        let given = reference("127.0.0.1:9", &sha(&base.manifest));
+        assert_eq!(registry.pin(given.clone(), false).unwrap(), given);
     }
 
     #[test]

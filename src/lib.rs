@@ -292,12 +292,22 @@ fn run_build(args: BuildArgs) -> miette::Result<String> {
     // The base first: it is pinned and small next to the environment, and its layers come out of the layer budget.
     let base = match &args.base {
         Some(value) => {
-            let reference = registry::ImageRef::parse(value)?;
+            let given = registry::ImageRef::parse(value)?;
             let oci = platform::oci_platform(&platform).ok_or_else(|| plan::PlanError::NotLinux {
                 platform: platform.clone(),
             })?;
-            eprintln!("base {reference}");
-            Some(registry::Registry::new(cache.clone()).pull(&reference, &oci)?)
+            let registry = registry::Registry::new(cache.clone());
+            let unpinned = given.digest.is_none();
+            let reference = registry.pin(given, args.allow_unpinned)?;
+            if unpinned {
+                eprintln!(
+                    "warning: base {} is not pinned; using {reference}, so a rebuild may differ once the tag moves",
+                    value.trim()
+                );
+            } else {
+                eprintln!("base {reference}");
+            }
+            Some(registry.pull(&reference, &oci)?)
         }
         None => None,
     };

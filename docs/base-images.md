@@ -33,7 +33,7 @@ standard; Debian slim is the common base for Python images. Both have a newer gl
 ## Pinned by digest
 
 A base is always given with its digest, so the same lockfile and the same base build the same image, today and in a
-year. A tag alone is refused. `pixi oci digest` prints a tag's digest, fetching only its manifest:
+year. A tag alone is refused unless you ask for it ([A base by tag](#a-base-by-tag)). `pixi oci digest` prints a tag's digest, fetching only its manifest:
 
 ```console
 $ pixi oci digest debian:bookworm-slim --pinned
@@ -45,6 +45,30 @@ the same, if you have them.
 
 The digest can be an index's, covering several platforms, or one platform's manifest. pixi-oci follows an index to
 the manifest for the platform being built, and refuses a base that has none for it.
+
+## A base by tag
+
+For a quick local build, or to pick up a base's security fixes without editing a digest, `--allow-unpinned` accepts
+a tag alone:
+
+```console
+$ pixi oci build --base debian:bookworm-slim --allow-unpinned --entrypoint python -o app.tar
+warning: base debian:bookworm-slim is not pinned; using docker.io/library/debian:bookworm-slim@sha256:734a72b3d614..., so a rebuild may differ once the tag moves
+```
+
+The tag is resolved once, at the start of the build, to the digest the registry serves for it then, and the build
+goes on exactly as if that digest had been given: the image is the one the pinned build gives, and it records the
+base's name and digest in its `org.opencontainers.image.base.name` and `org.opencontainers.image.base.digest`
+annotations, so you can always tell what it was built on. What you give up:
+
+- **The same inputs no longer give the same image.** When the tag moves, the next build has a new digest, on your
+  machine or in CI, with nothing in your repository changed.
+- **Trust in the registry.** A digest is checked against the content; a tag is whatever the registry, or a proxy in
+  front of it, answers now.
+- **Offline rebuilds.** A tag is looked up on every build, even when the base is already in the cache.
+
+Keep it out of release and CI builds, where the digest is the point. In a config file it is `allow-unpinned = true`
+beside `base`; `pixi oci digest IMAGE:TAG --pinned` gives the pinned reference when you are ready to commit to one.
 
 ## What the image gets from the base
 

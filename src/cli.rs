@@ -331,6 +331,11 @@ pub struct BuildArgs {
     /// toward --max-layers.
     #[arg(long, value_name = "IMAGE@DIGEST")]
     pub base: Option<String>,
+
+    /// Accept a --base given by tag alone: the tag is resolved to the digest the registry serves now, which the build
+    /// prints and the image records. The image changes whenever the tag moves, so keep it out of reproducible builds.
+    #[arg(long)]
+    pub allow_unpinned: bool,
 }
 
 /// A command line given as one argument. Its own type so clap does not read `Option<Vec<_>>` as a repeated option.
