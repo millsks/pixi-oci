@@ -127,6 +127,11 @@ pixi-oci prints them, with the variable parts in angle brackets.
     `write:packages`), or set `PIXI_OCI_REGISTRY_USERNAME` and `PIXI_OCI_REGISTRY_PASSWORD`; in GitHub Actions, give
     the job `packages: write` to push to GHCR with `GITHUB_TOKEN`.
 
+**`413`, or a push that stops partway through a large layer**
+:   Something between you and the registry limits how large or how long a request may be: often a reverse proxy or
+    a corporate gateway in front of Artifactory. Push in chunks smaller than the limit: `--chunk-size 32M`
+    ([Chunked uploads](cli.md#chunked-uploads)). `--layers grouped` also keeps each layer smaller.
+
 **`cannot read pixi's credentials for <registry>`**
 :   pixi's credential store could not be read, for example a keychain that is locked. `pixi auth logout <registry>`
     and log in again; `pixi auth login` works the same way for pixi itself.

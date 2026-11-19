@@ -177,7 +177,8 @@ $ pixi oci check app.tar --format json
 
 Sends an image to any registry with no Docker: only the blobs the registry lacks, then the manifest under the tag.
 Credentials are pixi's own: `pixi auth login ghcr.io --username <user> --password <token>` once, or
-`PIXI_OCI_REGISTRY_USERNAME` and `PIXI_OCI_REGISTRY_PASSWORD` in CI. No Docker or Podman is needed.
+`PIXI_OCI_REGISTRY_USERNAME` and `PIXI_OCI_REGISTRY_PASSWORD` in CI. No Docker or Podman is needed. Behind a proxy
+that limits a request's size, `--chunk-size 64M` sends large layers in chunks.
 
 ```console
 $ pixi oci push app.tar ghcr.io/team/app:1.0

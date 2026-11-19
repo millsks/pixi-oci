@@ -109,7 +109,8 @@ fn run_pull(args: PullArgs) -> miette::Result<String> {
 
 fn run_push(args: PushArgs) -> miette::Result<String> {
     let destination = registry::ImageRef::parse(&args.destination)?;
-    let registry = registry::Registry::for_registry(fetch::Fetcher::default_root(), Some(&destination.registry));
+    let registry = registry::Registry::for_registry(fetch::Fetcher::default_root(), Some(&destination.registry))
+        .with_chunk_size(args.chunk_size);
     let pushed = push::push(
         &args.image,
         args.platform.as_deref(),

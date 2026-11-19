@@ -168,6 +168,11 @@ pub struct PushArgs {
     #[arg(short, long)]
     pub platform: Option<String>,
 
+    /// Upload each blob larger than SIZE (such as 64M) in chunks of it, for a proxy in front of the registry that
+    /// limits a request's size. Without it, each blob goes up in one request.
+    #[arg(long, value_name = "SIZE", value_parser = crate::build::parse_chunk_size)]
+    pub chunk_size: Option<u64>,
+
     /// How to print the result.
     #[arg(long, value_enum, default_value_t = Format::Text)]
     pub format: Format,

@@ -147,7 +147,7 @@ pub fn push(
                     mount_from.as_deref().unwrap_or_default()
                 );
             }
-            Some(location) => {
+            Some(start) => {
                 let _ = writeln!(
                     progress,
                     "[{}/{total}] {short} uploading ({})",
@@ -155,7 +155,7 @@ pub fn push(
                     size_text(Some(*size))
                 );
                 let name = blob_path(blob).expect("a validated image's digests are sha256");
-                registry.upload(destination, &location, blob, &image, &name, *size)?;
+                registry.upload(destination, &start, blob, &image, &name, *size)?;
                 pushed.uploaded += 1;
                 pushed.uploaded_size += size;
             }
@@ -230,6 +230,74 @@ mod tests {
 
     fn destination(fake: &Fake, path: &str) -> ImageRef {
         ImageRef::parse(&format!("{}/{path}", fake.host)).unwrap()
+    }
+
+    #[test]
+    fn large_blobs_go_up_in_chunks_a_size_limit_lets_through() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = image(dir.path(), "v1", &[("alpha", "a"), ("beta", "b")]);
+        let image = crate::read::Image::open(&path).unwrap();
+        let limit = 200;
+        // Behind a token, so every chunk is also sent again after the registry's challenge.
+        let fake = fake(Behaviour {
+            tokens: true,
+            max_body: Some(limit),
+            ..Behaviour::default()
+        });
+        let to = destination(&fake, "team/app:1.0");
+        // In one request each, a layer is over the proxy's limit.
+        let err = push(&path, None, &to, &client(dir.path()), &mut std::io::sink()).unwrap_err();
+        assert!(err.to_string().contains("413"), "{err}");
+
+        fake.store.lock().unwrap().requests.clear();
+        let chunked = client(dir.path()).with_chunk_size(Some(100));
+        let pushed = push(&path, None, &to, &chunked, &mut std::io::sink()).unwrap();
+        assert_eq!(pushed.uploaded, 3);
+        let store = fake.store.lock().unwrap();
+        let patches = store.requests.iter().filter(|r| r.starts_with("PATCH ")).count();
+        let mut expected = 0;
+        for ((repo, digest), blob) in &store.blobs {
+            assert_eq!(repo, "team/app");
+            assert_eq!(&sha(blob), digest);
+            let name = blob_path(digest).unwrap();
+            assert_eq!(image.size(&name), Some(blob.len() as u64));
+            if blob.len() > 100 {
+                expected += blob.len().div_ceil(100);
+            }
+        }
+        assert!(expected > 0);
+        assert_eq!(patches, expected, "{:#?}", store.requests);
+        assert!(store.partial.is_empty());
+    }
+
+    #[test]
+    fn a_registry_minimum_chunk_wins() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = image(dir.path(), "v1", &[("alpha", "a")]);
+        let fake = fake(Behaviour {
+            chunk_min: Some(150),
+            ..Behaviour::default()
+        });
+        let to = destination(&fake, "team/app:1.0");
+        let chunked = client(dir.path()).with_chunk_size(Some(10));
+        push(&path, None, &to, &chunked, &mut std::io::sink()).unwrap();
+        let store = fake.store.lock().unwrap();
+        let patches = store.requests.iter().filter(|r| r.starts_with("PATCH ")).count();
+        let expected: usize = store
+            .blobs
+            .values()
+            .filter(|blob| blob.len() > 10)
+            .map(|blob| blob.len().div_ceil(150))
+            .sum();
+        assert_eq!(patches, expected);
+
+        // Without a chunk size, nothing is chunked: a POST and a PUT for each blob, as before.
+        drop(store);
+        let other = destination(&fake, "team/other:1.0");
+        fake.store.lock().unwrap().requests.clear();
+        push(&path, None, &other, &client(dir.path()), &mut std::io::sink()).unwrap();
+        let requests = fake.store.lock().unwrap().requests.clone();
+        assert!(!requests.iter().any(|r| r.starts_with("PATCH ")), "{requests:#?}");
     }
 
     #[test]
@@ -362,7 +430,7 @@ mod tests {
         let path = image(dir.path(), "v1", &[("alpha", "a")]);
         let fake = fake(Behaviour {
             tokens: true,
-            lie: false,
+            ..Behaviour::default()
         });
         let pushed = push(
             &path,
@@ -419,8 +487,8 @@ mod tests {
         );
 
         let liar = self::fake(Behaviour {
-            tokens: false,
             lie: true,
+            ..Behaviour::default()
         });
         let err = push(
             &path,

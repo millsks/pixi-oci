@@ -464,6 +464,8 @@ pub mod registry {
         /// The scope of every token asked for.
         pub scopes: Vec<String>,
         pub uploads: usize,
+        /// What chunked uploads have received so far, by upload.
+        pub partial: HashMap<String, Vec<u8>>,
     }
 
     #[derive(Clone, Copy, Default)]
@@ -472,6 +474,10 @@ pub mod registry {
         pub tokens: bool,
         /// Answer manifest PUTs with another digest.
         pub lie: bool,
+        /// Refuse a request whose body is larger, as a proxy with a size limit does.
+        pub max_body: Option<usize>,
+        /// Send `OCI-Chunk-Min-Length` when an upload starts.
+        pub chunk_min: Option<usize>,
     }
 
     pub struct Fake {
@@ -590,7 +596,7 @@ pub mod registry {
         };
         if behaviour.tokens {
             let token = headers.get("authorization").cloned().unwrap_or_default();
-            let writes = method == "POST" || method == "PUT";
+            let writes = matches!(method, "POST" | "PUT" | "PATCH");
             let allowed = if writes {
                 token == "Bearer push"
             } else {
@@ -602,6 +608,9 @@ pub mod registry {
                 );
                 return reply("401 Unauthorized", &[challenge], b"");
             }
+        }
+        if kind == "uploads" && behaviour.max_body.is_some_and(|max| body.len() > max) {
+            return reply("413 Payload Too Large", &[], b"");
         }
         match (method, kind) {
             ("HEAD", "blobs") | ("GET", "blobs") => match store.blobs.get(&(repo.clone(), tail.clone())) {
@@ -616,15 +625,32 @@ pub mod registry {
                     return reply("201 Created", &[], b"");
                 }
                 store.uploads += 1;
-                let location = format!("Location: /v2/{repo}/blobs/uploads/{}?_state=s", store.uploads);
-                reply("202 Accepted", &[location], b"")
+                let mut headers = vec![format!("Location: /v2/{repo}/blobs/uploads/{}?_state=s", store.uploads)];
+                if let Some(min) = behaviour.chunk_min {
+                    headers.push(format!("OCI-Chunk-Min-Length: {min}"));
+                }
+                reply("202 Accepted", &headers, b"")
+            }
+            ("PATCH", "uploads") => {
+                // Each chunk must start where the last one ended, and say so in Content-Range.
+                let received = store.partial.entry(tail.clone()).or_default();
+                let expected = format!("{}-{}", received.len(), received.len() + body.len() - 1);
+                if headers.get("content-range") != Some(&expected) || !params.contains_key("_state") {
+                    return reply("416 Range Not Satisfiable", &[], b"");
+                }
+                received.extend_from_slice(body);
+                let end = received.len() - 1;
+                let location = format!("Location: /v2/{repo}/blobs/uploads/{tail}?_state=s{end}");
+                reply("202 Accepted", &[location, format!("Range: 0-{end}")], b"")
             }
             ("PUT", "uploads") => {
                 let digest = params.get("digest").cloned().unwrap_or_default();
-                if sha(body) != digest || !params.contains_key("_state") {
+                let mut whole = store.partial.remove(&tail).unwrap_or_default();
+                whole.extend_from_slice(body);
+                if sha(&whole) != digest || !params.contains_key("_state") {
                     return reply("400 Bad Request", &[], b"{\"errors\":[{\"code\":\"DIGEST_INVALID\"}]}");
                 }
-                store.blobs.insert((repo, digest), body.to_vec());
+                store.blobs.insert((repo, digest), whole);
                 reply("201 Created", &[], b"")
             }
             ("PUT", "manifests") => {

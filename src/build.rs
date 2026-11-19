@@ -441,6 +441,15 @@ pub fn parse_command(value: &str) -> Result<Vec<String>, String> {
 /// A size such as `512M`, `1G`, `1.5GiB` or `4096`: binary units, so `M` is MiB. At least 16 MiB, since less would
 /// only slow a build down without saving anything that matters.
 pub fn parse_size(value: &str) -> Result<u64, String> {
+    parse_bytes(value, 16 << 20, "16M")
+}
+
+/// A chunk size for `push --chunk-size`, such as 64M: at least 1K.
+pub fn parse_chunk_size(value: &str) -> Result<u64, String> {
+    parse_bytes(value, 1 << 10, "1K")
+}
+
+fn parse_bytes(value: &str, least: u64, least_text: &str) -> Result<u64, String> {
     let trimmed = value.trim();
     let split = trimmed
         .find(|c: char| !(c.is_ascii_digit() || c == '.'))
@@ -457,8 +466,8 @@ pub fn parse_size(value: &str) -> Result<u64, String> {
         _ => return Err(format!("`{value}` has an unknown unit; use K, M or G")),
     };
     let bytes = (number * multiplier as f64) as u64;
-    if bytes < 16 << 20 {
-        return Err(format!("`{value}` is too small; give at least 16M"));
+    if bytes < least {
+        return Err(format!("`{value}` is too small; give at least {least_text}"));
     }
     Ok(bytes)
 }
@@ -959,6 +968,9 @@ mod tests {
         assert!(parse_size("8M").unwrap_err().contains("too small"));
         assert!(parse_size("lots").unwrap_err().contains("not a size"));
         assert!(parse_size("5T").unwrap_err().contains("unknown unit"));
+        assert_eq!(parse_chunk_size("64K").unwrap(), 64 << 10);
+        assert_eq!(parse_chunk_size("8M").unwrap(), 8 << 20);
+        assert!(parse_chunk_size("100").unwrap_err().contains("at least 1K"));
     }
 
     #[test]
