@@ -26,6 +26,8 @@ scope and acceptance criteria live and its pull requests are linked. Comment the
       `.dockerignore` and `.pixi-oci-ignore` applied ([#40](https://github.com/millsks/pixi-oci/issues/40))
 - [x] **`--task` and activation variables**: a pixi task as the entrypoint, and `[activation.env]` in every image
       ([#16](https://github.com/millsks/pixi-oci/issues/16))
+- [x] **Config files**: images defined in `[tool.pixi-oci]` of `pixi.toml` or `pyproject.toml`, or `pixi-oci.toml`,
+      built by name ([#59](https://github.com/millsks/pixi-oci/issues/59))
 - [x] **`validate`**: an image checked against the OCI image spec on any OS, every blob, digest, size and `diff_id`
       ([#25](https://github.com/millsks/pixi-oci/issues/25))
 - [x] **`inspect`**: an image's settings and layers, with the packages each layer holds, as text, JSON or the exact

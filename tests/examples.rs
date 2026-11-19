@@ -265,3 +265,62 @@ fn small_examples_build_and_check() {
         }
     }
 }
+
+/// An image a config file defines and the same image from flags alone, with no manifest beside the lockfile, are
+/// one image: the same manifest digest.
+#[test]
+fn a_config_builds_the_image_its_flags_build() {
+    if !network() {
+        return;
+    }
+    let out = tempfile::tempdir().unwrap();
+    let example = Path::new("examples/projects/pixi/04-fastapi");
+    let manifest_digest = |output: &std::process::Output| -> String {
+        assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
+        let stdout = String::from_utf8_lossy(&output.stdout).into_owned();
+        stdout
+            .split_whitespace()
+            .skip_while(|word| *word != "manifest")
+            .nth(1)
+            .unwrap()
+            .to_string()
+    };
+    let config = out.path().join("config.tar");
+    let from_config = manifest_digest(&pixi_oci(&[
+        "build",
+        "api",
+        "--lockfile",
+        example.join("pixi.lock").to_str().unwrap(),
+        "-o",
+        config.to_str().unwrap(),
+    ]));
+    let alone = out.path().join("alone");
+    std::fs::create_dir_all(&alone).unwrap();
+    std::fs::copy(example.join("pixi.lock"), alone.join("pixi.lock")).unwrap();
+    let flags = out.path().join("flags.tar");
+    let app = format!("{}:/app", example.join("app").display());
+    let from_flags = manifest_digest(&pixi_oci(&[
+        "build",
+        "--lockfile",
+        alone.join("pixi.lock").to_str().unwrap(),
+        "-p",
+        "linux-64",
+        "--base",
+        DEBIAN,
+        "--add",
+        &app,
+        "--workdir",
+        "/app",
+        "--entrypoint",
+        r#"["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]"#,
+        "--env",
+        "PYTHONUNBUFFERED=1",
+        "--expose",
+        "8000",
+        "-t",
+        "04-fastapi:latest",
+        "-o",
+        flags.to_str().unwrap(),
+    ]));
+    assert_eq!(from_config, from_flags);
+}

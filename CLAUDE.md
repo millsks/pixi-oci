@@ -26,6 +26,7 @@ One crate, `pixi-oci`, a binary pixi runs as `pixi oci`: it builds OCI container
 | `src/check.rs` | `check`: whether an image will run, from its layers' ELF files, scripts and entrypoint, run nowhere |
 | `src/inspect.rs` | `inspect`: an image's settings and layers, each layer's packages from its history line |
 | `src/registry.rs` | pulls a base image pinned by digest, for one platform, into the cache; pixi's credentials (`pixi auth login`), never docker's or podman's |
+| `src/config.rs` | images defined in `[tool.pixi-oci]` of the manifest, `pixi-oci.toml`, or `--config`; flags given on the command line win |
 | `src/manifest.rs` | the pixi manifest beside the lockfile: `[activation.env]` for the image's environment, and `--task` as its entrypoint |
 | `src/add.rs` | `--add SRC:DEST`: host files in one application layer above the environment, with `.gitignore`, `.pixi-oci-ignore` and `.dockerignore` applied |
 | `src/wheel.rs` | PyPI wheels written into a layer, as pip and uv install them; checked against `pixi install` in the network tests |
