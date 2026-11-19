@@ -15,6 +15,7 @@ One crate, `pixi-oci`, a binary pixi runs as `pixi oci`: it builds OCI container
 | `src/report.rs` | a plan as text or JSON |
 | `src/build.rs` | `build`: fetch every archive, then write the planned layers in parallel within `--max-memory` |
 | `src/sources.rs` | pixi's `mirrors` and `s3-options` (rattler_config), and `s3://`, `gcs://`, `oci://` downloads through rattler's middleware |
+| `src/tls.rs` | the roots every ureq client trusts: the system store by default, pixi's `tls-root-certs`, `SSL_CERT_FILE` |
 | `src/fetch.rs` | downloads conda archives and wheels with pixi's credentials and mirrors, checks the lockfile's sha256, keeps them in a cache keyed by it |
 | `src/stream.rs` | a layer written straight from package archives: prefix replacement, noarch python, conda-meta |
 | `src/target.rs` | the install target: prefix in the image, platform, python |

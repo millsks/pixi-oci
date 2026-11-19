@@ -434,6 +434,7 @@ impl Registry {
         let agent = ureq::Agent::config_builder()
             .user_agent(concat!("pixi-oci/", env!("CARGO_PKG_VERSION")))
             .proxy(proxy)
+            .tls_config(crate::tls::config())
             .http_status_as_error(false)
             .build()
             .new_agent();

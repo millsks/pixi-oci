@@ -22,7 +22,7 @@ Every [release](https://github.com/millsks/pixi-oci/releases) has a binary for s
 | Windows ARM64 | `pixi-oci-VERSION-aarch64-pc-windows-msvc.zip` |
 
 ```sh
-version=0.1.0-rc.1
+version=0.1.0-rc.2
 curl -fsSLO https://github.com/millsks/pixi-oci/releases/download/v$version/pixi-oci-$version-x86_64-unknown-linux-musl.tar.gz
 tar -xzf pixi-oci-$version-x86_64-unknown-linux-musl.tar.gz --strip-components 1 -C ~/.pixi/bin pixi-oci-$version-x86_64-unknown-linux-musl/pixi-oci
 pixi oci --version

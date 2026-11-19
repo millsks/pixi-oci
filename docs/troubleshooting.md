@@ -41,6 +41,14 @@ pixi-oci prints them, with the variable parts in angle brackets.
 **`could not download <url>`**
 :   The cause follows the message. Behind a proxy, set `HTTPS_PROXY`.
 
+**`invalid peer certificate: UnknownIssuer`**
+:   The server's certificate is signed by a CA pixi-oci does not trust, usually a company's own: a TLS-inspecting
+    proxy, or an internal channel or registry. pixi-oci trusts the operating system's certificate store, as pixi
+    does, so a CA the system trusts works: on Linux, install it into the system bundle (`update-ca-certificates`,
+    `update-ca-trust`). Or set `SSL_CERT_FILE` to a PEM bundle that holds it, which is then the only one trusted.
+    pixi's `tls-root-certs = "webpki"` in its config switches to the Mozilla roots built in, which a company CA is
+    never among ([TLS certificates](cli.md#tls-certificates)).
+
 **`<url> refused the download (401)`** or **`(403)`**
 :   The channel needs credentials, or refused the ones pixi has. Log in as for pixi, with `pixi auth login <host>
     --token <token>` (or `--username` and `--password`), and build again ([Private channels](private-channels.md)).
