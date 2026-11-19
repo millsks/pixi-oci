@@ -558,6 +558,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#a-base-by-tag" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A base by tag
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#what-the-image-gets-from-the-base" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -956,6 +967,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#a-base-by-tag" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A base by tag
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#what-the-image-gets-from-the-base" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1065,7 +1087,7 @@ standard; Debian slim is the common base for Python images. Both have a newer gl
 <code>gcr.io/distroless/cc-debian12</code> (no shell, so <code>check</code> will name the scripts that need one).</p>
 <h2 id="pinned-by-digest">Pinned by digest<a class="headerlink" href="#pinned-by-digest" title="Permanent link">&para;</a></h2>
 <p>A base is always given with its digest, so the same lockfile and the same base build the same image, today and in a
-year. A tag alone is refused. <code>pixi oci digest</code> prints a tag's digest, fetching only its manifest:</p>
+year. A tag alone is refused unless you ask for it (<a href="#a-base-by-tag">A base by tag</a>). <code>pixi oci digest</code> prints a tag's digest, fetching only its manifest:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="gp">$ </span>pixi<span class="w"> </span>oci<span class="w"> </span>digest<span class="w"> </span>debian:bookworm-slim<span class="w"> </span>--pinned
 <a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="go">debian:bookworm-slim@sha256:734a72b3d6142a71993b4bc580ca01d8ca687f77a2c422d96a961d3376b179bc</span>
 </code></pre></div>
@@ -1073,6 +1095,25 @@ year. A tag alone is refused. <code>pixi oci digest</code> prints a tag's digest
 the same, if you have them.</p>
 <p>The digest can be an index's, covering several platforms, or one platform's manifest. pixi-oci follows an index to
 the manifest for the platform being built, and refuses a base that has none for it.</p>
+<h2 id="a-base-by-tag">A base by tag<a class="headerlink" href="#a-base-by-tag" title="Permanent link">&para;</a></h2>
+<p>For a quick local build, or to pick up a base's security fixes without editing a digest, <code>--allow-unpinned</code> accepts
+a tag alone:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="gp">$ </span>pixi<span class="w"> </span>oci<span class="w"> </span>build<span class="w"> </span>--base<span class="w"> </span>debian:bookworm-slim<span class="w"> </span>--allow-unpinned<span class="w"> </span>--entrypoint<span class="w"> </span>python<span class="w"> </span>-o<span class="w"> </span>app.tar
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="go">warning: base debian:bookworm-slim is not pinned; using docker.io/library/debian:bookworm-slim@sha256:734a72b3d614..., so a rebuild may differ once the tag moves</span>
+</code></pre></div>
+<p>The tag is resolved once, at the start of the build, to the digest the registry serves for it then, and the build
+goes on exactly as if that digest had been given: the image is the one the pinned build gives, and it records the
+base's name and digest in its <code>org.opencontainers.image.base.name</code> and <code>org.opencontainers.image.base.digest</code>
+annotations, so you can always tell what it was built on. What you give up:</p>
+<ul>
+<li><strong>The same inputs no longer give the same image.</strong> When the tag moves, the next build has a new digest, on your
+  machine or in CI, with nothing in your repository changed.</li>
+<li><strong>Trust in the registry.</strong> A digest is checked against the content; a tag is whatever the registry, or a proxy in
+  front of it, answers now.</li>
+<li><strong>Offline rebuilds.</strong> A tag is looked up on every build, even when the base is already in the cache.</li>
+</ul>
+<p>Keep it out of release and CI builds, where the digest is the point. In a config file it is <code>allow-unpinned = true</code>
+beside <code>base</code>; <code>pixi oci digest IMAGE:TAG --pinned</code> gives the pinned reference when you are ready to commit to one.</p>
 <h2 id="what-the-image-gets-from-the-base">What the image gets from the base<a class="headerlink" href="#what-the-image-gets-from-the-base" title="Permanent link">&para;</a></h2>
 <p>The base's layers go first, as they were pulled, and the environment's on top. The config starts from the base's,
 as a Dockerfile's <code>FROM</code> does:</p>
@@ -1121,7 +1162,7 @@ as a Dockerfile's <code>FROM</code> does:</p>
 private registry, pixi-oci uses pixi's own credentials, the ones <code>pixi auth login</code> stores, read as pixi reads them:
 the file <code>RATTLER_AUTH_FILE</code> names, the operating system's keychain (macOS Keychain, Windows Credential Manager, the
 Linux secret service), <code>~/.rattler/credentials.json</code>, then <code>.netrc</code>. Nothing of Docker's or Podman's is read or run.</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>pixi<span class="w"> </span>auth<span class="w"> </span>login<span class="w"> </span>registry.example.com<span class="w"> </span>--username<span class="w"> </span>&lt;your-user&gt;<span class="w"> </span>--password<span class="w"> </span>&lt;token&gt;
+<div class="highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>pixi<span class="w"> </span>auth<span class="w"> </span>login<span class="w"> </span>registry.example.com<span class="w"> </span>--username<span class="w"> </span>&lt;your-user&gt;<span class="w"> </span>--password<span class="w"> </span>&lt;token&gt;
 </code></pre></div>
 <p>Proxies come from <code>HTTPS_PROXY</code>, <code>HTTP_PROXY</code> and <code>NO_PROXY</code>.</p>
 <p>Every manifest, config and layer is checked against its digest and kept in the cache (<code>--cache-dir</code>) under

@@ -1503,6 +1503,11 @@ everywhere else.</p>
 <td>an image to build on, pinned by digest, for glibc and a shell: its layers go under the environment's and its config is where the image's starts (<a href="../base-images/">Base images</a>)</td>
 </tr>
 <tr>
+<td><code>--allow-unpinned</code></td>
+<td></td>
+<td>accept a <code>--base</code> given by tag alone, resolved to the digest the registry serves now (<a href="../base-images/#a-base-by-tag">A base by tag</a>)</td>
+</tr>
+<tr>
 <td><code>--max-memory SIZE</code></td>
 <td><code>512M</code></td>
 <td>roughly how much memory the build's buffers may use, such as <code>128M</code> or <code>2G</code>; at least <code>16M</code>. Less means fewer layers at once and large files waiting on disk; the image is the same.</td>
