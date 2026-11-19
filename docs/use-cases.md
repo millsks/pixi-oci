@@ -141,7 +141,7 @@ jobs:
       - uses: prefix-dev/setup-pixi@v0.8.1
       - name: Install pixi-oci
         run: |
-          gh release download v0.1.0-rc.2 --repo millsks/pixi-oci --pattern 'pixi-oci-*-x86_64-unknown-linux-musl.tar.gz' --output pixi-oci.tar.gz
+          gh release download v0.1.0-rc.3 --repo millsks/pixi-oci --pattern 'pixi-oci-*-x86_64-unknown-linux-musl.tar.gz' --output pixi-oci.tar.gz
           tar -xzf pixi-oci.tar.gz --strip-components 1 -C ~/.pixi/bin --wildcards '*/pixi-oci'
         env:
           GH_TOKEN: ${{ github.token }}
@@ -173,7 +173,7 @@ build-image:
     - pixi oci check api.tar
     - pixi oci push api.tar $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA
   variables:
-    PIXI_OCI_VERSION: v0.1.0-rc.2
+    PIXI_OCI_VERSION: v0.1.0-rc.3
     PIXI_OCI_REGISTRY_USERNAME: $CI_REGISTRY_USER
     PIXI_OCI_REGISTRY_PASSWORD: $CI_REGISTRY_PASSWORD
 ```
