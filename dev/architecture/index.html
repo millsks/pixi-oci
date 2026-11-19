@@ -1049,8 +1049,8 @@ builds work on Windows, and it keeps a crafted archive's member names from ever 
 public functions where they exist (placeholder replacement, noarch paths, the entry-point template, <code>PrefixRecord</code>).
 <code>install.rs</code> keeps rattler's own linker as a test-only reference, and <code>parity.rs</code> holds the two to the same output.</p>
 <p><strong>Reproducible bytes.</strong> Anything that would bring a time, a host path, a user name or an unordered collection into a
-layer or the config would change image digests. Entries keep the archives' order, modes are normalized, times come
-from <code>SOURCE_DATE_EPOCH</code>, and the gzip header is empty.</p>
+layer or the config would change image digests. Entries keep the archives' order, modes are normalized, every file is
+stamped with the Unix epoch, and the gzip header is empty. <code>SOURCE_DATE_EPOCH</code> dates only the config.</p>
 <p><strong>Bounded memory.</strong> A file is held whole only up to the in-memory limit; larger rewrites go through a temporary file
 in pieces cut where no replacement can cross. <code>build::budget</code> turns <code>--max-memory</code> into that limit and a number of
 parallel layers.</p>

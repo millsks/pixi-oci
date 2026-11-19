@@ -1176,12 +1176,15 @@ files with the same bytes.</p>
 <h2 id="reproducible-bytes">Reproducible bytes<a class="headerlink" href="#reproducible-bytes" title="Permanent link">&para;</a></h2>
 <p>The same lockfile gives the same image digest on any machine:</p>
 <ul>
-<li>every entry is owned by root (uid and gid 0) and stamped with one time: <code>SOURCE_DATE_EPOCH</code>, or 0</li>
+<li>every entry is owned by root (uid and gid 0) and stamped with one time, the Unix epoch, so a layer's digest
+  depends only on its packages: a build at a later commit, or with <code>SOURCE_DATE_EPOCH</code> set to the commit's time,
+  reuses every layer whose packages did not change</li>
 <li>every mode is 0755 (directories, symlinks, executables) or 0644: only whether a file is executable is kept, so no
   umask reaches the image</li>
 <li>entries keep the archives' order, which the lockfile's hashes fix</li>
 <li>the gzip header carries no time and no file name</li>
-<li>the config's <code>created</code> time is the same <code>SOURCE_DATE_EPOCH</code></li>
+<li>the config's <code>created</code> time, and its history's, is <code>SOURCE_DATE_EPOCH</code>, or 0; it changes the config's digest,
+  never a layer's</li>
 </ul>
 <p>Layers are tar archives in GNU format, compressed with gzip, so every container runtime and registry reads them. CI
 builds a test image on Linux, macOS and Windows on every change and fails if the digests differ; <code>pixi oci validate</code>,

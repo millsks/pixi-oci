@@ -1734,7 +1734,7 @@ oci-archive:app.tar</code>, or <code>crane config</code> and <code>crane manifes
 </tr>
 <tr>
 <td><code>SOURCE_DATE_EPOCH</code></td>
-<td>seconds since the Unix epoch, stamped on every file and on the image's <code>created</code> time; <code>0</code> when unset. The <a href="https://reproducible-builds.org/docs/source-date-epoch/">reproducible-builds</a> convention.</td>
+<td>seconds since the Unix epoch, the image's <code>created</code> time; <code>0</code> when unset. Files in layers are always stamped 0, so it never changes a layer's digest. The <a href="https://reproducible-builds.org/docs/source-date-epoch/">reproducible-builds</a> convention.</td>
 </tr>
 <tr>
 <td><code>HTTPS_PROXY</code>, <code>HTTP_PROXY</code>, <code>NO_PROXY</code></td>
