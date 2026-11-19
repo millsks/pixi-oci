@@ -3,10 +3,9 @@
 A [pixi](https://pixi.sh) extension that builds OCI container images straight from `pixi.lock`: no Dockerfile, no
 Docker daemon, and no pixi inside the image.
 
-> **Status: early.** `pixi oci plan` and `pixi oci build` work today for environments of conda packages, on Linux,
-> macOS and Windows. Images
-> have no base yet, so a dynamically linked program (python, most of conda-forge) needs the glibc a base image
-> provides; base images and pushing are the next milestone. See the [roadmap](#roadmap).
+> **Status: release candidate.** Build, check, inspect, pull and push work on Linux, macOS and Windows: a base image,
+> the pixi environment, and your application's files, defined by flags or in `pixi.toml`. See the
+> [roadmap](#roadmap) and the [common use cases](https://millsks.github.io/pixi-oci/dev/use-cases/).
 
 ## Why
 
@@ -30,11 +29,13 @@ The lockfile already names every package, its exact URL and its hash. pixi-oci b
 
 ## Install
 
-Not released yet. From a checkout:
+Download a binary for Linux, macOS or Windows (x86_64 or ARM64) from the
+[releases](https://github.com/millsks/pixi-oci/releases), and put it on your `PATH`, such as in `~/.pixi/bin`
+([Installation](https://millsks.github.io/pixi-oci/dev/installation/)). Or from a checkout:
 
 ```sh
 pixi run build
-cp target/release/pixi-oci ~/.local/bin/   # anywhere on PATH
+cp target/release/pixi-oci ~/.pixi/bin/   # anywhere on PATH
 pixi oci --help
 ```
 

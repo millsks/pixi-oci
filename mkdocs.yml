@@ -21,6 +21,7 @@ nav:
   - Overview: index.md
   - Installation: installation.md
   - Your first image: first-image.md
+  - Common use cases: use-cases.md
   - Building on Windows: windows.md
   - Base images: base-images.md
   - Private channels: private-channels.md
