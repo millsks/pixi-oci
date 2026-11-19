@@ -439,6 +439,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#a-binary-from-a-release" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A binary from a release
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#a-binary-from-ci" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -505,6 +516,33 @@
     
   
     Your first image
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../use-cases/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Common use cases
   
 
     
@@ -780,10 +818,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_13" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_14" >
         
           
-          <label class="md-nav__link" for="__nav_13" id="__nav_13_label" tabindex="">
+          <label class="md-nav__link" for="__nav_14" id="__nav_14_label" tabindex="">
             
   
   
@@ -801,8 +839,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_13_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_13">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_14_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_14">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -929,6 +967,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#a-binary-from-a-release" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        A binary from a release
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#a-binary-from-ci" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1001,12 +1050,56 @@
 <p>pixi-oci is one executable, <code>pixi-oci</code> (<code>pixi-oci.exe</code> on Windows). pixi runs any <code>pixi-&lt;name&gt;</code> executable it finds as
 <code>pixi &lt;name&gt;</code>, so once <code>pixi-oci</code> is on your <code>PATH</code>, <code>pixi oci</code> works.</p>
 <div class="admonition note">
-<p class="admonition-title">No release yet</p>
-<p>pixi-oci has not been released, so there is no <code>pixi global install pixi-oci</code> yet. Packaging it on conda-forge is
-on the <a href="../roadmap/">roadmap</a>. Until then, build it from source, or take a binary from a CI run.</p>
+<p class="admonition-title">Prereleases only</p>
+<p>pixi-oci is in release candidates, so there is no <code>pixi global install pixi-oci</code> yet. Packaging it on conda-forge
+is on the <a href="../roadmap/">roadmap</a>. Until then, download a binary from a release.</p>
 </div>
+<h2 id="a-binary-from-a-release">A binary from a release<a class="headerlink" href="#a-binary-from-a-release" title="Permanent link">&para;</a></h2>
+<p>Every <a href="https://github.com/millsks/pixi-oci/releases">release</a> has a binary for six targets, with a <code>SHA256SUMS</code> file:</p>
+<table>
+<thead>
+<tr>
+<th>System</th>
+<th>Archive</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Linux x86_64 (any distribution: static)</td>
+<td><code>pixi-oci-VERSION-x86_64-unknown-linux-musl.tar.gz</code></td>
+</tr>
+<tr>
+<td>Linux ARM64</td>
+<td><code>pixi-oci-VERSION-aarch64-unknown-linux-musl.tar.gz</code></td>
+</tr>
+<tr>
+<td>macOS Apple silicon</td>
+<td><code>pixi-oci-VERSION-aarch64-apple-darwin.tar.gz</code></td>
+</tr>
+<tr>
+<td>macOS Intel</td>
+<td><code>pixi-oci-VERSION-x86_64-apple-darwin.tar.gz</code></td>
+</tr>
+<tr>
+<td>Windows x86_64</td>
+<td><code>pixi-oci-VERSION-x86_64-pc-windows-msvc.zip</code></td>
+</tr>
+<tr>
+<td>Windows ARM64</td>
+<td><code>pixi-oci-VERSION-aarch64-pc-windows-msvc.zip</code></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="nv">version</span><span class="o">=</span><span class="m">0</span>.1.0-rc.1
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>curl<span class="w"> </span>-fsSLO<span class="w"> </span>https://github.com/millsks/pixi-oci/releases/download/v<span class="nv">$version</span>/pixi-oci-<span class="nv">$version</span>-x86_64-unknown-linux-musl.tar.gz
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>tar<span class="w"> </span>-xzf<span class="w"> </span>pixi-oci-<span class="nv">$version</span>-x86_64-unknown-linux-musl.tar.gz<span class="w"> </span>--strip-components<span class="w"> </span><span class="m">1</span><span class="w"> </span>-C<span class="w"> </span>~/.pixi/bin<span class="w"> </span>pixi-oci-<span class="nv">$version</span>-x86_64-unknown-linux-musl/pixi-oci
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>pixi<span class="w"> </span>oci<span class="w"> </span>--version
+</code></pre></div>
+<p><code>~/.pixi/bin</code> is on your <code>PATH</code> when pixi is installed; any other folder on it works too. On Windows, unzip the
+archive and put <code>pixi-oci.exe</code> in <code>%USERPROFILE%\.pixi\bin</code>, which needs no admin rights. macOS marks a downloaded
+binary as quarantined; <code>xattr -d com.apple.quarantine ~/.pixi/bin/pixi-oci</code> lets it run.</p>
 <h2 id="a-binary-from-ci">A binary from CI<a class="headerlink" href="#a-binary-from-ci" title="Permanent link">&para;</a></h2>
-<p>Every CI run on <code>main</code> and on pull requests builds release binaries for Linux, macOS and Windows in the <strong>Image
+<p>Between releases, every CI run on <code>main</code> and on pull requests builds release binaries for Linux, macOS and Windows in the <strong>Image
 digest</strong> jobs and keeps them as artifacts for a few days:</p>
 <ol>
 <li>Open the repository's <strong>Actions</strong> tab, then a recent <strong>CI</strong> run on <code>main</code>.</li>
@@ -1017,10 +1110,10 @@ digest</strong> jobs and keeps them as artifacts for a few days:</p>
 is installed, or add a folder to your user <code>PATH</code> under <strong>Edit environment variables for your account</strong>.</p>
 <h2 id="from-source">From source<a class="headerlink" href="#from-source" title="Permanent link">&para;</a></h2>
 <p>Everything builds through pixi, which brings its own Rust toolchain from conda-forge:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/millsks/pixi-oci
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="nb">cd</span><span class="w"> </span>pixi-oci
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>pixi<span class="w"> </span>run<span class="w"> </span>build<span class="w">                        </span><span class="c1"># target/release/pixi-oci</span>
-<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>cp<span class="w"> </span>target/release/pixi-oci<span class="w"> </span>~/.local/bin/<span class="w">   </span><span class="c1"># any folder on your PATH</span>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/millsks/pixi-oci
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="nb">cd</span><span class="w"> </span>pixi-oci
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>pixi<span class="w"> </span>run<span class="w"> </span>build<span class="w">                        </span><span class="c1"># target/release/pixi-oci</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>cp<span class="w"> </span>target/release/pixi-oci<span class="w"> </span>~/.local/bin/<span class="w">   </span><span class="c1"># any folder on your PATH</span>
 </code></pre></div>
 <div class="admonition warning">
 <p class="admonition-title">Building from source on Windows</p>
@@ -1028,8 +1121,8 @@ is installed, or add a folder to your user <code>PATH</code> under <strong>Edit 
 them, use a binary from CI instead: running pixi-oci needs nothing installed.</p>
 </div>
 <h2 id="check-it">Check it<a class="headerlink" href="#check-it" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>pixi<span class="w"> </span>oci<span class="w"> </span>--version
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>pixi<span class="w"> </span>oci<span class="w"> </span>--help
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>pixi<span class="w"> </span>oci<span class="w"> </span>--version
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>pixi<span class="w"> </span>oci<span class="w"> </span>--help
 </code></pre></div>
 <p>If <code>pixi oci</code> says the command is unknown, pixi cannot see the executable: run <code>pixi-oci --version</code> directly, and if
 that works, the folder it is in is not on the <code>PATH</code> pixi sees.</p>
