@@ -9,6 +9,7 @@ pub mod add;
 pub mod build;
 pub mod check;
 pub mod cli;
+pub mod config;
 pub mod digest;
 pub mod fetch;
 pub mod image;
@@ -54,11 +55,14 @@ impl From<String> for Output {
     }
 }
 
-/// Run a parsed command line, returning what to print.
-pub fn run(cli: Cli) -> miette::Result<Output> {
+/// Run a parsed command line, returning what to print. `matches` tells the options given from their defaults, so a
+/// config file's keys fill in only what the command line left out.
+pub fn run(cli: Cli, matches: &clap::ArgMatches) -> miette::Result<Output> {
+    let sub = matches.subcommand().map(|(_, sub)| sub.clone());
+    let given = |id: &str| sub.as_ref().is_some_and(|sub| cli::given(sub, id));
     match cli.command {
-        Command::Plan(args) => run_plan(args).map(Output::from),
-        Command::Build(args) => run_build(*args).map(Output::from),
+        Command::Plan(args) => run_plans(args, &given).map(Output::from),
+        Command::Build(args) => run_builds(*args, &given).map(Output::from),
         Command::Validate(args) => run_validate(args),
         Command::Inspect(args) => run_inspect(args).map(Output::from),
         Command::Check(args) => run_check(args),
@@ -338,6 +342,81 @@ fn run_build(args: BuildArgs) -> miette::Result<String> {
         report::size_text(Some(written.layers_size)),
         plan.oci_platform,
     ))
+}
+
+/// Where a config file is looked for without --config: beside the lockfile.
+fn config_dir(lockfile: &std::path::Path) -> std::path::PathBuf {
+    match lockfile.parent() {
+        Some(dir) if !dir.as_os_str().is_empty() => dir.to_path_buf(),
+        _ => std::path::PathBuf::from("."),
+    }
+}
+
+/// `build`, for each image a config file defines (or the one named), else from the flags alone.
+fn run_builds(args: BuildArgs, given: config::Given<'_>) -> miette::Result<String> {
+    let dir = config_dir(&args.selection.lockfile);
+    let Some(config) = config::locate(args.image.config.as_deref(), &dir)? else {
+        if let Some(name) = &args.image.image {
+            return Err(config::ConfigError::NoImage {
+                name: name.clone(),
+                path: None,
+                available: Vec::new(),
+            }
+            .into());
+        }
+        return run_build(args);
+    };
+    let images = config.select(args.image.image.as_deref())?;
+    config::one_image_flags(images.len(), &images[0].0, given)?;
+    let mut out = String::new();
+    for (name, spec) in images {
+        eprintln!("image {name} from {}", config.path.display());
+        out.push_str(&run_build(config::apply_build(
+            &config,
+            &name,
+            spec,
+            args.clone(),
+            given,
+        )?)?);
+    }
+    Ok(out)
+}
+
+/// `plan`, for each image a config file defines (or the one named), else from the flags alone.
+fn run_plans(args: PlanArgs, given: config::Given<'_>) -> miette::Result<String> {
+    let dir = config_dir(&args.selection.lockfile);
+    let Some(config) = config::locate(args.image.config.as_deref(), &dir)? else {
+        if let Some(name) = &args.image.image {
+            return Err(config::ConfigError::NoImage {
+                name: name.clone(),
+                path: None,
+                available: Vec::new(),
+            }
+            .into());
+        }
+        return run_plan(args);
+    };
+    let images = config.select(args.image.image.as_deref())?;
+    let several = images.len() > 1;
+    let mut out = String::new();
+    for (name, spec) in images {
+        let mut one = PlanArgs {
+            image: args.image.clone(),
+            selection: args.selection.clone(),
+            layers: args.layers.clone(),
+            packages: args.packages,
+            format: args.format,
+        };
+        config::apply_plan(&config, spec, &mut one.selection, &mut one.layers, given);
+        if several && args.format == Format::Text {
+            out.push_str(&format!(
+                "Image {name}
+"
+            ));
+        }
+        out.push_str(&run_plan(one)?);
+    }
+    Ok(out)
 }
 
 fn run_plan(args: PlanArgs) -> miette::Result<String> {

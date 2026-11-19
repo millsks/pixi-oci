@@ -8,6 +8,15 @@ A [FastAPI](https://fastapi.tiangolo.com) service, run by uvicorn: the environme
 
 From the repository's root:
 
+`pixi.toml` defines the image as `[tool.pixi-oci.images.api]` ([Config files](../../../../docs/config.md)), so one command builds it, here or in CI:
+
+```sh
+pixi oci build api --lockfile examples/projects/pixi/04-fastapi/pixi.lock
+pixi oci check examples/projects/pixi/04-fastapi/api.tar
+```
+
+The same image from flags alone, the settings the config gives:
+
 ```sh
 pixi oci plan --lockfile examples/projects/pixi/04-fastapi/pixi.lock -p linux-64
 pixi oci build --lockfile examples/projects/pixi/04-fastapi/pixi.lock -p linux-64 \

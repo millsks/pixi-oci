@@ -35,8 +35,27 @@ pub enum Command {
     Digest(DigestArgs),
 }
 
+/// Whether the command line gave the option with this id, rather than its default: what was given wins over a
+/// config file's key.
+pub fn given(matches: &clap::ArgMatches, id: &str) -> bool {
+    matches.value_source(id) == Some(clap::parser::ValueSource::CommandLine)
+}
+
+/// An image a config file defines, and the file to read.
+#[derive(Debug, Clone, Args)]
+pub struct ImageArgs {
+    /// An image a config file defines: `[tool.pixi-oci.images.NAME]` in pixi.toml or pyproject.toml, or
+    /// `[images.NAME]` in pixi-oci.toml. Without one, `build` builds every image the file defines.
+    #[arg(value_name = "IMAGE")]
+    pub image: Option<String>,
+
+    /// The config file to read, and no other; by default the manifest beside the lockfile, else pixi-oci.toml there.
+    #[arg(long, value_name = "PATH")]
+    pub config: Option<PathBuf>,
+}
+
 /// Which environment of which lockfile, and for which platform.
-#[derive(Debug, Args)]
+#[derive(Debug, Clone, Args)]
 pub struct Selection {
     /// The lockfile to read.
     #[arg(long, default_value = "pixi.lock", value_name = "PATH")]
@@ -52,7 +71,7 @@ pub struct Selection {
 }
 
 /// How the environment is split into layers.
-#[derive(Debug, Args)]
+#[derive(Debug, Clone, Args)]
 pub struct LayerArgs {
     /// How to split the environment into layers: by default the whole environment in one, on top of the base's.
     #[arg(long, value_enum, default_value_t = Layering::Single)]
@@ -66,6 +85,9 @@ pub struct LayerArgs {
 
 #[derive(Debug, Args)]
 pub struct PlanArgs {
+    #[command(flatten)]
+    pub image: ImageArgs,
+
     #[command(flatten)]
     pub selection: Selection,
 
@@ -210,8 +232,11 @@ pub struct ValidateArgs {
     pub format: Format,
 }
 
-#[derive(Debug, Args)]
+#[derive(Debug, Clone, Args)]
 pub struct BuildArgs {
+    #[command(flatten)]
+    pub image: ImageArgs,
+
     #[command(flatten)]
     pub selection: Selection,
 

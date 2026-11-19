@@ -10,6 +10,8 @@ target/
 # Images and layouts a local run writes
 /*.tar
 /oci-layout/
+# and those the examples' config files write beside them
+/examples/projects/pixi/*/*.tar
 # Images pulled locally to try out, kept out of the repository
 /examples/local-registry/
 

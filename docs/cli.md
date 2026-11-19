@@ -24,6 +24,13 @@ everywhere else.
 
 Builds an image of an environment. It takes `plan`'s `--lockfile`, `-e`, `-p`, `--layers` and `--max-layers`, and:
 
+| Argument | | |
+|---|---|---|
+| `IMAGE` | | an image a [config file](config.md) defines; without one, every image it defines. With no config file, the flags alone describe the image |
+| `--config PATH` | | the config file to read, and no other; by default the manifest's `[tool.pixi-oci]` beside the lockfile, else `pixi-oci.toml` there |
+
+Every option below can also be a key in a config file, where the flag wins.
+
 | Option | Default | |
 |---|---|---|
 | `-o, --output PATH` | `image.tar` | a `.tar` archive, for `docker load`, `podman load` and `skopeo copy oci-archive:`; any other path is an OCI image layout directory |

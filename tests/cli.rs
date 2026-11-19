@@ -605,3 +605,100 @@ fn build_refuses_a_task_it_cannot_find_before_downloading() {
     build(&alone.join("pixi.lock")).stderr(predicate::str::contains("--task needs the workspace's manifest"));
     assert!(!dir.path().join("cache").exists());
 }
+
+/// A copy of the fixture's lockfile with `config` beside it as pixi-oci.toml.
+fn workspace_with_config(config: &str) -> tempfile::TempDir {
+    let dir = tempfile::tempdir().unwrap();
+    std::fs::copy(LOCKFILE, dir.path().join("pixi.lock")).unwrap();
+    std::fs::write(dir.path().join("pixi-oci.toml"), config).unwrap();
+    dir
+}
+
+#[test]
+fn plan_reads_an_image_from_the_config_and_flags_win() {
+    let dir = workspace_with_config(
+        "[images.slim]\nenvironment = \"slim\"\nplatform = \"linux-aarch64\"\nlayers = \"per-package\"\n\n[images.app]\nenvironment = \"app\"\n",
+    );
+    let lockfile = dir.path().join("pixi.lock");
+    let plan = |args: &[&str]| -> serde_json::Value {
+        let output = pixi_oci()
+            .arg("plan")
+            .args(args)
+            .arg("--lockfile")
+            .arg(&lockfile)
+            .args(["--format", "json"])
+            .output()
+            .unwrap();
+        assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
+        serde_json::from_slice(&output.stdout).unwrap()
+    };
+    let slim = plan(&["slim"]);
+    assert_eq!(
+        (&slim["environment"], &slim["platform"], &slim["layering"]),
+        (&"slim".into(), &"linux-aarch64".into(), &"per-package".into())
+    );
+    let flagged = plan(&["slim", "--layers", "single", "-p", "linux-64"]);
+    assert_eq!(
+        (&flagged["platform"], &flagged["layering"]),
+        (&"linux-64".into(), &"single".into())
+    );
+    assert_eq!(flagged["environment"], "slim");
+
+    let output = pixi_oci()
+        .args(["plan", "web", "--lockfile"])
+        .arg(&lockfile)
+        .output()
+        .unwrap();
+    assert!(!output.status.success());
+    let stderr = String::from_utf8_lossy(&output.stderr)
+        .replace(['│', '×'], " ")
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ");
+    assert!(
+        stderr.contains("no image `web`") && stderr.contains("its images: app, slim"),
+        "{stderr}"
+    );
+}
+
+#[test]
+fn build_refuses_config_mistakes_before_downloading() {
+    let dir = workspace_with_config("[images.slim]\nenvironment = \"slim\"\n\n[images.app]\nenvironment = \"app\"\n");
+    let lockfile = dir.path().join("pixi.lock");
+    // The error, as one line: miette wraps it at 80 columns, behind a border.
+    let build = |args: &[&str]| -> String {
+        let output = pixi_oci()
+            .arg("build")
+            .args(args)
+            .arg("--lockfile")
+            .arg(&lockfile)
+            .arg("--cache-dir")
+            .arg(dir.path().join("cache"))
+            .output()
+            .unwrap();
+        assert!(!output.status.success());
+        String::from_utf8_lossy(&output.stderr)
+            .replace(['│', '×'], " ")
+            .split_whitespace()
+            .collect::<Vec<_>>()
+            .join(" ")
+    };
+    let says = |stderr: String, text: &str| assert!(stderr.contains(text), "{stderr}");
+    // Two images, one --tag.
+    says(build(&["--tag", "one:1"]), "2 images would be built, so --tag");
+    // Images in both the manifest and pixi-oci.toml.
+    std::fs::write(
+        dir.path().join("pixi.toml"),
+        "[workspace]\nname = \"x\"\n\n[tool.pixi-oci.images.api]\nenvironment = \"app\"\n",
+    )
+    .unwrap();
+    says(build(&["slim"]), "images are defined in both");
+    // An unknown key.
+    std::fs::remove_file(dir.path().join("pixi.toml")).unwrap();
+    std::fs::write(dir.path().join("pixi-oci.toml"), "[images.slim]\nlayer = \"single\"\n").unwrap();
+    says(build(&["slim"]), "unknown field `layer`");
+    // A name with no config at all.
+    std::fs::remove_file(dir.path().join("pixi-oci.toml")).unwrap();
+    says(build(&["slim"]), "no image `slim`");
+    assert!(!dir.path().join("cache").exists());
+}

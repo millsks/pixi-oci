@@ -40,7 +40,7 @@ const UNKNOWN_SIZE: u64 = 256 << 10;
 const CUT_ONE_IN: u64 = 4;
 
 /// How packages are split into layers.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, clap::ValueEnum)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, serde::Deserialize, clap::ValueEnum)]
 #[serde(rename_all = "kebab-case")]
 pub enum Layering {
     /// Packages of 4 MiB or more alone, smaller ones in groups.

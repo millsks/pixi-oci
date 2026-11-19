@@ -23,6 +23,9 @@ The lockfile already names every package, its exact URL and its hash. pixi-oci b
   application's files (`--add src:/app`); an unchanged environment keeps its digest, so a commit that changes only
   code uploads only the application layer. `--layers grouped` splits a large environment so a package upgrade
   re-uploads only the layers that hold it.
+- **Defined beside the code.** An image's settings can live in `pixi.toml` as `[tool.pixi-oci.images.NAME]`, or in
+  `pixi-oci.toml`, and `pixi oci build NAME` builds it; flags still win
+  ([Config files](https://millsks.github.io/pixi-oci/dev/config/)).
 - **Private-channel ready.** Channels and registries are whatever your lockfile and your credentials point at.
 
 ## Install
