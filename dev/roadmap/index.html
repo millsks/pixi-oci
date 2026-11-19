@@ -989,6 +989,8 @@ scope and acceptance criteria live and its pull requests are linked. Comment the
 <li>[x] <strong>Grouped layers</strong>: packages of 4 MiB or more alone and small ones grouped at cut points their names fix, so a
       large environment keeps its layers for the packages worth re-uploading; <code>--layers per-package</code> and <code>single</code> too
       (<a href="https://github.com/millsks/pixi-oci/issues/10">#10</a>)</li>
+<li>[x] <strong>One environment layer by default</strong>: the base image's layers and the environment in one, <code>--layers grouped</code>
+      for large environments that change often (<a href="https://github.com/millsks/pixi-oci/issues/56">#56</a>)</li>
 <li>[x] <strong><code>validate</code></strong>: an image checked against the OCI image spec on any OS, every blob, digest, size and <code>diff_id</code>
       (<a href="https://github.com/millsks/pixi-oci/issues/25">#25</a>)</li>
 <li>[x] <strong><code>inspect</code></strong>: an image's settings and layers, with the packages each layer holds, as text, JSON or the exact

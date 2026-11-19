@@ -846,7 +846,7 @@ workspaces, small to large, each with its lockfile and a README on how to build,
 <th>Example</th>
 <th>What it shows</th>
 <th>Packages (linux-64)</th>
-<th>Layers</th>
+<th>Grouped layers</th>
 <th>Download</th>
 <th>Entrypoint</th>
 </tr>
@@ -966,8 +966,9 @@ workspaces, small to large, each with its lockfile and a README on how to build,
 </tr>
 </tbody>
 </table>
-<p>Layer counts are the default grouped layout's, without a base image: a base adds its own (one for UBI 9 minimal and
-Debian 12 slim). Even the largest, 385 packages, plans into 84 layers, well under the limit.</p>
+<p>By default each environment is one layer on top of the base image's. The counts are for <code>--layers grouped</code>, without
+a base image: a base adds its own (one for UBI 9 minimal and Debian 12 slim). Even the largest, 385 packages, plans
+into 84 grouped layers, well under the limit.</p>
 <p>From a clone, plan them all, or build one on a base and check it:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>pixi<span class="w"> </span>run<span class="w"> </span>examples-plan
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>pixi<span class="w"> </span>run<span class="w"> </span>examples-build<span class="w"> </span><span class="m">03</span>-flask<span class="w"> </span>gunicorn
