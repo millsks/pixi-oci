@@ -523,6 +523,24 @@
         
       
       
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Examples
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
       <a href="./" class="md-nav__link md-nav__link--active">
         
   
@@ -539,6 +557,47 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#with-an-application" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        With an application
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#building-them" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Building them
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
       
     </li>
   
@@ -814,6 +873,36 @@
     
   
   
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#with-an-application" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        With an application
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#building-them" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Building them
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
 </nav>
                   </div>
                 </div>
@@ -969,13 +1058,72 @@ workspaces, small to large, each with its lockfile and a README on how to build,
 <p>By default each environment is one layer on top of the base image's. The counts are for <code>--layers grouped</code>, without
 a base image: a base adds its own (one for UBI 9 minimal and Debian 12 slim). Even the largest, 385 packages, plans
 into 84 grouped layers, well under the limit.</p>
+<h2 id="with-an-application">With an application<a class="headerlink" href="#with-an-application" title="Permanent link">&para;</a></h2>
+<p>Eight of them carry a small application of their own, added with <a href="../cli/#your-applications-files"><code>--add</code></a> into one
+layer above the environment. Each README has the full build command; they go from one file to several sources with
+ignore files:</p>
+<table>
+<thead>
+<tr>
+<th>Example</th>
+<th>Application</th>
+<th>What it shows</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>01-hello-python</code></td>
+<td><code>hello.py</code></td>
+<td>one file into a directory: <code>--add hello.py:/app/</code></td>
+</tr>
+<tr>
+<td><code>05-native-binary</code></td>
+<td><code>search.sh</code>, using <code>rg</code> and <code>jq</code></td>
+<td>a script made executable by its <code>#!</code>, whatever its mode on disk</td>
+</tr>
+<tr>
+<td><code>03-flask</code></td>
+<td><code>app/</code> with <code>templates/</code> and <code>static/</code></td>
+<td>a directory tree, <code>--workdir</code> so gunicorn imports it</td>
+</tr>
+<tr>
+<td><code>04-fastapi</code></td>
+<td><code>app/main.py</code></td>
+<td>a service run by uvicorn; <code>.gitignore</code> keeps <code>__pycache__</code> out</td>
+</tr>
+<tr>
+<td><code>06-r-analysis</code></td>
+<td><code>analysis.R</code> and <code>data/sales.csv</code></td>
+<td>code and data as two <code>--add</code>s</td>
+</tr>
+<tr>
+<td><code>09-streamlit-dashboard</code></td>
+<td><code>dashboard.py</code> and <code>.streamlit/config.toml</code></td>
+<td>a dot directory kept</td>
+</tr>
+<tr>
+<td><code>08-data-analysis</code></td>
+<td>a <code>report</code> package, its config and its data</td>
+<td>three destinations; <code>.dockerignore</code> and <code>.pixi-oci-ignore</code> leaving raw data and notebooks out</td>
+</tr>
+<tr>
+<td><code>11-machine-learning</code></td>
+<td><code>train.py</code>, <code>predict.py</code> and their data</td>
+<td><code>--user 1000:1000</code> with root-owned code, writing only to <code>/tmp</code> or a mount</td>
+</tr>
+</tbody>
+</table>
+<p><code>tests/examples.rs</code> collects each one as a build does and checks what is in it and what its ignore files leave out.</p>
+<h2 id="building-them">Building them<a class="headerlink" href="#building-them" title="Permanent link">&para;</a></h2>
 <p>From a clone, plan them all, or build one on a base and check it:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>pixi<span class="w"> </span>run<span class="w"> </span>examples-plan
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>pixi<span class="w"> </span>run<span class="w"> </span>examples-build<span class="w"> </span><span class="m">03</span>-flask<span class="w"> </span>gunicorn
 </code></pre></div>
-<p>On <code>debian:bookworm-slim</code>, the default base of <code>examples-build</code>, the examples <a href="../cli/#pixi-oci-check"><code>check</code></a> clean,
-except the R and Node.js ones, whose packages ship a few things <code>check</code> rightly names; each example's README says
-what. Every python example includes <code>xorg-libx11</code>, since conda-forge's python depends on tk, which links to X11.</p>
+<p>On <code>debian:bookworm-slim</code>, the default base of <code>examples-build</code>, <code>01</code>, <code>02</code>, <code>03</code>, <code>04</code>, <code>05</code> and <code>13</code>
+<a href="../cli/#pixi-oci-check"><code>check</code></a> clean. The others' environments carry things <code>check</code> rightly names, in optional
+parts the examples do not use: PySide6's optional Qt modules, pyarrow's Flight and Gandiva, R's compilers, npm's
+python scripts, and placeholders their packages do not declare. Each README says what, and no application layer has
+a problem. Every python example includes <code>xorg-libx11</code>, since conda-forge's python depends on tk, which links to X11.</p>
 
 
 
