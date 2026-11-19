@@ -237,11 +237,11 @@ pub struct BuildArgs {
     pub env: Vec<String>,
 
     /// The image's entrypoint, as a JSON array (`["python", "-m", "http.server"]`) or words.
-    #[arg(long, value_name = "COMMAND", value_parser = CommandLine::parse)]
+    #[arg(long, value_name = "COMMAND", value_parser = CommandLine::parse, allow_hyphen_values = true)]
     pub entrypoint: Option<CommandLine>,
 
-    /// The image's default arguments, as a JSON array or words.
-    #[arg(long, value_name = "ARGS", value_parser = CommandLine::parse)]
+    /// The image's default arguments, as a JSON array or words; they may start with `-` (`--cmd "-m app"`).
+    #[arg(long, value_name = "ARGS", value_parser = CommandLine::parse, allow_hyphen_values = true)]
     pub cmd: Option<CommandLine>,
 
     /// The working directory processes in the image start in.

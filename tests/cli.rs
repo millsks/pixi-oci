@@ -560,3 +560,24 @@ fn build_refuses_a_wrong_add_before_downloading() {
     assert!(!dir.path().join("cache").exists());
     assert!(!dir.path().join("image.tar").exists());
 }
+
+#[test]
+fn default_arguments_may_start_with_a_dash() {
+    let dir = tempfile::tempdir().unwrap();
+    // The flags parse, so the build gets as far as the missing --add source.
+    pixi_oci()
+        .args(["build", "--lockfile", LOCKFILE, "-e", "app", "--platform", "linux-64"])
+        .args([
+            "--entrypoint",
+            "-x",
+            "--cmd",
+            "-m report --config /etc/report.toml",
+            "--add",
+        ])
+        .arg(format!("{}:/app", dir.path().join("absent").display()))
+        .arg("--output")
+        .arg(dir.path().join("image.tar"))
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("does not exist"));
+}
