@@ -46,6 +46,10 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y musl-tools
           echo "CC_${TARGET//-/_}=musl-gcc" >> "$GITHUB_ENV"
+          # GCC's outline atomics call libgcc helpers a static musl link lacks (vendored libdbus uses them).
+          if [[ "$TARGET" == aarch64-* ]]; then
+            echo "CFLAGS_${TARGET//-/_}=-mno-outline-atomics" >> "$GITHUB_ENV"
+          fi
         shell: bash
         env:
           TARGET: ${{ matrix.target }}
