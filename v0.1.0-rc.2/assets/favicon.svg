@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="pixi-oci">
+  <rect x="2" y="2" width="60" height="60" rx="14" fill="#052620"/>
+  <!-- Three stacked layers: an image built from package layers, in the Aesir emeralds. -->
+  <path d="M32 14 L50 23 L32 32 L14 23 Z" fill="#5ae9b6"/>
+  <path d="M14 31 L32 40 L50 31" fill="none" stroke="#2fb889" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M14 40 L32 49 L50 40" fill="none" stroke="#a9d9c6" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+</svg>
