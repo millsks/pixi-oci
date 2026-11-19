@@ -25,6 +25,12 @@ podman run --rm 10-jupyter:latest --version
 
 ## What `check` reports
 
-Nothing, on `debian:bookworm-slim`. The environment includes `xorg-libx11`: conda-forge's python depends on tk, which links to X11, and without it `check` would report `libX11.so.6`.
+On `debian:bookworm-slim`, 26 problems, none of them in what JupyterLab needs to start:
+
+- **24 `library` problems from PySide6.** `matplotlib`, unlike `matplotlib-base`, brings the Qt backend, and PySide6's bindings for optional Qt modules (Qt 3D, Charts, Graphs, Multimedia, PDF, WebEngine and others) link to libraries `qt6-main` does not ship. Only `import PySide6.Qt3DCore` and the like would fail.
+- **`libzmq.so.5`, for pyzmq: a false positive** ([#62](https://github.com/millsks/pixi-oci/issues/62)). The library is in `/opt/env/lib`, and the loader finds it through python's own RPATH; `check` does not follow that yet.
+- **A `placeholder` problem:** `lib/libfontconfig.a`, a static library nothing loads at run time, still holds a conda build placeholder its package does not declare.
+
+The environment includes `xorg-libx11`: conda-forge's python depends on tk, which links to X11, and without it `check` would also report `libX11.so.6`.
 
 Built on `ubi9/ubi-minimal` instead, which has no perl, openssl's perl scripts (`c_rehash`, `CA.pl`, `tsget.pl`) are reported as `shebang` problems too; `debian:bookworm-slim` has perl. They matter only if you run them.

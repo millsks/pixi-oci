@@ -1,0 +1,9 @@
+region,product,units,price
+north,widget,12,2.50
+north,gadget,4,10.00
+south,widget,20,2.50
+south,gadget,1,10.00
+east,widget,7,2.50
+east,gadget,9,10.00
+west,widget,15,2.50
+west,gadget,3,10.00

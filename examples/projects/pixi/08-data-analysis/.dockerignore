@@ -1,0 +1,2 @@
+# docker's rules, relative to this workspace as to a build context.
+data/raw/

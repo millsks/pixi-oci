@@ -1,6 +1,6 @@
 # R analysis
 
-R 4.5 with dplyr, ggplot2 and readr from conda-forge: R itself, its compiled packages and the system libraries they link to.
+R 4.5 with dplyr, ggplot2 and readr from conda-forge, and an analysis script with its data: the code goes to `/app` and the data to `/data`, as two `--add`s.
 
 `pixi.toml` lists what the environment asks for; `pixi.lock` is what pixi locked for `linux-64` and `linux-aarch64`, written by `pixi lock` and never edited. On `linux-64` it is 129 conda packages, 299.5 MiB to download: one layer by default, 35 with `--layers grouped`.
 
@@ -12,15 +12,22 @@ From the repository's root:
 pixi oci plan --lockfile examples/projects/pixi/06-r-analysis/pixi.lock -p linux-64
 pixi oci build --lockfile examples/projects/pixi/06-r-analysis/pixi.lock -p linux-64 \
   --base debian:bookworm-slim@sha256:734a72b3d6142a71993b4bc580ca01d8ca687f77a2c422d96a961d3376b179bc \
-  --entrypoint Rscript -t 06-r-analysis:latest -o 06-r-analysis.tar
+  --add examples/projects/pixi/06-r-analysis/analysis:/app --add examples/projects/pixi/06-r-analysis/data:/data \
+  --entrypoint Rscript --cmd /app/analysis.R \
+  -t 06-r-analysis:latest -o 06-r-analysis.tar
 pixi oci check 06-r-analysis.tar
+pixi oci inspect 06-r-analysis.tar
 ```
+
+## The application
+
+`analysis/analysis.R` reads `/data/sales.csv`, prints revenue and units by region, and writes a bar chart to `/tmp/sales.png`. Code and data are separate `--add`s into the same application layer, so the script can be pointed at other data: `Rscript /app/analysis.R other.csv out.png`.
 
 `registry.access.redhat.com/ubi9/ubi-minimal` works as the base too ([Base images](../../../../docs/base-images.md)). Then, where a container runtime is installed:
 
 ```sh
 podman load -i 06-r-analysis.tar
-podman run --rm 06-r-analysis:latest -e 'library(dplyr); cat("ok\n")'
+podman run --rm 06-r-analysis:latest
 ```
 
 ## What `check` reports

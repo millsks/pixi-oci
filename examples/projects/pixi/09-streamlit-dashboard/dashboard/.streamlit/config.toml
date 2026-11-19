@@ -1,0 +1,8 @@
+# Read by streamlit from the working directory: --add keeps dot directories such as this one.
+[server]
+headless = true
+port = 8501
+address = "0.0.0.0"
+
+[browser]
+gatherUsageStats = false
