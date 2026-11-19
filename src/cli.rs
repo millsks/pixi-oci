@@ -248,6 +248,13 @@ pub struct BuildArgs {
     #[arg(long, value_name = "PATH")]
     pub workdir: Option<String>,
 
+    /// A file or directory to put in the image, as a Dockerfile's COPY: SRC:DEST, such as src:/app; repeat for
+    /// more. Every --add goes into one application layer above the environment. A directory leaves out what
+    /// .gitignore, .dockerignore and .pixi-oci-ignore name, and .git and .pixi; a file named by itself is always
+    /// added. Files are owned by root, 0755 when they start with #! or are ELF files, 0644 otherwise.
+    #[arg(long = "add", value_name = "SRC:DEST", value_parser = crate::add::parse_add)]
+    pub add: Vec<crate::add::Add>,
+
     /// A label in the image config, as a Dockerfile's LABEL; repeat for more. pixi-oci's own dev.pixi.* labels win.
     #[arg(long = "label", value_name = "KEY=VALUE", value_parser = crate::build::parse_key_value)]
     pub label: Vec<(String, String)>,

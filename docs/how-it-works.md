@@ -12,11 +12,11 @@ pixi.lock ─▶ plan ─▶ fetch ─▶ stream each archive ─▶ tar ─▶ 
 
 `plan` reads one environment of `pixi.lock` for one platform and decides the layers.
 
-**By default the environment is one layer.** The image is the base image's layers and one layer holding the whole
-environment, conda and PyPI; the application's own layer will go on top
-([#40](https://github.com/millsks/pixi-oci/issues/40)). Layers are named by their sha256, so an unchanged
-environment keeps its digest from build to build and is neither uploaded nor pulled again. When `pixi.lock` changes, the whole environment layer is uploaded once more,
-which for most environments is a few hundred megabytes at most.
+**By default the environment is one layer.** The image is the base image's layers, one layer holding the whole
+environment, conda and PyPI, and one holding the files `--add` names. Layers are named by their sha256, so an
+unchanged environment keeps its digest from build to build and is neither uploaded nor pulled again: a commit that
+changes only code moves only the application layer. When `pixi.lock` changes, the whole environment layer is
+uploaded once more, which for most environments is a few hundred megabytes at most.
 
 **`--layers grouped` splits a large environment.** When the environment is large and its packages change often, a
 package upgrade that re-uploads gigabytes costs more than extra layers do. Grouping re-uploads only the layers that
@@ -44,7 +44,9 @@ request. `--layers per-package` gives every conda package a layer of its own, as
 `plan --packages` lists what each shared layer holds.
 
 Conda packages pixi builds from source have no archive yet, so an environment with them is refused, by name; so are
-PyPI packages that are not wheels (sdists, git and path checkouts), which would have to be built.
+PyPI packages that are not wheels (sdists, git and path checkouts), which would have to be built. The workspace's own
+package, a PyPI path or editable dependency, is one of those until
+[#34](https://github.com/millsks/pixi-oci/issues/34); add its source with `--add` meanwhile.
 
 ## Fetching
 

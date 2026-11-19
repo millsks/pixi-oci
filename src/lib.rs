@@ -5,6 +5,7 @@
 
 #![forbid(unsafe_code)]
 
+pub mod add;
 pub mod build;
 pub mod check;
 pub mod cli;
@@ -223,6 +224,21 @@ fn run_build(args: BuildArgs) -> miette::Result<String> {
     let reference = image::Reference::parse(&tag).ok_or(UsageError::Reference { value: tag })?;
     let lock = lock::load(&selection.lockfile)?;
     let locked = lock::select(&lock, &selection.environment, &platform)?;
+    let workspace = selection.lockfile.parent().map(std::path::Path::to_path_buf);
+    // The application's files are collected before anything is downloaded, so a wrong path fails at once.
+    let app = if args.add.is_empty() {
+        None
+    } else {
+        let root = workspace.as_deref().map(|dir| {
+            if dir.as_os_str().is_empty() {
+                std::path::Path::new(".")
+            } else {
+                dir
+            }
+        });
+        Some(add::collect(&args.add, root)?)
+    };
+    let app_layers = usize::from(app.is_some());
     let cache = args.cache_dir.unwrap_or_else(fetch::Fetcher::default_root);
     // The base first: it is pinned and small next to the environment, and its layers come out of the layer budget.
     let base = match &args.base {
@@ -237,7 +253,7 @@ fn run_build(args: BuildArgs) -> miette::Result<String> {
         None => None,
     };
     let base_layers = base.as_ref().map_or(0, |base| base.layers.len());
-    let max_layers = args.layers.max_layers.saturating_sub(base_layers);
+    let max_layers = args.layers.max_layers.saturating_sub(base_layers + app_layers);
     if base_layers > 0 && max_layers < 2 && args.layers.layers != plan::Layering::Single {
         return Err(UsageError::TooManyBaseLayers {
             base: args.base.unwrap_or_default(),
@@ -264,8 +280,8 @@ fn run_build(args: BuildArgs) -> miette::Result<String> {
         user: args.user,
         expose: args.expose,
         stop_signal: args.stop_signal,
+        app,
     };
-    let workspace = selection.lockfile.parent().map(std::path::Path::to_path_buf);
     let fetcher = fetch::Fetcher::new(cache)
         .with_pixi_credentials()?
         .with_pixi_config(workspace.as_deref())?;
@@ -275,7 +291,7 @@ fn run_build(args: BuildArgs) -> miette::Result<String> {
         written.reference,
         options.output.display(),
         written.manifest.digest,
-        report::plural(plan.layers.len() + base_layers, "layer"),
+        report::plural(plan.layers.len() + base_layers + app_layers, "layer"),
         report::size_text(Some(written.layers_size)),
         plan.oci_platform,
     ))

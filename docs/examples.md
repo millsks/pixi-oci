@@ -8,7 +8,7 @@ workspaces, small to large, each with its lockfile and a README on how to build,
 | [`01-hello-python`](https://github.com/millsks/pixi-oci/tree/main/examples/projects/pixi/01-hello-python) | python alone | 27 conda | 7 | 46.1 MiB | `python` |
 | [`02-cli-tool`](https://github.com/millsks/pixi-oci/tree/main/examples/projects/pixi/02-cli-tool) | a noarch python CLI with entry points (HTTPie) | 46 conda | 8 | 50.0 MiB | `http` |
 | [`03-flask`](https://github.com/millsks/pixi-oci/tree/main/examples/projects/pixi/03-flask) | Flask served by gunicorn | 37 conda | 7 | 47.9 MiB | `gunicorn` |
-| [`04-fastapi`](https://github.com/millsks/pixi-oci/tree/main/examples/projects/pixi/04-fastapi) | FastAPI run by uvicorn | 102 conda | 15 | 63.8 MiB | `uvicorn` |
+| [`04-fastapi`](https://github.com/millsks/pixi-oci/tree/main/examples/projects/pixi/04-fastapi) | FastAPI run by uvicorn, its app added with `--add` | 102 conda | 15 | 63.8 MiB | `uvicorn` |
 | [`05-native-binary`](https://github.com/millsks/pixi-oci/tree/main/examples/projects/pixi/05-native-binary) | compiled tools only, no python (ripgrep, jq) | 6 conda | 2 | 4.0 MiB | `rg` |
 | [`06-r-analysis`](https://github.com/millsks/pixi-oci/tree/main/examples/projects/pixi/06-r-analysis) | R 4.5 with dplyr, ggplot2, readr | 129 conda | 35 | 299.5 MiB | `Rscript` |
 | [`07-node-tools`](https://github.com/millsks/pixi-oci/tree/main/examples/projects/pixi/07-node-tools) | Node.js 22, npm, pnpm | 11 conda | 6 | 51.8 MiB | `node` |

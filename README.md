@@ -19,9 +19,9 @@ The lockfile already names every package, its exact URL and its hash. pixi-oci b
 
 - **Daemonless.** It writes the image layers itself, so it runs on a plain CI runner or an OpenShift build pod.
 - **Reproducible.** The same lockfile gives the same layers and the same image digest.
-- **An application image.** The base image's layers and one layer for the pixi environment, with the application's
-  own layer to go on top ([#40](https://github.com/millsks/pixi-oci/issues/40)); an unchanged environment keeps its
-  digest, so it is never uploaded twice. `--layers grouped` splits a large environment so a package upgrade
+- **An application image.** The base image's layers, one layer for the pixi environment, and one for your
+  application's files (`--add src:/app`); an unchanged environment keeps its digest, so a commit that changes only
+  code uploads only the application layer. `--layers grouped` splits a large environment so a package upgrade
   re-uploads only the layers that hold it.
 - **Private-channel ready.** Channels and registries are whatever your lockfile and your credentials point at.
 
@@ -100,6 +100,7 @@ and 15.9 s for the same two images.
 | `--env KEY=VALUE` | | an environment variable; repeatable |
 | `--entrypoint`, `--cmd` | | a JSON array (`["python", "-m", "http.server"]`) or words |
 | `--workdir PATH` | | the working directory |
+| `--add SRC:DEST` | | a file or directory in the application layer, as `COPY`; `.gitignore`, `.dockerignore` and `.pixi-oci-ignore` apply |
 | `--label KEY=VALUE`, `--annotation KEY=VALUE` | | labels in the config, annotations on the manifest; repeat for more |
 | `--user`, `--expose PORT[/PROTOCOL]`, `--stop-signal` | | as a Dockerfile's `USER`, `EXPOSE` and `STOPSIGNAL` |
 | `--base IMAGE@DIGEST` | | an image to build on, pinned by digest, such as `registry.access.redhat.com/ubi9/ubi-minimal@sha256:...` or `debian:bookworm-slim@sha256:...` |

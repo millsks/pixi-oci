@@ -24,6 +24,8 @@ path = "src/main.rs"
 [dependencies]
 clap = { version = "4.6.7", features = ["derive"] }
 flate2 = "1.1.10"
+# git's ignore rules for the files `--add` puts in the application layer: ripgrep's, with its nested .gitignore files.
+ignore = "0.4.34"
 miette = { version = "7.6.0", features = ["fancy"] }
 # ELF reading for `check`; already in the build through miette's backtrace, with these same features.
 object = { version = "0.40.0", default-features = false, features = ["read_core", "elf", "std"] }
