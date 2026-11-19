@@ -65,7 +65,7 @@ pub struct BuildOptions {
     pub entrypoint: Option<Vec<String>>,
     pub cmd: Option<Vec<String>>,
     pub workdir: Option<String>,
-    /// Seconds since the Unix epoch, stamped on every file and on the image.
+    /// Seconds since the Unix epoch: the image's `created` time. Files in layers are stamped with [`LAYER_MTIME`].
     pub source_date_epoch: u64,
     /// Roughly how much memory the build's own buffers may use, in bytes. It sets how many layers are written at
     /// once and how large a rewritten file may grow in memory before it waits in a temporary file. It never changes
@@ -207,7 +207,7 @@ pub fn build(
                     let stream_options = stream::Options {
                         target: &target,
                         first: i == 0,
-                        mtime: options.source_date_epoch,
+                        mtime: LAYER_MTIME,
                         spill_limit,
                         spill_dir: scratch.path(),
                     };
@@ -526,6 +526,10 @@ pub fn parse_user(value: &str) -> Result<String, String> {
     }
 }
 
+/// The time every file in a layer is stamped with, whatever `SOURCE_DATE_EPOCH` says: a layer's digest then
+/// depends on its packages alone, so a build at another commit reuses every layer whose packages are unchanged.
+pub const LAYER_MTIME: u64 = 0;
+
 /// `SOURCE_DATE_EPOCH` from the environment, the convention reproducible builds share; 0 when unset or unreadable.
 pub fn source_date_epoch() -> u64 {
     std::env::var("SOURCE_DATE_EPOCH")
@@ -828,6 +832,38 @@ mod tests {
         let err = build(&plan_of(vec![pypi], 100), &relative, &fetcher, &mut std::io::sink()).unwrap_err();
         assert!(matches!(err, BuildError::RelativePrefix { .. }), "{err}");
         assert!(!output.exists());
+    }
+
+    #[test]
+    fn the_epoch_dates_the_image_but_not_its_layers() {
+        let dir = tempfile::tempdir().unwrap();
+        let plan = plan_of(
+            vec![package(dir.path(), "tool", &["base"]), package(dir.path(), "base", &[])],
+            100,
+        );
+        let fetcher = Fetcher::new(dir.path().join("cache"));
+        let built = |name: &str, epoch: u64| {
+            let layout = dir.path().join(name);
+            let mut options = options(layout.clone());
+            options.source_date_epoch = epoch;
+            let written = build(&plan, &options, &fetcher, &mut std::io::sink()).unwrap();
+            let config: serde_json::Value =
+                serde_json::from_slice(&fs::read(blob(&layout, &written.config.digest)).unwrap()).unwrap();
+            (manifest(&layout, &written), config, layout)
+        };
+        let (first, first_config, layout) = built("first", 0);
+        let (second, second_config, _) = built("second", 1_700_000_000);
+        assert_eq!(first["layers"], second["layers"]);
+        assert_eq!(first_config["rootfs"], second_config["rootfs"]);
+        assert_eq!(first_config["created"], "1970-01-01T00:00:00Z");
+        assert_eq!(second_config["created"], "2023-11-14T22:13:20Z");
+        assert_eq!(second_config["history"][0]["created"], "2023-11-14T22:13:20Z");
+
+        let layer = blob(&layout, first["layers"][0]["digest"].as_str().unwrap());
+        let mut archive = tar::Archive::new(flate2::read::GzDecoder::new(fs::File::open(layer).unwrap()));
+        for entry in archive.entries().unwrap() {
+            assert_eq!(entry.unwrap().header().mtime().unwrap(), LAYER_MTIME);
+        }
     }
 
     #[test]

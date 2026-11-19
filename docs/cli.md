@@ -324,7 +324,7 @@ oci-archive:app.tar`, or `crane config` and `crane manifest` on a pushed image (
 | Variable | |
 |---|---|
 | `PIXI_OCI_CACHE_DIR` | the package cache, when `--cache-dir` is not given. Otherwise `$XDG_CACHE_HOME/pixi-oci`, `~/.cache/pixi-oci` on Linux, `~/Library/Caches/pixi-oci` on macOS, `%LOCALAPPDATA%\pixi-oci` on Windows |
-| `SOURCE_DATE_EPOCH` | seconds since the Unix epoch, stamped on every file and on the image's `created` time; `0` when unset. The [reproducible-builds](https://reproducible-builds.org/docs/source-date-epoch/) convention. |
+| `SOURCE_DATE_EPOCH` | seconds since the Unix epoch, the image's `created` time; `0` when unset. Files in layers are always stamped 0, so it never changes a layer's digest. The [reproducible-builds](https://reproducible-builds.org/docs/source-date-epoch/) convention. |
 | `HTTPS_PROXY`, `HTTP_PROXY`, `NO_PROXY` | the proxy for downloads |
 | `PIXI_OCI_REGISTRY_USERNAME`, `PIXI_OCI_REGISTRY_PASSWORD` | credentials for one registry, for CI: `push`'s destination, or `PIXI_OCI_REGISTRY` |
 | `PIXI_OCI_REGISTRY` | the registry those credentials are for, such as `ghcr.io`; set it when a build should also use them to pull its base |

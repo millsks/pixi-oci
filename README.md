@@ -70,8 +70,8 @@ Because the host never holds the layer's files, **it builds on Windows, macOS an
 rights, WSL or VM: Unix modes, symlinks and names that differ only in case go from the archive into the layer
 without touching the host's file system. Tests compare the result with rattler's own installer file for file.
 
-Builds are reproducible: every file is owned by root and stamped with one time (`SOURCE_DATE_EPOCH`, or the Unix
-epoch), modes are 0755 or 0644, entries keep the archives' order, and gzip headers carry no time, so the same
+Builds are reproducible: every file is owned by root and stamped with the Unix epoch (`SOURCE_DATE_EPOCH`
+dates only the config, so unchanged layers keep their digests), modes are 0755 or 0644, entries keep the archives' order, and gzip headers carry no time, so the same
 lockfile gives the same image digest on any machine. CI builds the same image on Linux, macOS and Windows and
 requires one digest.
 
