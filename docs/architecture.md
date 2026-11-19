@@ -50,8 +50,8 @@ public functions where they exist (placeholder replacement, noarch paths, the en
 `install.rs` keeps rattler's own linker as a test-only reference, and `parity.rs` holds the two to the same output.
 
 **Reproducible bytes.** Anything that would bring a time, a host path, a user name or an unordered collection into a
-layer or the config would change image digests. Entries keep the archives' order, modes are normalized, times come
-from `SOURCE_DATE_EPOCH`, and the gzip header is empty.
+layer or the config would change image digests. Entries keep the archives' order, modes are normalized, every file is
+stamped with the Unix epoch, and the gzip header is empty. `SOURCE_DATE_EPOCH` dates only the config.
 
 **Bounded memory.** A file is held whole only up to the in-memory limit; larger rewrites go through a temporary file
 in pieces cut where no replacement can cross. `build::budget` turns `--max-memory` into that limit and a number of

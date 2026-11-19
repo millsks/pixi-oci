@@ -22,6 +22,9 @@ ignore = [
   # astral-tokio-tar is unmaintained (deprecated 2026-11-03), not vulnerable. rattler_package_streaming uses it for
   # async extraction, which pixi-oci does not call; every rattler_package_streaming release still depends on it.
   { id = "RUSTSEC-2026-0440", reason = "unmaintained, via rattler_package_streaming; its async path is unused" },
+  # humantime is unmaintained (2026-11, because chrono is), not vulnerable, with no release to move to. rattler and
+  # rattler_config use it to parse and print durations in pixi's config.
+  { id = "RUSTSEC-2026-0542", reason = "unmaintained, via rattler and rattler_config; no safe upgrade exists" },
 ]
 
 [licenses]

@@ -102,12 +102,15 @@ files with the same bytes.
 
 The same lockfile gives the same image digest on any machine:
 
-- every entry is owned by root (uid and gid 0) and stamped with one time: `SOURCE_DATE_EPOCH`, or 0
+- every entry is owned by root (uid and gid 0) and stamped with one time, the Unix epoch, so a layer's digest
+  depends only on its packages: a build at a later commit, or with `SOURCE_DATE_EPOCH` set to the commit's time,
+  reuses every layer whose packages did not change
 - every mode is 0755 (directories, symlinks, executables) or 0644: only whether a file is executable is kept, so no
   umask reaches the image
 - entries keep the archives' order, which the lockfile's hashes fix
 - the gzip header carries no time and no file name
-- the config's `created` time is the same `SOURCE_DATE_EPOCH`
+- the config's `created` time, and its history's, is `SOURCE_DATE_EPOCH`, or 0; it changes the config's digest,
+  never a layer's
 
 Layers are tar archives in GNU format, compressed with gzip, so every container runtime and registry reads them. CI
 builds a test image on Linux, macOS and Windows on every change and fails if the digests differ; `pixi oci validate`,
